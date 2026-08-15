@@ -20,10 +20,43 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { PROVIDERS, formatFcfa } from '@/lib/data';
-import { ServiceRequest } from '@/lib/types';
+import { Provider, ServiceRequest } from '@/lib/types';
+
+const DEFAULT_PRO_FALLBACK: Provider = {
+  id: 'pro-me',
+  slug: 'mon-profil-artisan',
+  name: 'Mon Compte Artisan',
+  businessName: 'Entreprise Artisanale',
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+  headline: 'Artisan Professionnel Certifié',
+  bio: 'Bienvenue sur votre espace professionnel.',
+  categorySlug: 'plomberie',
+  categoryName: 'Artisanat & Services',
+  specialties: ['Dépannage', 'Installation'],
+  city: 'Dakar',
+  neighborhood: 'Dakar',
+  latitude: 14.7167,
+  longitude: -17.4677,
+  interventionRadiusKm: 20,
+  phone: '+221 77 000 00 00',
+  whatsapp: '221770000000',
+  experienceYears: 5,
+  verificationLevel: 'ID_VERIFIED',
+  subscriptionTier: 'FREE',
+  isAvailable: true,
+  averageRating: 5.0,
+  reviewCount: 0,
+  completedJobsCount: 0,
+  responseTimeMinutes: 15,
+  services: [],
+  portfolio: [],
+  reviews: [],
+  startingPrice: 15000,
+  joinedDate: '2026-01-01'
+};
 
 export default function ProviderDashboardPage() {
-  const currentProvider = PROVIDERS[0]; // Moussa Diop as default active pro
+  const currentProvider: Provider = PROVIDERS[0] || DEFAULT_PRO_FALLBACK;
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [activeTab, setActiveTab] = useState<'requests' | 'analytics' | 'subscription' | 'profile'>('requests');
 
@@ -38,31 +71,17 @@ export default function ProviderDashboardPage() {
         setRequests([
           {
             id: 'req-init-1',
-            customerName: 'Fatou Ndiaye',
-            customerPhone: '77 450 12 34',
+            customerName: 'Client Sama Artisan',
+            customerPhone: '77 000 00 00',
             providerId: currentProvider.id,
             providerName: currentProvider.name,
-            serviceCategory: 'Plomberie & Sanitaire',
-            description: 'Mon chauffe-eau solaire coule par le dessous depuis hier soir. Besoin d\'un dépannage rapide.',
-            neighborhood: 'Almadies',
+            serviceCategory: 'Dépannage & Réparation',
+            description: 'Demande de devis pour intervention à domicile.',
+            neighborhood: 'Dakar',
             urgency: 'IMMEDIATE',
             budgetIndicative: 25000,
             status: 'PENDING',
-            createdAt: 'Aujourd\'hui à 09:15',
-          },
-          {
-            id: 'req-init-2',
-            customerName: 'Mamadou Kane',
-            customerPhone: '76 890 55 22',
-            providerId: currentProvider.id,
-            providerName: currentProvider.name,
-            serviceCategory: 'Plomberie',
-            description: 'Installation d\'une nouvelle colonne de douche dans un appartement en réfection.',
-            neighborhood: 'Ngor Virage',
-            urgency: 'THIS_WEEK',
-            budgetIndicative: 40000,
-            status: 'ACCEPTED',
-            createdAt: 'Hier à 16:30',
+            createdAt: 'Aujourd\'hui',
           }
         ]);
       }

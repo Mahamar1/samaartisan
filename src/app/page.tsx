@@ -184,11 +184,32 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {providersList.slice(0, 6).map((provider) => (
-              <ProviderCard key={provider.id} provider={provider} />
-            ))}
-          </div>
+          {providersList.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {providersList.slice(0, 6).map((provider) => (
+                <ProviderCard key={provider.id} provider={provider} />
+              ))}
+            </div>
+          ) : (
+            <div className="p-12 rounded-3xl bg-slate-50 border border-slate-200 text-center max-w-xl mx-auto space-y-4 shadow-sm">
+              <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+                <Wrench className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-navy-900">Aucun prestataire pour le moment</h3>
+              <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+                Vous êtes un artisan qualifié à Dakar ou dans les régions du Sénégal ? Soyez le premier à inscrire votre entreprise gratuitement !
+              </p>
+              <div className="pt-2">
+                <Link
+                  href="/devenir-prestataire"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold bg-sama-600 hover:bg-sama-700 text-white shadow-md shadow-sama-600/20 transition-all hover:scale-105 active:scale-95"
+                >
+                  <span>Inscrire mon entreprise gratuitement</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
+          )}
 
         </div>
       </section>

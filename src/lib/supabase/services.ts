@@ -49,7 +49,7 @@ export async function getProviders(): Promise<Provider[]> {
 
       if (error) {
         console.error('Supabase query error:', error);
-      } else if (data && data.length > 0) {
+      } else if (data) {
         return data.map(mapDbProviderToApp);
       }
     } catch (err) {
@@ -57,7 +57,7 @@ export async function getProviders(): Promise<Provider[]> {
     }
   }
 
-  // Fallback to localStorage or static data
+  // Fallback to localStorage or empty array
   if (typeof window !== 'undefined') {
     const local = localStorage.getItem('sama_admin_providers_data');
     if (local) {
@@ -67,7 +67,7 @@ export async function getProviders(): Promise<Provider[]> {
     }
   }
 
-  return PROVIDERS;
+  return PROVIDERS || [];
 }
 
 // 2. FETCH A SINGLE PROVIDER BY SLUG (Supabase Live with Fallback)

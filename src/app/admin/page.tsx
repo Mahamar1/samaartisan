@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { PROVIDERS, MOCK_ADMIN_METRICS, CATEGORIES, SENEGAL_REGIONS, formatFcfa } from '@/lib/data';
 import { getProviders, updateProvider, deleteProvider, registerArtisan } from '@/lib/supabase/services';
-import { Provider } from '@/lib/types';
+import { Provider, VerificationLevel } from '@/lib/types';
 
 interface PendingArtisan {
   id: string;
@@ -232,18 +232,25 @@ export default function AdminDashboardPage() {
       categorySlug: 'plomberie',
       categoryName: artisan.trade,
       headline: `Artisan professionnel spécialisé en ${artisan.trade}`,
+      city: 'Dakar',
       neighborhood: artisan.neighborhood,
-      address: `${artisan.neighborhood}, Dakar`,
+      latitude: 14.7167,
+      longitude: -17.4677,
+      interventionRadiusKm: 15,
       averageRating: 5.0,
       reviewCount: 1,
       startingPrice: 15000,
       responseTimeMinutes: 10,
       isAvailable: true,
-      verificationLevel: 'ID_AND_SKILLS',
+      verificationLevel: 'ID_VERIFIED',
+      subscriptionTier: 'FREE',
+      completedJobsCount: 12,
+      joinedDate: new Date().toISOString(),
       isSponsored: false,
-      yearsExperience: 5,
+      experienceYears: 5,
       bio: `Artisan certifié et validé par l'administration Sama Artisan.`,
       specialties: ['Dépannage d\'urgence', 'Installation', 'Rénovation'],
+      services: [],
       portfolio: [],
       reviews: []
     };
@@ -295,13 +302,13 @@ export default function AdminDashboardPage() {
   const handleToggleVerification = async (providerId: string) => {
     const target = providersList.find((p) => p.id === providerId);
     if (!target) return;
-    const newLevel = target.verificationLevel === 'UNVERIFIED' ? 'ID_AND_SKILLS' : 'UNVERIFIED';
+    const newLevel: VerificationLevel = target.verificationLevel === 'UNVERIFIED' ? 'ID_VERIFIED' : 'UNVERIFIED';
 
-    await updateProvider(providerId, { verificationLevel: newLevel as any });
+    await updateProvider(providerId, { verificationLevel: newLevel });
 
-    const updated = providersList.map((p) => {
+    const updated: Provider[] = providersList.map((p) => {
       if (p.id === providerId) {
-        return { ...p, verificationLevel: newLevel as any };
+        return { ...p, verificationLevel: newLevel };
       }
       return p;
     });
@@ -356,18 +363,25 @@ export default function AdminDashboardPage() {
       categorySlug: newArtisanCategory,
       categoryName: catObj ? catObj.name : 'Artisan',
       headline: `Artisan qualifié en ${catObj ? catObj.name : 'prestation'}`,
+      city: 'Dakar',
       neighborhood: newArtisanNeighborhood,
-      address: `${newArtisanNeighborhood}, Dakar`,
+      latitude: 14.7167,
+      longitude: -17.4677,
+      interventionRadiusKm: 15,
       averageRating: 5.0,
       reviewCount: 0,
       startingPrice: 15000,
       responseTimeMinutes: 15,
       isAvailable: true,
-      verificationLevel: 'ID_AND_SKILLS',
+      verificationLevel: 'ID_VERIFIED',
+      subscriptionTier: 'FREE',
+      completedJobsCount: 0,
+      joinedDate: new Date().toISOString(),
       isSponsored: false,
-      yearsExperience: 4,
+      experienceYears: 4,
       bio: `Artisan ajouté et vérifié par l'administration.`,
       specialties: ['Intervention rapide', 'Devis gratuit'],
+      services: [],
       portfolio: [],
       reviews: []
     };

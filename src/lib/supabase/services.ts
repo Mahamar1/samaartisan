@@ -2,11 +2,10 @@ import { supabase, isSupabaseConfigured } from './client';
 import { PROVIDERS, CATEGORIES } from '@/lib/data';
 import { Provider } from '@/lib/types';
 
-// Convert database row to app Provider type
 function mapDbProviderToApp(item: any): Provider {
   return {
     id: item.id,
-    slug: item.slug,
+    slug: item.slug || String(item.id),
     name: item.name,
     businessName: item.business_name || item.name,
     avatar: item.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
@@ -15,20 +14,27 @@ function mapDbProviderToApp(item: any): Provider {
     categorySlug: item.category_slug || 'plomberie',
     categoryName: item.category_name || 'Artisan',
     headline: item.headline || `Artisan professionnel qualifié à Dakar`,
+    city: item.city || 'Dakar',
     neighborhood: item.neighborhood || 'Dakar',
-    address: item.address || `${item.neighborhood || 'Dakar'}, Sénégal`,
+    latitude: item.latitude ? Number(item.latitude) : 14.7167,
+    longitude: item.longitude ? Number(item.longitude) : -17.4677,
+    interventionRadiusKm: item.intervention_radius_km ? Number(item.intervention_radius_km) : 15,
     averageRating: item.average_rating ? Number(item.average_rating) : 5.0,
     reviewCount: item.review_count ? Number(item.review_count) : 0,
     startingPrice: item.starting_price ? Number(item.starting_price) : 15000,
     responseTimeMinutes: item.response_time_minutes ? Number(item.response_time_minutes) : 15,
     isAvailable: item.is_available ?? true,
     verificationLevel: item.verification_level || 'UNVERIFIED',
+    subscriptionTier: 'FREE',
+    completedJobsCount: item.completed_jobs_count ? Number(item.completed_jobs_count) : 10,
+    joinedDate: item.created_at || new Date().toISOString(),
     isSponsored: false,
-    yearsExperience: item.years_experience ? Number(item.years_experience) : 4,
+    experienceYears: item.years_experience ? Number(item.years_experience) : (item.experience_years ? Number(item.experience_years) : 4),
     bio: item.bio || 'Artisan certifié et expérimenté au Sénégal.',
     specialties: item.specialties || ['Intervention d\'urgence', 'Devis gratuit'],
-    portfolio: [],
-    reviews: []
+    services: item.services || [],
+    portfolio: item.portfolio || [],
+    reviews: item.reviews || []
   };
 }
 

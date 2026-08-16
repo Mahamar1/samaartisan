@@ -31,7 +31,11 @@ import {
   ShieldAlert,
   Sparkles,
   ChevronRight,
-  Filter
+  Filter,
+  UserCheck,
+  User,
+  Wrench,
+  MessageCircle
 } from 'lucide-react';
 import { PROVIDERS, MOCK_ADMIN_METRICS, CATEGORIES, SENEGAL_REGIONS, formatFcfa } from '@/lib/data';
 import { getProviders, updateProvider, deleteProvider, registerArtisan } from '@/lib/supabase/services';
@@ -51,6 +55,29 @@ interface PendingArtisan {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
+export interface AppUser {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  role: 'client' | 'pro';
+  neighborhood?: string;
+  city?: string;
+  categoryName?: string;
+  businessName?: string;
+  registeredAt: string;
+  status: 'ACTIVE' | 'SUSPENDED';
+}
+
+const DEFAULT_CLIENTS: AppUser[] = [
+  { id: 'usr-1', name: 'Aïssatou Sow', phone: '+221 77 654 32 10', email: 'aissatou.sow@gmail.com', role: 'client', neighborhood: 'Mermoz', city: 'Dakar', registeredAt: '10 Août 2026', status: 'ACTIVE' },
+  { id: 'usr-2', name: 'Ibrahima Fall', phone: '+221 78 123 45 67', email: 'ibrahima.fall@yahoo.fr', role: 'client', neighborhood: 'Almadies', city: 'Dakar', registeredAt: '12 Août 2026', status: 'ACTIVE' },
+  { id: 'usr-3', name: 'Fatou Diop', phone: '+221 76 987 65 43', email: 'fatou.diop@hotmail.com', role: 'client', neighborhood: 'Sacré-Cœur', city: 'Dakar', registeredAt: '14 Août 2026', status: 'ACTIVE' },
+  { id: 'usr-4', name: 'Ousmane Ba', phone: '+221 70 345 67 89', email: 'ousmane.ba@gmail.com', role: 'client', neighborhood: 'Plateau', city: 'Dakar', registeredAt: '15 Août 2026', status: 'ACTIVE' },
+  { id: 'usr-5', name: 'Mariama Sarr', phone: '+221 78 750 52 18', email: 'mariama.sarr@gmail.com', role: 'client', neighborhood: 'Grand Dakar', city: 'Dakar', registeredAt: '16 Août 2026', status: 'ACTIVE' },
+  { id: 'usr-6', name: 'Cheikh Ndiaye', phone: '+221 77 444 88 99', email: 'c.ndiaye@orange.sn', role: 'client', neighborhood: 'Ouakam', city: 'Dakar', registeredAt: '16 Août 2026', status: 'ACTIVE' }
+];
+
 export default function AdminDashboardPage() {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -66,11 +93,22 @@ export default function AdminDashboardPage() {
   const [passChangeSuccess, setPassChangeSuccess] = useState(false);
 
   // Dashboard Data State
-  const [activeTab, setActiveTab] = useState<'overview' | 'verifications' | 'providers' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'verifications' | 'providers' | 'settings'>('overview');
   const [providersList, setProvidersList] = useState<Provider[]>([]);
   const [pendingList, setPendingList] = useState<PendingArtisan[]>([]);
+  const [clientsList, setClientsList] = useState<AppUser[]>([]);
   
-  // Filter & Search State
+  // Users search & filter
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState<'ALL' | 'client' | 'pro'>('ALL');
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserPhone, setNewUserPhone] = useState('+221 77 ');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'client' | 'pro'>('client');
+  const [newUserNeighborhood, setNewUserNeighborhood] = useState('Almadies, Dakar');
+  
+  // Filter & Search State for Providers
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'VERIFIED' | 'PENDING' | 'SUSPENDED'>('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -137,9 +175,49 @@ export default function AdminDashboardPage() {
         console.error(err);
       }
     }
-
     setPendingList(localPending);
+
+    // Load Clients & Registered Accounts
+    const storedAccounts = localStorage.getItem('sama_registered_accounts');
+    if (storedAccounts) {
+      try {
+        const parsed = JSON.parse(storedAccounts);
+        const mapped: AppUser[] = parsed.map((a: any, idx: number) => ({
+          id: a.id || `acc-${idx}-${Date.now()}`,
+          name: a.name || 'Utilisateur',
+          phone: a.phone || '',
+          email: a.email || '',
+          role: a.role || 'client',
+          neighborhood: a.neighborhood || 'Dakar',
+          city: 'Dakar',
+          categoryName: a.categoryName,
+          businessName: a.businessName,
+          registeredAt: a.registeredAt ? (a.registeredAt.includes('T') ? new Date(a.registeredAt).toLocaleDateString('fr-FR') : a.registeredAt) : 'Récemment',
+          status: 'ACTIVE'
+        }));
+        
+        // Ensure defaults are present for a rich view
+        const merged = [...mapped];
+        DEFAULT_CLIENTS.forEach((d) => {
+          if (!merged.some((m) => (m.phone && d.phone && m.phone.replace(/[^0-9]/g, '') === d.phone.replace(/[^0-9]/g, '')) || (m.email && d.email && m.email.toLowerCase() === d.email.toLowerCase()))) {
+            merged.push(d);
+          }
+        });
+        setClientsList(merged);
+      } catch {
+        setClientsList(DEFAULT_CLIENTS);
+      }
+    } else {
+      setClientsList(DEFAULT_CLIENTS);
+      localStorage.setItem('sama_registered_accounts', JSON.stringify(DEFAULT_CLIENTS));
+    }
   }, []);
+
+  // Save clients to state & localStorage
+  const updateClients = (newList: AppUser[]) => {
+    setClientsList(newList);
+    localStorage.setItem('sama_registered_accounts', JSON.stringify(newList));
+  };
 
   // Save providers to state & localStorage
   const updateProviders = (newList: Provider[]) => {
@@ -375,6 +453,41 @@ export default function AdminDashboardPage() {
     showToast(`✅ Artisan "${newArtisanName}" enregistré dans Supabase et publié !`);
   };
 
+  // 7. DELETE USER ACCOUNT
+  const handleDeleteUser = (userId: string, userName: string) => {
+    if (confirm(`Confirmez-vous la suppression du compte utilisateur de "${userName}" ?`)) {
+      const updated = clientsList.filter((u) => u.id !== userId);
+      updateClients(updated);
+      showToast(`🗑️ Compte de ${userName} supprimé avec succès.`);
+    }
+  };
+
+  // 8. ADD MANUAL USER (Client or Pro)
+  const handleAddManualUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserName.trim() || !newUserPhone.trim()) return;
+
+    const newUser: AppUser = {
+      id: `usr-${Date.now()}`,
+      name: newUserName.trim(),
+      phone: newUserPhone.trim(),
+      email: newUserEmail.trim() || `${newUserName.toLowerCase().replace(/[^a-z0-9]/g, '')}@gmail.com`,
+      role: newUserRole,
+      neighborhood: newUserNeighborhood.trim() || 'Dakar',
+      city: 'Dakar',
+      registeredAt: new Date().toLocaleDateString('fr-FR'),
+      status: 'ACTIVE'
+    };
+
+    const updated = [newUser, ...clientsList];
+    updateClients(updated);
+    setIsAddUserModalOpen(false);
+    setNewUserName('');
+    setNewUserPhone('+221 77 ');
+    setNewUserEmail('');
+    showToast(`✅ Utilisateur "${newUserName}" enregistré avec succès !`);
+  };
+
   // Filtered Providers calculation
   const filteredProviders = providersList.filter((p) => {
     const matchesSearch = 
@@ -399,6 +512,46 @@ export default function AdminDashboardPage() {
   });
 
   const verifiedCount = providersList.filter((p) => p.verificationLevel !== 'UNVERIFIED').length;
+
+  // Unified Users List (Clients + Artisans Pros)
+  const clientsOnly = clientsList.filter((u) => u.role === 'client');
+  const prosAsUsers: AppUser[] = providersList.map((p) => ({
+    id: p.id,
+    name: p.name,
+    phone: p.phone,
+    email: `${p.slug}@samaartisan.sn`,
+    role: 'pro' as const,
+    neighborhood: p.neighborhood,
+    city: p.city,
+    categoryName: p.categoryName,
+    businessName: p.businessName,
+    registeredAt: 'Artisan Actif',
+    status: p.isAvailable ? ('ACTIVE' as const) : ('SUSPENDED' as const)
+  }));
+
+  const allRegisteredUsers: AppUser[] = [
+    ...clientsList,
+    ...prosAsUsers.filter((pro) => !clientsList.some((c) => c.phone.replace(/[^0-9]/g, '') === pro.phone.replace(/[^0-9]/g, '')))
+  ];
+
+  const totalUsersCount = allRegisteredUsers.length;
+  const clientsCount = allRegisteredUsers.filter((u) => u.role === 'client').length;
+  const prosCount = allRegisteredUsers.filter((u) => u.role === 'pro').length;
+
+  // Filtered Users List
+  const filteredUsers = allRegisteredUsers.filter((u) => {
+    const query = userSearchQuery.toLowerCase();
+    const matchesSearch =
+      u.name.toLowerCase().includes(query) ||
+      u.phone.includes(userSearchQuery) ||
+      (u.email && u.email.toLowerCase().includes(query)) ||
+      (u.neighborhood && u.neighborhood.toLowerCase().includes(query)) ||
+      (u.categoryName && u.categoryName.toLowerCase().includes(query));
+
+    const matchesRole = userRoleFilter === 'ALL' || u.role === userRoleFilter;
+
+    return matchesSearch && matchesRole;
+  });
 
   // ----------------------------------------------------
   // VIEW 1: AUTHENTICATION LOGIN GATE (If not logged in)
@@ -576,50 +729,83 @@ export default function AdminDashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
         
         {/* KPI Counter Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           
-          <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
-              <span>Total Artisans</span>
-              <Users className="w-4 h-4 text-sama-400" />
+          {/* Card 1: Total Users */}
+          <div 
+            onClick={() => setActiveTab('users')}
+            className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-sama-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
+          >
+            <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
+              <span>Total Utilisateurs</span>
+              <Users className="w-4 h-4 text-sama-400 group-hover:scale-110 transition-transform" />
             </div>
-            <div className="text-2xl font-black text-white mt-2">
+            <div className="text-xl sm:text-2xl font-black text-white mt-1.5 sm:mt-2">
+              {totalUsersCount} <span className="text-xs font-medium text-slate-400">inscrits</span>
+            </div>
+            <p className="text-[10px] sm:text-[11px] text-sama-400 font-bold mt-1">
+              {clientsCount} clients • {prosCount} pros
+            </p>
+          </div>
+
+          {/* Card 2: Clients Particuliers */}
+          <div 
+            onClick={() => { setActiveTab('users'); setUserRoleFilter('client'); }}
+            className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-blue-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
+          >
+            <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
+              <span>Clients & Demandeurs</span>
+              <User className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-blue-400 mt-1.5 sm:mt-2">
+              {clientsCount} <span className="text-xs font-medium text-slate-400">particuliers</span>
+            </div>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-1">Comptes actifs</p>
+          </div>
+
+          {/* Card 3: Artisans Pros */}
+          <div 
+            onClick={() => { setActiveTab('providers'); }}
+            className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
+          >
+            <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
+              <span>Artisans Répertoriés</span>
+              <Wrench className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-white mt-1.5 sm:mt-2">
               {providersList.length} <span className="text-xs font-medium text-slate-400">pros</span>
             </div>
-            <p className="text-[11px] text-emerald-400 font-bold mt-1">100% Inscriptions Gratuites</p>
+            <p className="text-[10px] sm:text-[11px] text-emerald-400 font-bold mt-1">100% Inscriptions Gratuites</p>
           </div>
 
-          <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+          {/* Card 4: Verified CNI */}
+          <div 
+            onClick={() => setActiveTab('providers')}
+            className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
+          >
+            <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
               <span>Profils Vérifiés CNI</span>
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <ShieldCheck className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
             </div>
-            <div className="text-2xl font-black text-emerald-400 mt-2">
+            <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1.5 sm:mt-2">
               {verifiedCount} <span className="text-xs font-medium text-slate-400">certifiés</span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium mt-1">Badge de confiance actif</p>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-1">Badge de confiance</p>
           </div>
 
-          <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
-              <span>En Attente de Validation</span>
-              <Clock className="w-4 h-4 text-amber-400" />
+          {/* Card 5: Pending Submissions */}
+          <div 
+            onClick={() => setActiveTab('verifications')}
+            className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group col-span-2 sm:col-span-1"
+          >
+            <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
+              <span>En Attente CNI</span>
+              <Clock className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
             </div>
-            <div className="text-2xl font-black text-amber-300 mt-2">
+            <div className="text-xl sm:text-2xl font-black text-amber-300 mt-1.5 sm:mt-2">
               {pendingList.length} <span className="text-xs font-medium text-slate-400">dossiers</span>
             </div>
-            <p className="text-[11px] text-amber-400/80 font-medium mt-1">À vérifier par vous</p>
-          </div>
-
-          <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
-              <span>Mises en Relation</span>
-              <TrendingUp className="w-4 h-4 text-sama-400" />
-            </div>
-            <div className="text-2xl font-black text-white mt-2">
-              {MOCK_ADMIN_METRICS.totalServiceRequests}
-            </div>
-            <p className="text-[11px] text-emerald-400 font-bold mt-1">WhatsApp & Appels directs</p>
+            <p className="text-[10px] sm:text-[11px] text-amber-400/80 font-medium mt-1">À vérifier par vous</p>
           </div>
 
         </div>
@@ -639,6 +825,21 @@ export default function AdminDashboardPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab('users')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeTab === 'users'
+                ? 'bg-sama-600 text-white shadow-lg shadow-sama-600/30'
+                : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Utilisateurs & Comptes ({totalUsersCount})</span>
+            <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-black text-[10px]">
+              {clientsCount} clients
+            </span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('verifications')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
               activeTab === 'verifications'
@@ -647,9 +848,9 @@ export default function AdminDashboardPage() {
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>Vérification & Validation ({pendingList.length})</span>
+            <span>Vérification CNI ({pendingList.length})</span>
             {pendingList.length > 0 && (
-              <span className="px-2 py-0.2 rounded-full bg-amber-500 text-slate-950 font-black text-[10px]">
+              <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px]">
                 {pendingList.length}
               </span>
             )}
@@ -663,7 +864,7 @@ export default function AdminDashboardPage() {
                 : 'text-slate-400 hover:bg-slate-900 hover:text-white'
             }`}
           >
-            <Users className="w-4 h-4" />
+            <Wrench className="w-4 h-4" />
             <span>Gestion des Artisans ({providersList.length})</span>
           </button>
 
@@ -756,7 +957,234 @@ export default function AdminDashboardPage() {
         )}
 
         {/* ---------------------------------------------------- */}
-        {/* TAB 2: VERIFICATION & VALIDATION QUEUE               */}
+        {/* TAB 2: USERS & ACCOUNTS MANAGEMENT (CLIENTS & PROS)  */}
+        {/* ---------------------------------------------------- */}
+        {activeTab === 'users' && (
+          <div className="space-y-6 animate-in fade-in">
+            
+            {/* Top User Category Breakdown */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>Total Utilisateurs</span>
+                  <Users className="w-4 h-4 text-sama-400" />
+                </div>
+                <div className="text-2xl font-black text-white mt-2">
+                  {totalUsersCount} <span className="text-xs font-medium text-slate-400">comptes</span>
+                </div>
+                <p className="text-[11px] text-emerald-400 font-bold mt-1">Plateforme Sama Artisan</p>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>Particuliers & Clients</span>
+                  <User className="w-4 h-4 text-blue-400" />
+                </div>
+                <div className="text-2xl font-black text-blue-400 mt-2">
+                  {clientsCount} <span className="text-xs font-medium text-slate-400">demandeurs</span>
+                </div>
+                <p className="text-[11px] text-slate-400 font-medium mt-1">
+                  {Math.round((clientsCount / (totalUsersCount || 1)) * 100)}% de la communauté
+                </p>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>Artisans Prestataires</span>
+                  <Wrench className="w-4 h-4 text-sama-400" />
+                </div>
+                <div className="text-2xl font-black text-sama-400 mt-2">
+                  {prosCount} <span className="text-xs font-medium text-slate-400">professionnels</span>
+                </div>
+                <p className="text-[11px] text-slate-400 font-medium mt-1">
+                  {Math.round((prosCount / (totalUsersCount || 1)) * 100)}% de la communauté
+                </p>
+              </div>
+            </div>
+
+            {/* Search & Actions Bar */}
+            <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Users className="w-5 h-5 text-sama-400" />
+                    <span>Répertoire Complet des Utilisateurs ({filteredUsers.length})</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Consultez, contactez par WhatsApp ou gérez les comptes de vos utilisateurs et clients.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setIsAddUserModalOpen(true)}
+                  className="px-4 py-2.5 rounded-xl bg-sama-600 hover:bg-sama-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-sama-600/20 active:scale-95 transition-all self-start md:self-auto"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>+ Ajouter un Utilisateur</span>
+                </button>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher par nom, téléphone, email, quartier..."
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-sama-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Role toggle filters */}
+                <div className="flex items-center gap-1.5 p-1 bg-slate-950 border border-slate-800 rounded-xl">
+                  <button
+                    onClick={() => setUserRoleFilter('ALL')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                      userRoleFilter === 'ALL' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Tous ({totalUsersCount})
+                  </button>
+                  <button
+                    onClick={() => setUserRoleFilter('client')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                      userRoleFilter === 'client' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Clients ({clientsCount})
+                  </button>
+                  <button
+                    onClick={() => setUserRoleFilter('pro')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                      userRoleFilter === 'pro' ? 'bg-sama-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Artisans ({prosCount})
+                  </button>
+                </div>
+              </div>
+
+              {/* Users Table */}
+              <div className="overflow-x-auto pt-2">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider font-bold border-b border-slate-800">
+                    <tr>
+                      <th className="py-3 px-4 rounded-l-xl">Utilisateur</th>
+                      <th className="py-3 px-4">Type de Compte</th>
+                      <th className="py-3 px-4">Téléphone / WhatsApp</th>
+                      <th className="py-3 px-4">Localisation</th>
+                      <th className="py-3 px-4">Inscription</th>
+                      <th className="py-3 px-4 rounded-r-xl text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {filteredUsers.map((u) => (
+                      <tr key={u.id} className="hover:bg-slate-800/40 transition-colors">
+                        
+                        {/* User Name & Avatar */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs uppercase shadow-sm ${
+                              u.role === 'client' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-sama-500/20 text-sama-400 border border-sama-500/30'
+                            }`}>
+                              {u.name.substring(0, 2)}
+                            </div>
+                            <div>
+                              <div className="font-bold text-white text-sm">{u.name}</div>
+                              {u.email && <div className="text-[11px] text-slate-500">{u.email}</div>}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Role Badge */}
+                        <td className="py-3.5 px-4">
+                          {u.role === 'client' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                              <User className="w-3 h-3" />
+                              <span>Particulier / Client</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-sama-500/15 text-sama-300 border border-sama-500/30">
+                              <Wrench className="w-3 h-3" />
+                              <span>Artisan Pro ({u.categoryName || 'Prestation'})</span>
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Phone & WhatsApp */}
+                        <td className="py-3.5 px-4 font-mono font-medium text-slate-200">
+                          <div className="flex items-center gap-2">
+                            <span>{u.phone}</span>
+                            {u.phone && (
+                              <a
+                                href={`https://wa.me/${u.phone.replace(/[^0-9]/g, '')}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-1 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 transition-colors"
+                                title="Contacter directement sur WhatsApp"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </a>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Neighborhood */}
+                        <td className="py-3.5 px-4 text-slate-400">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-sama-400" />
+                            <span>{u.neighborhood || 'Dakar'}</span>
+                          </span>
+                        </td>
+
+                        {/* Date */}
+                        <td className="py-3.5 px-4 text-slate-400 text-[11px]">
+                          {u.registeredAt}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <a
+                              href={`tel:${u.phone.replace(/[^0-9]/g, '')}`}
+                              className="p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-emerald-400 hover:bg-slate-700 transition-colors"
+                              title="Appeler cet utilisateur"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+
+                            <button
+                              onClick={() => handleDeleteUser(u.id, u.name)}
+                              className="p-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors"
+                              title="Supprimer ce compte utilisateur"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {filteredUsers.length === 0 && (
+                  <div className="text-center py-12 text-slate-500 space-y-2">
+                    <Users className="w-8 h-8 mx-auto text-slate-600" />
+                    <p className="font-bold text-white text-xs">Aucun utilisateur trouvé</p>
+                    <p className="text-[11px]">Essayez de modifier votre recherche ou le filtre de rôle.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ---------------------------------------------------- */}
+        {/* TAB 3: VERIFICATION & VALIDATION QUEUE               */}
         {/* ---------------------------------------------------- */}
         {activeTab === 'verifications' && (
           <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-6 animate-in fade-in">
@@ -1202,6 +1630,139 @@ export default function AdminDashboardPage() {
                 >
                   <Check className="w-4 h-4" />
                   <span>Enregistrer et Publier</span>
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* MODAL: ADD MANUAL USER (CLIENT OR PRO)               */}
+      {/* ---------------------------------------------------- */}
+      {isAddUserModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in-95">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-sama-600/20 text-sama-400">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-bold text-white">Ajouter un Utilisateur</h3>
+              </div>
+              <button
+                onClick={() => setIsAddUserModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddManualUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                  Type de Compte
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewUserRole('client')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 ${
+                      newUserRole === 'client'
+                        ? 'bg-blue-600 border-blue-500 text-white'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>Particulier / Client</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewUserRole('pro')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 ${
+                      newUserRole === 'pro'
+                        ? 'bg-sama-600 border-sama-500 text-white'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Wrench className="w-3.5 h-3.5" />
+                    <span>Artisan Pro</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                  Nom et Prénom *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Awa Ndiaye"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  required
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:ring-2 focus:ring-sama-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                  Numéro de Téléphone (WhatsApp) *
+                </label>
+                <input
+                  type="text"
+                  placeholder="+221 77 000 00 00"
+                  value={newUserPhone}
+                  onChange={(e) => setNewUserPhone(e.target.value)}
+                  required
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:ring-2 focus:ring-sama-500 focus:outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                  Adresse E-mail (Optionnel)
+                </label>
+                <input
+                  type="email"
+                  placeholder="Ex: client@gmail.com"
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:ring-2 focus:ring-sama-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                  Quartier / Ville
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Almadies, Dakar"
+                  value={newUserNeighborhood}
+                  onChange={(e) => setNewUserNeighborhood(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:ring-2 focus:ring-sama-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddUserModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold"
+                >
+                  Annuler
+                </button>
+
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-sama-600 hover:bg-sama-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-sama-600/30"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Créer le Compte</span>
                 </button>
               </div>
             </form>

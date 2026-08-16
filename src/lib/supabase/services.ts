@@ -38,8 +38,10 @@ function mapDbProviderToApp(item: any): Provider {
   };
 }
 
-// 1. FETCH ALL PROVIDERS (Supabase Live with Fallback)
+// 1. FETCH ALL PROVIDERS (Supabase Live with Fallback & Real Sync)
 export async function getProviders(): Promise<Provider[]> {
+  let dbPros: Provider[] = [];
+
   if (isSupabaseConfigured()) {
     try {
       const { data, error } = await supabase
@@ -47,27 +49,52 @@ export async function getProviders(): Promise<Provider[]> {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Supabase query error:', error);
-      } else if (data) {
-        return data.map(mapDbProviderToApp);
+      if (!error && data && data.length > 0) {
+        dbPros = data.map(mapDbProviderToApp);
       }
     } catch (err) {
       console.warn('Supabase fetch failed, falling back to local dataset:', err);
     }
   }
 
-  // Fallback to localStorage or empty array
+  // Also include any artisan registered locally
+  const localPros: Provider[] = [];
   if (typeof window !== 'undefined') {
-    const local = localStorage.getItem('sama_admin_providers_data');
-    if (local) {
-      try {
-        return JSON.parse(local);
-      } catch {}
+    try {
+      const storedPro = localStorage.getItem('samapro_current_user');
+      if (storedPro) {
+        const parsed = JSON.parse(storedPro);
+        if (parsed && (parsed.name || parsed.phone)) {
+          localPros.push(parsed);
+        }
+      }
+
+      const adminData = localStorage.getItem('sama_admin_providers_data');
+      if (adminData) {
+        const parsedAdmin = JSON.parse(adminData);
+        if (Array.isArray(parsedAdmin)) {
+          localPros.push(...parsedAdmin);
+        }
+      }
+    } catch {}
+  }
+
+  // Merge database pros + local registered pros + reference verified pros (PROVIDERS)
+  const combined: Provider[] = [...dbPros];
+
+  for (const lp of localPros) {
+    if (lp && !combined.some(c => (lp.phone && c.phone === lp.phone) || (lp.id && c.id === lp.id))) {
+      combined.push(lp);
     }
   }
 
-  return PROVIDERS || [];
+  for (const bp of (PROVIDERS || [])) {
+    if (bp && !combined.some(c => (bp.phone && c.phone === bp.phone) || (bp.id && c.id === bp.id))) {
+      combined.push(bp);
+    }
+  }
+
+  return combined;
 }
 
 // 2. FETCH A SINGLE PROVIDER BY SLUG (Supabase Live with Fallback)

@@ -85,45 +85,70 @@ function SearchContent() {
 
   // Filter and sort providers
   const filteredProviders = useMemo(() => {
-    return providersList.filter((p) => {
-      // Category filter
-      if (selectedCategory && p.categorySlug !== selectedCategory) {
-        return false;
+    return (providersList || []).filter((p) => {
+      if (!p) return false;
+
+      // 1. Category filter
+      if (selectedCategory) {
+        const pCat = (p.categorySlug || '').toLowerCase();
+        const pCatName = (p.categoryName || '').toLowerCase();
+        const selCat = selectedCategory.toLowerCase();
+        const matchesCat = pCat === selCat || pCatName.includes(selCat) || selCat.includes(pCat);
+        if (!matchesCat) return false;
       }
 
-      // Region filter
+      // 2. Region filter
       if (selectedRegion) {
         const regObj = SENEGAL_REGIONS.find((r) => r.id === selectedRegion);
         if (regObj) {
-          const matchesRegion = (p.region && p.region.toLowerCase() === regObj.name.toLowerCase()) ||
-            p.neighborhood.toLowerCase().includes(regObj.name.toLowerCase()) ||
-            regObj.districts.some(d => p.neighborhood.toLowerCase().includes(d.name.toLowerCase()));
-          if (!matchesRegion && p.region) return false;
+          const regName = regObj.name.toLowerCase();
+          const pRegion = (p.region || '').toLowerCase();
+          const pCity = (p.city || '').toLowerCase();
+          const pNeigh = (p.neighborhood || '').toLowerCase();
+
+          const matchesRegion = 
+            (p as any).region_id === selectedRegion ||
+            pRegion === regName ||
+            pCity === regName ||
+            pNeigh.includes(regName) ||
+            regObj.districts.some(d => pNeigh.includes(d.name.toLowerCase()) || d.name.toLowerCase().includes(pNeigh));
+
+          if (!matchesRegion) return false;
         }
       }
 
-      // District / Quartier filter
+      // 3. District / Quartier filter
       if (selectedDistrict) {
         const districtObj = availableDistricts.find((d) => d.id === selectedDistrict);
         if (districtObj) {
-          const matchNeigh = p.neighborhood.toLowerCase().includes(districtObj.name.toLowerCase().split(' ')[0].toLowerCase());
+          const dName = districtObj.name.toLowerCase();
+          const pNeigh = (p.neighborhood || '').toLowerCase();
+          const words = districtObj.name.split(/[ ,&/()]+/).filter(w => w.length > 2);
+          
+          const matchNeigh = 
+            pNeigh.includes(dName) || 
+            dName.includes(pNeigh) ||
+            words.some(word => pNeigh.includes(word.toLowerCase()));
+
           if (!matchNeigh) {
-            // Also check distance if coordinates available
+            // Check distance if coordinates available
             if (p.latitude && p.longitude && userLocation) {
               const dist = calculateDistanceKm(userLocation.lat, userLocation.lng, p.latitude, p.longitude);
-              if (dist > p.interventionRadiusKm) return false;
+              if (dist > (p.interventionRadiusKm || 25)) return false;
+            } else {
+              return false;
             }
           }
         }
       }
 
-      // Availability filter
-      if (onlyAvailable && !p.isAvailable) {
+      // 4. Availability filter
+      if (onlyAvailable && p.isAvailable === false) {
         return false;
       }
 
-      // Min rating
-      if (minRating > 0 && p.averageRating < minRating) {
+      // 5. Min rating
+      if (minRating > 0 && (p.averageRating || 0) < minRating) {
         return false;
       }
 
@@ -133,10 +158,10 @@ function SearchContent() {
       if (a.isSponsored && !b.isSponsored) return -1;
       if (!a.isSponsored && b.isSponsored) return 1;
 
-      if (sortBy === 'rating') return b.averageRating - a.averageRating;
-      if (sortBy === 'reviews') return b.reviewCount - a.reviewCount;
-      if (sortBy === 'price_asc') return a.startingPrice - b.startingPrice;
-      if (sortBy === 'distance' && userLocation) {
+      if (sortBy === 'rating') return (b.averageRating || 0) - (a.averageRating || 0);
+      if (sortBy === 'reviews') return (b.reviewCount || 0) - (a.reviewCount || 0);
+      if (sortBy === 'price_asc') return (a.startingPrice || 0) - (b.startingPrice || 0);
+      if (sortBy === 'distance' && userLocation && a.latitude && a.longitude && b.latitude && b.longitude) {
         const distA = calculateDistanceKm(userLocation.lat, userLocation.lng, a.latitude, a.longitude);
         const distB = calculateDistanceKm(userLocation.lat, userLocation.lng, b.latitude, b.longitude);
         return distA - distB;

@@ -6,7 +6,6 @@ import {
   Search, 
   MapPin, 
   Filter, 
-  ShieldCheck, 
   Star, 
   SlidersHorizontal, 
   Crosshair, 
@@ -14,10 +13,11 @@ import {
   Check, 
   Sparkles,
   PhoneCall,
-  Clock
+  Clock,
+  RotateCcw
 } from 'lucide-react';
 import ProviderCard from '@/components/provider/ProviderCard';
-import { CATEGORIES, NEIGHBORHOODS, PROVIDERS, calculateDistanceKm } from '@/lib/data';
+import { CATEGORIES, SENEGAL_REGIONS, PROVIDERS, calculateDistanceKm } from '@/lib/data';
 import { getProviders } from '@/lib/supabase/services';
 import { Provider } from '@/lib/types';
 
@@ -25,13 +25,14 @@ function SearchContent() {
   const searchParams = useSearchParams();
   
   const initialCategory = searchParams.get('categorie') || '';
-  const initialNeighborhood = searchParams.get('quartier') || '';
+  const initialRegion = searchParams.get('region') || '';
+  const initialDistrict = searchParams.get('quartier') || '';
   const initialUrgency = searchParams.get('urgence') || '';
 
   const [providersList, setProvidersList] = useState<Provider[]>(PROVIDERS);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
-  const [selectedNeighborhood, setSelectedNeighborhood] = useState(initialNeighborhood);
-  const [onlyVerified, setOnlyVerified] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState(initialRegion);
+  const [selectedDistrict, setSelectedDistrict] = useState(initialDistrict);
   const [onlyAvailable, setOnlyAvailable] = useState(initialUrgency === 'immediat');
   const [minRating, setMinRating] = useState<number>(0);
   const [sortBy, setSortBy] = useState<'rating' | 'reviews' | 'distance' | 'price_asc'>('rating');
@@ -47,6 +48,21 @@ function SearchContent() {
     });
   }, []);
 
+  // Compute available districts based on selected region
+  const availableDistricts = useMemo(() => {
+    if (selectedRegion) {
+      const reg = SENEGAL_REGIONS.find((r) => r.id === selectedRegion);
+      return reg ? reg.districts : [];
+    }
+    // If no region selected, aggregate all districts
+    return SENEGAL_REGIONS.flatMap((r) => r.districts);
+  }, [selectedRegion]);
+
+  const handleRegionChange = (newRegion: string) => {
+    setSelectedRegion(newRegion);
+    setSelectedDistrict(''); // Reset district when region changes
+  };
+
   const handleUseGps = () => {
     setIsLocating(true);
     if (navigator.geolocation) {
@@ -56,7 +72,6 @@ function SearchContent() {
           setIsLocating(false);
         },
         () => {
-          // Fallback coordinate for Dakar Almadies
           setUserLocation({ lat: 14.7456, lng: -17.5186 });
           setIsLocating(false);
         },
@@ -75,30 +90,46 @@ function SearchContent() {
       if (selectedCategory && p.categorySlug !== selectedCategory) {
         return false;
       }
-      // Neighborhood filter
-      if (selectedNeighborhood) {
-        const targetNeigh = NEIGHBORHOODS.find((n) => n.id === selectedNeighborhood);
-        if (targetNeigh && !p.neighborhood.toLowerCase().includes(targetNeigh.name.toLowerCase().split(' ')[0])) {
-          // Check if within intervention radius
-          const dist = calculateDistanceKm(targetNeigh.latitude, targetNeigh.longitude, p.latitude, p.longitude);
-          if (dist > p.interventionRadiusKm) return false;
+
+      // Region filter
+      if (selectedRegion) {
+        const regObj = SENEGAL_REGIONS.find((r) => r.id === selectedRegion);
+        if (regObj) {
+          const matchesRegion = (p.region && p.region.toLowerCase() === regObj.name.toLowerCase()) ||
+            p.neighborhood.toLowerCase().includes(regObj.name.toLowerCase()) ||
+            regObj.districts.some(d => p.neighborhood.toLowerCase().includes(d.name.toLowerCase()));
+          if (!matchesRegion && p.region) return false;
         }
       }
-      // Verified filter
-      if (onlyVerified && p.verificationLevel === 'UNVERIFIED') {
-        return false;
+
+      // District / Quartier filter
+      if (selectedDistrict) {
+        const districtObj = availableDistricts.find((d) => d.id === selectedDistrict);
+        if (districtObj) {
+          const matchNeigh = p.neighborhood.toLowerCase().includes(districtObj.name.toLowerCase().split(' ')[0].toLowerCase());
+          if (!matchNeigh) {
+            // Also check distance if coordinates available
+            if (p.latitude && p.longitude && userLocation) {
+              const dist = calculateDistanceKm(userLocation.lat, userLocation.lng, p.latitude, p.longitude);
+              if (dist > p.interventionRadiusKm) return false;
+            }
+          }
+        }
       }
+
       // Availability filter
       if (onlyAvailable && !p.isAvailable) {
         return false;
       }
+
       // Min rating
       if (minRating > 0 && p.averageRating < minRating) {
         return false;
       }
+
       return true;
     }).sort((a, b) => {
-      // Always boost sponsored / elite on top if ranking
+      // Sponsored first
       if (a.isSponsored && !b.isSponsored) return -1;
       if (!a.isSponsored && b.isSponsored) return 1;
 
@@ -112,7 +143,7 @@ function SearchContent() {
       }
       return 0;
     });
-  }, [selectedCategory, selectedNeighborhood, onlyVerified, onlyAvailable, minRating, sortBy, userLocation]);
+  }, [selectedCategory, selectedRegion, selectedDistrict, availableDistricts, onlyAvailable, minRating, sortBy, userLocation, providersList]);
 
   return (
     <div className="bg-slate-50 min-h-screen py-8">
@@ -121,26 +152,26 @@ function SearchContent() {
         {/* Breadcrumb & Title */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-black text-navy-900">
-            Trouver un prestataire à Dakar
+            Trouver un artisan qualifié
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Comparez les artisans vérifiés, consultez les tarifs indicatifs et contactez-les directement.
+            Sélectionnez votre métier, région et quartier pour contacter directement le bon artisan sur WhatsApp.
           </p>
         </div>
 
         {/* Filter Bar */}
-        <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/80 mb-8 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-200/80 mb-8 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
-            {/* Category Select */}
+            {/* 1. Métier / Service */}
             <div>
-              <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
-                Métier / Service
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                Métiers & Services ({CATEGORIES.length})
               </label>
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 focus:bg-white focus:ring-2 focus:ring-sama-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 focus:bg-white focus:ring-2 focus:ring-sama-500 text-navy-900"
               >
                 <option value="">Tous les métiers ({CATEGORIES.length})</option>
                 {CATEGORIES.map((c) => (
@@ -151,50 +182,53 @@ function SearchContent() {
               </select>
             </div>
 
-            {/* Neighborhood Select */}
+            {/* 2. Région */}
             <div>
-              <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
-                Quartier de Dakar
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                Région
               </label>
               <select
-                value={selectedNeighborhood}
-                onChange={(e) => setSelectedNeighborhood(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 focus:bg-white focus:ring-2 focus:ring-sama-500"
+                value={selectedRegion}
+                onChange={(e) => handleRegionChange(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 focus:bg-white focus:ring-2 focus:ring-sama-500 text-navy-900"
               >
-                <option value="">Toutes les zones ({NEIGHBORHOODS.length})</option>
-                {NEIGHBORHOODS.map((n) => (
-                  <option key={n.id} value={n.id}>
-                    {n.name}
+                <option value="">Toutes les régions ({SENEGAL_REGIONS.length})</option>
+                {SENEGAL_REGIONS.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    📍 {r.name}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* GPS Locate Button */}
-            <div className="flex items-end">
-              <button
-                type="button"
-                onClick={handleUseGps}
-                className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border transition-all ${
-                  userLocation
-                    ? 'bg-emerald-50 border-emerald-500 text-emerald-800'
-                    : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                }`}
+            {/* 3. Quartiers (dynamique selon la région) */}
+            <div>
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
+                Quartiers {selectedRegion ? `(${SENEGAL_REGIONS.find(r => r.id === selectedRegion)?.name})` : ''}
+              </label>
+              <select
+                value={selectedDistrict}
+                onChange={(e) => setSelectedDistrict(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 focus:bg-white focus:ring-2 focus:ring-sama-500 text-navy-900"
               >
-                <Crosshair className={`w-4 h-4 text-sama-600 ${isLocating ? 'animate-spin' : ''}`} />
-                <span>{userLocation ? 'GPS : Position active' : 'Filtrer par ma position GPS'}</span>
-              </button>
+                <option value="">Tous les quartiers ({availableDistricts.length})</option>
+                {availableDistricts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Sort by */}
+            {/* 4. Trier par */}
             <div>
-              <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
                 Trier par
               </label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 focus:bg-white focus:ring-2 focus:ring-sama-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 focus:bg-white focus:ring-2 focus:ring-sama-500 text-navy-900"
               >
                 <option value="rating">Mieux notés (★ 4.9+)</option>
                 <option value="reviews">Nombre d'avis clients</option>
@@ -205,25 +239,14 @@ function SearchContent() {
 
           </div>
 
-          {/* Quick Toggle Checkboxes */}
+          {/* Quick Toggle Checkboxes & GPS */}
           <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => setOnlyVerified(!onlyVerified)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
-                onlyVerified 
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' 
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Identité CNI Vérifiée uniquement</span>
-            </button>
-
+            
             <button
               onClick={() => setOnlyAvailable(!onlyAvailable)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
                 onlyAvailable 
-                  ? 'bg-amber-500 text-white border-amber-500 shadow-sm' 
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' 
                   : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
               }`}
             >
@@ -231,18 +254,32 @@ function SearchContent() {
               <span>Disponible immédiatement</span>
             </button>
 
-            {(selectedCategory || selectedNeighborhood || onlyVerified || onlyAvailable) && (
+            <button
+              type="button"
+              onClick={handleUseGps}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all ${
+                userLocation
+                  ? 'bg-emerald-50 border-emerald-500 text-emerald-800'
+                  : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+              }`}
+            >
+              <Crosshair className={`w-3.5 h-3.5 text-sama-600 ${isLocating ? 'animate-spin' : ''}`} />
+              <span>{userLocation ? 'Position GPS active' : 'Ma position GPS'}</span>
+            </button>
+
+            {(selectedCategory || selectedRegion || selectedDistrict || onlyAvailable) && (
               <button
                 onClick={() => {
                   setSelectedCategory('');
-                  setSelectedNeighborhood('');
-                  setOnlyVerified(false);
+                  setSelectedRegion('');
+                  setSelectedDistrict('');
                   setOnlyAvailable(false);
                   setUserLocation(null);
                 }}
-                className="text-xs font-bold text-red-600 hover:underline ml-auto"
+                className="text-xs font-bold text-red-600 hover:underline ml-auto flex items-center gap-1"
               >
-                Réinitialiser tous les filtres
+                <RotateCcw className="w-3 h-3" />
+                <span>Réinitialiser les filtres</span>
               </button>
             )}
           </div>
@@ -251,7 +288,7 @@ function SearchContent() {
         {/* Results Header */}
         <div className="flex items-center justify-between mb-6">
           <p className="text-sm font-bold text-slate-700">
-            <span className="text-sama-600 text-base font-black">{filteredProviders.length}</span> prestataires trouvés
+            <span className="text-sama-600 text-base font-black">{filteredProviders.length}</span> artisans disponibles
           </p>
         </div>
 
@@ -273,24 +310,24 @@ function SearchContent() {
             })}
           </div>
         ) : (
-          <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-4 max-w-lg mx-auto">
+          <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-4 max-w-lg mx-auto shadow-sm">
             <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
               <Search className="w-8 h-8" />
             </div>
             <h3 className="text-lg font-bold text-navy-900">Aucun prestataire ne correspond à ces critères</h3>
             <p className="text-xs text-slate-500">
-              Essayez d'élargir votre recherche en sélectionnant tous les quartiers ou un autre corps de métier.
+              Essayez d'élargir votre recherche en sélectionnant tous les quartiers ou une autre région.
             </p>
             <button
               onClick={() => {
                 setSelectedCategory('');
-                setSelectedNeighborhood('');
-                setOnlyVerified(false);
+                setSelectedRegion('');
+                setSelectedDistrict('');
                 setOnlyAvailable(false);
               }}
-              className="px-5 py-2.5 rounded-xl font-bold bg-sama-600 text-white text-xs"
+              className="px-5 py-2.5 rounded-xl font-bold bg-sama-600 text-white text-xs shadow-md"
             >
-              Afficher tous les professionnels de Dakar
+              Afficher tous les artisans du Sénégal
             </button>
           </div>
         )}
@@ -302,7 +339,7 @@ function SearchContent() {
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50 p-8 text-center">Chargement des prestataires...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 p-8 text-center font-bold text-slate-500">Chargement des artisans...</div>}>
       <SearchContent />
     </Suspense>
   );

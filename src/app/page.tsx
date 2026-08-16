@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { 
   ShieldCheck, 
@@ -33,7 +33,7 @@ import {
   Briefcase,
   Lock
 } from 'lucide-react';
-import { CATEGORIES, NEIGHBORHOODS, formatFcfa } from '@/lib/data';
+import { CATEGORIES, SENEGAL_REGIONS, formatFcfa } from '@/lib/data';
 import { getProviders } from '@/lib/supabase/services';
 import { Provider } from '@/lib/types';
 
@@ -45,8 +45,15 @@ export default function HomePage() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [userRole, setUserRole] = useState<'client' | 'pro'>('client');
-  const [district, setDistrict] = useState('Almadies');
+  const [selectedRegion, setSelectedRegion] = useState('dakar');
+  const [district, setDistrict] = useState('almadies');
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
+
+  // Dynamic districts based on region in signup modal
+  const availableDistricts = useMemo(() => {
+    const reg = SENEGAL_REGIONS.find((r) => r.id === selectedRegion);
+    return reg ? reg.districts : [];
+  }, [selectedRegion]);
 
   useEffect(() => {
     try {
@@ -68,11 +75,15 @@ export default function HomePage() {
     e.preventDefault();
     if (!fullName.trim() || !phone.trim()) return;
 
+    const regObj = SENEGAL_REGIONS.find(r => r.id === selectedRegion);
+    const distObj = availableDistricts.find(d => d.id === district) || availableDistricts[0];
+
     const newUser = {
       name: fullName.trim(),
       phone: phone.trim(),
       role: userRole,
-      neighborhood: district,
+      region: regObj?.name || 'Dakar',
+      neighborhood: distObj?.name || 'Almadies',
       registeredAt: new Date().toISOString()
     };
 
@@ -87,8 +98,8 @@ export default function HomePage() {
 
   const faqs = [
     {
-      q: "Comment trouver rapidement un artisan à Dakar ?",
-      a: "Sur Sama Artisan, choisissez simplement le métier (plombier, électricien, climaticien, etc.) et votre quartier. Vous avez un accès immédiat aux profils vérifiés, numéros directs et boutons WhatsApp."
+      q: "Comment trouver rapidement un artisan au Sénégal ?",
+      a: "Sur Sama Artisan, choisissez simplement le métier (plombier, électricien, climaticien, menuisier, maçon, etc.), votre région et votre quartier. Vous avez un accès direct aux profils, numéros directs et boutons WhatsApp."
     },
     {
       q: "Est-ce gratuit pour les clients ?",
@@ -99,8 +110,8 @@ export default function HomePage() {
       a: "Cliquez sur 'Créer mon profil Artisan' ou 'Devenir artisan', complétez vos coordonnées professionnelles en 2 minutes et commencez à recevoir des demandes de chantiers sur WhatsApp."
     },
     {
-      q: "Comment sont vérifiés les artisans ?",
-      a: "Chaque professionnel doit fournir une pièce d'identité officielle sénégalaise (CNI/Passeport) et justifier de ses qualifications et chantiers antérieurs."
+      q: "Quelles sont les garanties de qualité ?",
+      a: "Chaque professionnel est évalué par les retours réels des clients et justifie de ses compétences, chantiers réalisés et coordonnées directes."
     }
   ];
 
@@ -134,7 +145,7 @@ export default function HomePage() {
               Bienvenue sur <span className="text-sama-600">Sama Artisan</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 max-w-sm mx-auto">
-              Inscrivez-vous en 30 secondes pour accéder à la plateforme des meilleurs artisans vérifiés au Sénégal.
+              Inscrivez-vous en 30 secondes pour accéder à la plateforme des meilleurs artisans au Sénégal.
             </p>
           </div>
 
@@ -204,21 +215,48 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Quartier / Zone à Dakar
-              </label>
-              <div className="relative">
-                <select
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/50 appearance-none"
-                >
-                  {NEIGHBORHOODS.map((n) => (
-                    <option key={n.id} value={n.name}>{n.name}</option>
-                  ))}
-                </select>
-                <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+            {/* Cascading Region & Quartier */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Région
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedRegion}
+                    onChange={(e) => {
+                      setSelectedRegion(e.target.value);
+                      const reg = SENEGAL_REGIONS.find(r => r.id === e.target.value);
+                      if (reg && reg.districts.length > 0) {
+                        setDistrict(reg.districts[0].id);
+                      }
+                    }}
+                    className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/50 appearance-none"
+                  >
+                    {SENEGAL_REGIONS.map((r) => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                  <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Quartiers
+                </label>
+                <div className="relative">
+                  <select
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/50 appearance-none"
+                  >
+                    {availableDistricts.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                  <MapPin className="w-4 h-4 text-emerald-600 absolute left-3 top-3.5" />
+                </div>
               </div>
             </div>
 
@@ -240,11 +278,11 @@ export default function HomePage() {
             </span>
             <span className="flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              Artisans CNI Vérifiés
+              Artisans Qualifiés
             </span>
             <span className="flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              Dakar & Régions
+              Toutes Régions du Sénégal
             </span>
           </div>
 
@@ -269,7 +307,7 @@ export default function HomePage() {
           <div className="flex justify-center mb-6">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs sm:text-sm font-semibold text-slate-200 shadow-xl">
               <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Bienvenue, <strong>{sessionUser.name}</strong> ({sessionUser.neighborhood || 'Dakar'})</span>
+              <span>Bienvenue, <strong>{sessionUser.name}</strong> ({sessionUser.neighborhood || 'Sénégal'})</span>
             </div>
           </div>
 
@@ -299,14 +337,14 @@ export default function HomePage() {
                     Je cherche un artisan
                   </h3>
                   <p className="text-sm text-slate-300 mt-2 leading-relaxed">
-                    Trouvez un plombier, électricien, climaticien, menuisier ou maçon certifié près de chez vous à Dakar. Contact direct WhatsApp sans frais.
+                    Trouvez un plombier, électricien, climaticien, menuisier ou maçon certifié près de chez vous. Contact direct WhatsApp sans intermédiaire ni frais.
                   </p>
                 </div>
 
                 <div className="space-y-2 pt-2 text-xs text-slate-300">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>200+ Artisans CNI Vérifiés</span>
+                    <span>200+ Artisans Qualifiés & Évalués</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -356,7 +394,7 @@ export default function HomePage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Visibilité maximale sur tout Dakar</span>
+                    <span>Visibilité maximale dans toutes les régions</span>
                   </div>
                 </div>
               </div>
@@ -403,7 +441,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-lg font-bold text-white">Choisissez le métier</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Recherchez par profession et quartier (Almadies, Mermoz, Plateau, Ouakam...).
+                Recherchez par profession, région et quartier.
               </p>
             </div>
 

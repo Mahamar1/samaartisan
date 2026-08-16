@@ -60,7 +60,7 @@ function normalizeProvider(raw: any): Provider {
       joinedDate: '2026-01-01',
       reviews: [],
       portfolio: [],
-      documentsVerified: { cni: true, diploma: true }
+      documentsVerified: { cni: true, businessRegister: true, diploma: true }
     };
   }
 
@@ -103,7 +103,7 @@ function normalizeProvider(raw: any): Provider {
     joinedDate: raw.joinedDate || '2026-01-01',
     reviews: Array.isArray(raw.reviews) ? raw.reviews : [],
     portfolio: Array.isArray(raw.portfolio) ? raw.portfolio : [],
-    documentsVerified: raw.documentsVerified || { cni: true, diploma: true },
+    documentsVerified: raw.documentsVerified || { cni: true, businessRegister: true, diploma: true },
     isSponsored: Boolean(raw.isSponsored)
   };
 }

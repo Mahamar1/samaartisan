@@ -84,6 +84,34 @@ export default function Navbar() {
             </Link>
           </div>
 
+          {/* Center Links (Desktop) */}
+          <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-600">
+            <Link
+              href="/"
+              className={`hover:text-sama-600 transition-colors ${
+                pathname === '/' ? 'text-sama-600' : ''
+              }`}
+            >
+              Accueil
+            </Link>
+            <Link
+              href="/a-propos"
+              className={`hover:text-sama-600 transition-colors ${
+                pathname === '/a-propos' ? 'text-sama-600 font-extrabold' : ''
+              }`}
+            >
+              À Propos
+            </Link>
+            <Link
+              href="/contact"
+              className={`hover:text-sama-600 transition-colors ${
+                pathname === '/contact' ? 'text-sama-600 font-extrabold' : ''
+              }`}
+            >
+              Contact & Support
+            </Link>
+          </nav>
+
           {/* Navigation Droite : Statut de Connexion & Boutons Adaptés selon le Rôle */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {sessionUser ? (

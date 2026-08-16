@@ -56,7 +56,7 @@ export default function Footer() {
               Métiers Populaires
             </h5>
             <ul className="space-y-2.5 text-sm">
-              {CATEGORIES.slice(0, 6).map((cat) => (
+              {CATEGORIES.slice(0, 5).map((cat) => (
                 <li key={cat.id}>
                   <Link
                     href={`/recherche?categorie=${cat.slug}`}
@@ -69,22 +69,38 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Zones & Quartiers Dakar */}
+          {/* À Propos & Contact */}
           <div>
             <h5 className="text-white font-bold text-sm uppercase tracking-wider mb-4">
-              Zones d'Intervention
+              À Propos & Aide
             </h5>
             <ul className="space-y-2.5 text-sm">
-              {NEIGHBORHOODS.slice(0, 6).map((neigh) => (
-                <li key={neigh.id}>
-                  <Link
-                    href={`/recherche?quartier=${neigh.id}`}
-                    className="hover:text-sama-400 transition-colors"
-                  >
-                    Pros à {neigh.name}
-                  </Link>
-                </li>
-              ))}
+              <li>
+                <Link href="/a-propos" className="hover:text-sama-400 transition-colors font-medium">
+                  🇸🇳 Notre Histoire & Mission
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="text-sama-400 font-bold hover:underline flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>Contact & Support 7j/7</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="/mon-compte" className="hover:text-sama-400 transition-colors">
+                  Espace Particulier
+                </Link>
+              </li>
+              <li>
+                <a
+                  href="https://wa.me/221770000000"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-emerald-400 font-semibold hover:underline flex items-center gap-1"
+                >
+                  <span>WhatsApp Support</span>
+                </a>
+              </li>
             </ul>
           </div>
 
@@ -95,13 +111,8 @@ export default function Footer() {
             </h5>
             <ul className="space-y-2.5 text-sm">
               <li>
-                <Link href="/landing" className="text-sama-400 font-semibold hover:underline">
-                  ⚡ Présentation & Découverte
-                </Link>
-              </li>
-              <li>
-                <Link href="/devenir-prestataire" className="text-emerald-400 font-semibold hover:underline">
-                  ★ Devenir artisan
+                <Link href="/devenir-prestataire" className="text-emerald-400 font-bold hover:underline">
+                  ★ Devenir artisan (Gratuit)
                 </Link>
               </li>
               <li>
@@ -115,8 +126,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/devenir-prestataire#charte" className="hover:text-sama-400 transition-colors">
-                  Charte Qualité & CNI
+                <Link href="/contact" className="hover:text-sama-400 transition-colors">
+                  Assistance pour artisans
                 </Link>
               </li>
             </ul>

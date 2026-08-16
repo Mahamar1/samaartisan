@@ -535,62 +535,62 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen bg-slate-900 text-slate-100 selection:bg-sama-500 selection:text-white">
       
       {/* HERO SECTION DE LA LANDING PAGE */}
-      <section className="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden bg-gradient-to-b from-navy-950 via-slate-900 to-navy-900 border-b border-slate-800">
+      <section className="relative pt-8 pb-14 sm:pt-12 sm:pb-20 md:pt-20 md:pb-28 overflow-hidden bg-gradient-to-b from-navy-950 via-slate-900 to-navy-900 border-b border-slate-800">
         
         {/* Halo lumineux */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-sama-600/15 rounded-full blur-[130px] pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10">
           
           {/* Badge de bienvenue avec le nom du compte */}
-          <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs sm:text-sm font-semibold text-slate-200 shadow-xl">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Compte actif : <strong>{sessionUser.name}</strong></span>
+          <div className="flex justify-center mb-5 sm:mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs sm:text-sm font-semibold text-slate-200 shadow-xl max-w-[95vw]">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="truncate">Compte actif : <strong>{sessionUser.name}</strong></span>
             </div>
           </div>
 
           {/* Titre Principal */}
-          <div className="text-center max-w-4xl mx-auto space-y-4">
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.15]">
+          <div className="text-center max-w-4xl mx-auto space-y-3 sm:space-y-4 px-1">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight break-words">
               Que souhaitez-vous faire <br className="hidden sm:block" />
               sur <span className="bg-gradient-to-r from-sama-400 via-emerald-300 to-amber-300 bg-clip-text text-transparent">Sama Artisan</span> ?
             </h1>
-            <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto">
+            <p className="text-xs sm:text-base md:text-lg text-slate-300 max-w-2xl mx-auto">
               Choisissez l'option qui vous correspond pour démarrer immédiatement :
             </p>
           </div>
 
           {/* 🌟 LES 2 CHOIX MAJEURS */}
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="mt-8 sm:mt-12 grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8 max-w-4xl mx-auto">
             
             {/* CHOIX 1 : CHERCHER UN ARTISAN (POUR LES CLIENTS) */}
-            <div className="group relative p-8 rounded-3xl bg-gradient-to-br from-slate-800/90 to-navy-900/90 border-2 border-sama-500/40 hover:border-sama-500 shadow-2xl transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between space-y-6">
-              <div className="space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-sama-600/20 text-sama-400 flex items-center justify-center border border-sama-500/30 group-hover:scale-110 transition-transform">
-                  <Search className="w-8 h-8 stroke-[2.5]" />
+            <div className="group relative p-5 sm:p-8 rounded-3xl bg-gradient-to-br from-slate-800/90 to-navy-900/90 border-2 border-sama-500/40 hover:border-sama-500 shadow-2xl transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between space-y-5 sm:space-y-6">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-sama-600/20 text-sama-400 flex items-center justify-center border border-sama-500/30 group-hover:scale-110 transition-transform">
+                  <Search className="w-6 h-6 sm:w-8 sm:h-8 stroke-[2.5]" />
                 </div>
                 <div>
-                  <span className="text-xs font-black uppercase tracking-wider text-sama-400">Pour Particuliers & Entreprises</span>
-                  <h3 className="text-2xl font-black text-white mt-1">
+                  <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-sama-400">Pour Particuliers & Entreprises</span>
+                  <h3 className="text-xl sm:text-2xl font-black text-white mt-1">
                     Je cherche un artisan
                   </h3>
-                  <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
                     Trouvez un plombier, électricien, climaticien, menuisier ou maçon certifié près de chez vous. Contact direct WhatsApp sans frais ni intermédiaire.
                   </p>
                 </div>
 
-                <div className="space-y-2 pt-2 text-xs text-slate-300">
+                <div className="space-y-1.5 sm:space-y-2 pt-2 text-xs text-slate-300">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span>Tous les corps de métiers & services</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span>Recherche par région et quartier</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span>100% Gratuit, 0 FCFA de commission</span>
                   </div>
                 </div>
@@ -598,7 +598,7 @@ export default function HomePage() {
 
               <Link
                 href="/recherche"
-                className="w-full py-4 rounded-2xl font-black bg-sama-600 hover:bg-sama-500 text-white shadow-xl shadow-sama-600/30 flex items-center justify-center gap-3 transition-all active:scale-95 text-sm"
+                className="w-full py-3.5 sm:py-4 rounded-2xl font-black bg-sama-600 hover:bg-sama-500 text-white shadow-xl shadow-sama-600/30 flex items-center justify-center gap-2.5 sm:gap-3 transition-all active:scale-95 text-xs sm:text-sm"
               >
                 <Search className="w-4 h-4 stroke-[2.5]" />
                 <span>Chercher & Trouver un artisan</span>
@@ -607,32 +607,32 @@ export default function HomePage() {
             </div>
 
             {/* CHOIX 2 : CRÉER / DEVENIR UN ARTISAN (POUR LES PROFESSIONNELS) */}
-            <div className="group relative p-8 rounded-3xl bg-gradient-to-br from-slate-800/90 to-navy-900/90 border-2 border-emerald-500/40 hover:border-emerald-500 shadow-2xl transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between space-y-6">
-              <div className="space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 group-hover:scale-110 transition-transform">
-                  <Briefcase className="w-8 h-8 stroke-[2.2]" />
+            <div className="group relative p-5 sm:p-8 rounded-3xl bg-gradient-to-br from-slate-800/90 to-navy-900/90 border-2 border-emerald-500/40 hover:border-emerald-500 shadow-2xl transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between space-y-5 sm:space-y-6">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 group-hover:scale-110 transition-transform">
+                  <Briefcase className="w-6 h-6 sm:w-8 sm:h-8 stroke-[2.2]" />
                 </div>
                 <div>
-                  <span className="text-xs font-black uppercase tracking-wider text-emerald-400">Pour les Professionnels & Artisans</span>
-                  <h3 className="text-2xl font-black text-white mt-1">
+                  <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-emerald-400">Pour les Professionnels & Artisans</span>
+                  <h3 className="text-xl sm:text-2xl font-black text-white mt-1">
                     Créer mon profil / Devenir artisan
                   </h3>
-                  <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
                     Créez votre vitrine professionnelle, ajoutez vos réalisations et commencez à recevoir des demandes de clients directement sur votre WhatsApp.
                   </p>
                 </div>
 
-                <div className="space-y-2 pt-2 text-xs text-slate-300">
+                <div className="space-y-1.5 sm:space-y-2 pt-2 text-xs text-slate-300">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span>Inscription gratuite en 2 minutes</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span>Tableau de bord de gestion des chantiers</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span>Visibilité dans toutes les régions du Sénégal</span>
                   </div>
                 </div>
@@ -641,7 +641,7 @@ export default function HomePage() {
               <div className="space-y-2">
                 <Link
                   href="/inscription"
-                  className="w-full py-4 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-3 transition-all active:scale-95 text-sm"
+                  className="w-full py-3.5 sm:py-4 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 sm:gap-3 transition-all active:scale-95 text-xs sm:text-sm"
                 >
                   <UserCheck className="w-4 h-4" />
                   <span>Créer mon profil artisan</span>
@@ -650,7 +650,7 @@ export default function HomePage() {
 
                 <Link
                   href="/pro/dashboard"
-                  className="w-full py-2.5 rounded-xl font-bold bg-white/5 hover:bg-white/10 text-slate-300 text-xs flex items-center justify-center gap-2 transition-all"
+                  className="w-full py-2.5 rounded-xl font-bold bg-white/5 hover:bg-white/10 text-slate-300 text-xs flex items-center justify-center gap-2 transition-all text-center"
                 >
                   <span>Déjà inscrit comme pro ? Ouvrir mon Espace Pro</span>
                 </Link>

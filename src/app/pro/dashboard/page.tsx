@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   UserCheck, 
   TrendingUp, 
@@ -29,6 +30,7 @@ import { Provider, ServiceRequest } from '@/lib/types';
 import { updateProvider } from '@/lib/supabase/services';
 
 export default function ProviderDashboardPage() {
+  const router = useRouter();
   const [currentProvider, setCurrentProvider] = useState<Provider | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
@@ -221,12 +223,32 @@ export default function ProviderDashboardPage() {
 
   const handleShareProfile = () => {
     if (!currentProvider) return;
-    const url = typeof window !== 'undefined' ? `${window.location.origin}/prestataires/${currentProvider.slug}` : `https://samaartisan.vercel.app/prestataires/${currentProvider.slug}`;
+    const cleanPhone = (currentProvider.phone || '').replace(/[^0-9]/g, '');
+    const nameSlug = (currentProvider.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const targetSlug = currentProvider.slug || `pro-${cleanPhone}` || nameSlug;
+    const url = typeof window !== 'undefined' ? `${window.location.origin}/prestataires/${targetSlug}` : `https://samaartisan.vercel.app/prestataires/${targetSlug}`;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(url);
       setShareToast(true);
       setTimeout(() => setShareToast(false), 3000);
     }
+  };
+
+  const handleViewPublicProfile = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (!currentProvider) return;
+    const cleanPhone = (currentProvider.phone || '').replace(/[^0-9]/g, '');
+    const nameSlug = (currentProvider.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const targetSlug = currentProvider.slug || `pro-${cleanPhone}` || nameSlug;
+
+    try {
+      localStorage.setItem('samapro_current_user', JSON.stringify({
+        ...currentProvider,
+        slug: targetSlug
+      }));
+    } catch(err) {}
+
+    router.push(`/prestataires/${targetSlug}`);
   };
 
   const handleLogout = () => {
@@ -345,13 +367,15 @@ export default function ProviderDashboardPage() {
                 <span>Partager mon lien</span>
               </button>
 
-              <Link
-                href={`/prestataires/${currentProvider.slug || (currentProvider.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
-                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-sama-600 hover:bg-sama-700 text-white flex items-center gap-2 shadow-lg shadow-sama-600/30 transition-all active:scale-95"
+              <button
+                type="button"
+                onClick={handleViewPublicProfile}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-sama-600 hover:bg-sama-700 text-white flex items-center gap-2 shadow-lg shadow-sama-600/30 transition-all active:scale-95 cursor-pointer"
+                title="Voir mon profil public"
               >
                 <ExternalLink className="w-4 h-4" />
                 <span>Voir mon profil public</span>
-              </Link>
+              </button>
 
               <button
                 onClick={handleLogout}
@@ -692,13 +716,24 @@ export default function ProviderDashboardPage() {
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <button
-                  type="submit"
-                  className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold bg-sama-600 hover:bg-sama-700 text-white text-xs shadow-lg shadow-sama-600/30 transition-all active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Enregistrer toutes mes vraies informations</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold bg-sama-600 hover:bg-sama-700 text-white text-xs shadow-lg shadow-sama-600/30 transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Enregistrer mes informations</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleViewPublicProfile}
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-xl font-bold bg-slate-900 hover:bg-slate-800 text-white text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <Eye className="w-4 h-4 text-sama-400" />
+                    <span>Voir mon profil public</span>
+                  </button>
+                </div>
 
                 <button
                   type="button"

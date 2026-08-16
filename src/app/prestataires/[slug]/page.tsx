@@ -46,17 +46,21 @@ export default function ProviderProfilePage() {
     if (!slug) return;
     const decodedSlug = decodeURIComponent(slug).toLowerCase().trim();
 
-    // 1. Check if logged in artisan profile in localStorage matches this slug or is the active pro
+    // 1. Instant check in local pro session
     try {
-      const stored = localStorage.getItem('samapro_current_user');
+      const stored = localStorage.getItem('samapro_current_user') || localStorage.getItem('sama_user_session');
       if (stored) {
         const parsed = JSON.parse(stored);
         const pSlug = (parsed.slug || '').toLowerCase();
         const pNameSlug = (parsed.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const pPhone = (parsed.phone || '').replace(/[^0-9]/g, '');
+        const targetPhone = decodedSlug.replace(/[^0-9]/g, '');
+
         if (
           pSlug === decodedSlug || 
           parsed.id === decodedSlug || 
           pNameSlug === decodedSlug ||
+          (targetPhone.length >= 8 && pPhone.includes(targetPhone)) ||
           decodedSlug === 'mon-profil' ||
           decodedSlug === 'me'
         ) {
@@ -74,13 +78,15 @@ export default function ProviderProfilePage() {
       const matched = accounts.find((a: any) => {
         const aSlug = (a.slug || '').toLowerCase();
         const aNameSlug = (a.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        return aSlug === decodedSlug || a.id === decodedSlug || aNameSlug === decodedSlug;
+        const aPhone = (a.phone || '').replace(/[^0-9]/g, '');
+        const targetPhone = decodedSlug.replace(/[^0-9]/g, '');
+        return aSlug === decodedSlug || a.id === decodedSlug || aNameSlug === decodedSlug || (targetPhone.length >= 8 && aPhone.includes(targetPhone));
       });
 
       if (matched) {
         const proUser: Provider = {
           id: matched.id || `pro-${Date.now()}`,
-          slug: matched.slug || matched.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          slug: matched.slug || (matched.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
           name: matched.name,
           businessName: matched.businessName || matched.name,
           phone: matched.phone,
@@ -117,7 +123,23 @@ export default function ProviderProfilePage() {
       }
     } catch (e) {}
 
-    // 3. Fetch from Supabase
+    // 3. Check in static dataset
+    const staticMatch = (PROVIDERS || []).find((p) => {
+      const pSlug = (p.slug || '').toLowerCase();
+      const pNameSlug = (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
+      const targetPhone = decodedSlug.replace(/[^0-9]/g, '');
+      return pSlug === decodedSlug || p.id === decodedSlug || pNameSlug === decodedSlug || (targetPhone.length >= 8 && pPhone.includes(targetPhone));
+    });
+
+    if (staticMatch) {
+      setProvider(staticMatch);
+      setReviews(staticMatch.reviews || []);
+      setLoading(false);
+      return;
+    }
+
+    // 4. Fetch from Supabase cloud
     getProviderBySlug(decodedSlug).then((livePro) => {
       if (livePro) {
         let finalPro = livePro;
@@ -135,7 +157,7 @@ export default function ProviderProfilePage() {
       } else {
         // Fallback to active logged in pro if available
         try {
-          const stored = localStorage.getItem('samapro_current_user');
+          const stored = localStorage.getItem('samapro_current_user') || localStorage.getItem('sama_user_session');
           if (stored) {
             const parsed = JSON.parse(stored);
             if (parsed && (parsed.name || parsed.phone)) {
@@ -149,7 +171,7 @@ export default function ProviderProfilePage() {
     }).catch(() => {
       // Fallback on error
       try {
-        const stored = localStorage.getItem('samapro_current_user');
+        const stored = localStorage.getItem('samapro_current_user') || localStorage.getItem('sama_user_session');
         if (stored) {
           const parsed = JSON.parse(stored);
           if (parsed && (parsed.name || parsed.phone)) {

@@ -154,18 +154,88 @@ export async function getProviders(): Promise<Provider[]> {
   return strictlyPros;
 }
 
-// 2. FETCH A SINGLE PROVIDER BY SLUG (Supabase Live with Fallback)
+// 2. FETCH A SINGLE PROVIDER BY SLUG (Supabase Live with Fallback & Local Storage)
 export async function getProviderBySlug(slug: string): Promise<Provider | null> {
   if (!slug || slug === 'undefined' || slug === 'null') return null;
   const decodedSlug = decodeURIComponent(slug).toLowerCase().trim();
 
+  // 1. Check in local storage first for instant response
+  if (typeof window !== 'undefined') {
+    try {
+      const storedPro = localStorage.getItem('samapro_current_user');
+      if (storedPro) {
+        const parsed = JSON.parse(storedPro);
+        const pSlug = (parsed.slug || '').toLowerCase();
+        const pNameSlug = (parsed.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const pPhone = (parsed.phone || '').replace(/[^0-9]/g, '');
+        const targetPhone = decodedSlug.replace(/[^0-9]/g, '');
+
+        if (
+          pSlug === decodedSlug || 
+          parsed.id === decodedSlug || 
+          pNameSlug === decodedSlug || 
+          (targetPhone.length >= 8 && pPhone.includes(targetPhone)) ||
+          decodedSlug === 'mon-profil' || 
+          decodedSlug === 'me'
+        ) {
+          return parsed;
+        }
+      }
+
+      const accounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
+      const matchedAcc = accounts.find((a: any) => {
+        const aSlug = (a.slug || '').toLowerCase();
+        const aNameSlug = (a.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const aPhone = (a.phone || '').replace(/[^0-9]/g, '');
+        const targetPhone = decodedSlug.replace(/[^0-9]/g, '');
+        return aSlug === decodedSlug || a.id === decodedSlug || aNameSlug === decodedSlug || (targetPhone.length >= 8 && aPhone.includes(targetPhone));
+      });
+      if (matchedAcc && matchedAcc.role === 'pro') {
+        return {
+          id: matchedAcc.id || `pro-${Date.now()}`,
+          slug: matchedAcc.slug || (matchedAcc.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          name: matchedAcc.name,
+          businessName: matchedAcc.businessName || matchedAcc.name,
+          phone: matchedAcc.phone,
+          whatsapp: (matchedAcc.phone || '').replace(/[^0-9]/g, ''),
+          headline: matchedAcc.headline || 'Artisan Qualifié',
+          categorySlug: matchedAcc.categorySlug || 'plomberie',
+          categoryName: matchedAcc.categoryName || 'Artisanat & Services',
+          neighborhood: matchedAcc.neighborhood || 'Dakar',
+          city: 'Dakar',
+          avatar: matchedAcc.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
+          bio: matchedAcc.bio || 'Artisan professionnel qualifié au Sénégal.',
+          verificationLevel: 'ID_VERIFIED',
+          averageRating: 5.0,
+          reviewCount: 0,
+          startingPrice: 15000,
+          responseTimeMinutes: 15,
+          isAvailable: true,
+          subscriptionTier: 'FREE',
+          completedJobsCount: 0,
+          joinedDate: new Date().toISOString(),
+          specialties: ['Intervention rapide', 'Travail garanti'],
+          services: [],
+          portfolio: matchedAcc.portfolio || [],
+          reviews: []
+        };
+      }
+    } catch {}
+  }
+
+  // 2. Fetch from Supabase
   if (isSupabaseConfigured()) {
     try {
-      const { data, error } = await supabase
-        .from('providers')
-        .select('*')
-        .or(`slug.eq.${decodedSlug},id.eq.${decodedSlug}`)
-        .maybeSingle();
+      const cleanPhone = decodedSlug.replace(/[^0-9]/g, '');
+      let query = supabase.from('providers').select('*');
+
+      if (cleanPhone.length >= 8) {
+        query = query.or(`slug.eq.${decodedSlug},id.eq.${decodedSlug},phone.ilike.%${cleanPhone}%,whatsapp.ilike.%${cleanPhone}%`);
+      } else {
+        query = query.or(`slug.eq.${decodedSlug},id.eq.${decodedSlug}`);
+      }
+
+      const { data, error } = await query.maybeSingle();
 
       if (!error && data) {
         return mapDbProviderToApp(data);
@@ -175,12 +245,21 @@ export async function getProviderBySlug(slug: string): Promise<Provider | null> 
     }
   }
 
+  // 3. Fallback to all known providers
   const all = await getProviders();
   return all.find((p) => {
     if (!p) return false;
     const pSlug = (p.slug || '').toLowerCase();
     const pNameSlug = (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    return pSlug === decodedSlug || p.id === decodedSlug || pNameSlug === decodedSlug;
+    const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
+    const targetPhone = decodedSlug.replace(/[^0-9]/g, '');
+
+    return (
+      pSlug === decodedSlug || 
+      p.id === decodedSlug || 
+      pNameSlug === decodedSlug || 
+      (targetPhone.length >= 8 && pPhone.includes(targetPhone))
+    );
   }) || null;
 }
 

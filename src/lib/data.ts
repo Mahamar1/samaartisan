@@ -359,12 +359,12 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 
 export const MOCK_ADMIN_METRICS: AdminMetrics = {
   mrrFcfa: 0,
-  activeSubscribers: 215,
-  totalProviders: 215,
-  pendingVerifications: 9,
-  totalServiceRequests: 1280,
-  totalReviews: 460,
-  satisfactionRate: 98.2,
+  activeSubscribers: 0,
+  totalProviders: 0,
+  pendingVerifications: 0,
+  totalServiceRequests: 0,
+  totalReviews: 0,
+  satisfactionRate: 100,
   churnRatePercent: 0,
 };
 

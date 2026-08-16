@@ -138,36 +138,7 @@ export default function AdminDashboardPage() {
       }
     }
 
-    const defaultPending: PendingArtisan[] = [
-      {
-        id: 'pending-1',
-        name: 'Oumar Sylla',
-        businessName: 'Sylla Alu Express',
-        trade: 'Menuisier Aluminium',
-        neighborhood: 'Grand Yoff',
-        regionName: 'Dakar',
-        phone: '+221 77 123 99 88',
-        email: 'oumar.sylla@gmail.com',
-        cniNumber: '1 756 1989 02341',
-        dateSubmitted: 'Il y a 2 heures',
-        status: 'PENDING'
-      },
-      {
-        id: 'pending-2',
-        name: 'El Hadji Ndao',
-        businessName: 'Ndao Électro Bâtiment',
-        trade: 'Électricien Bâtiment',
-        neighborhood: 'Liberté 6',
-        regionName: 'Dakar',
-        phone: '+221 78 654 32 10',
-        email: 'elhadji.ndao@yahoo.fr',
-        cniNumber: '1 890 1992 01124',
-        dateSubmitted: 'Il y a 5 heures',
-        status: 'PENDING'
-      }
-    ];
-
-    setPendingList([...localPending, ...defaultPending]);
+    setPendingList(localPending);
   }, []);
 
   // Save providers to state & localStorage

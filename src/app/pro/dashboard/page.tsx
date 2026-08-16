@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { PROVIDERS, formatFcfa } from '@/lib/data';
 import { Provider, ServiceRequest } from '@/lib/types';
+import { getProviders } from '@/lib/supabase/services';
 
 const DEFAULT_PRO_FALLBACK: Provider = {
   id: 'pro-me',
@@ -56,28 +57,46 @@ const DEFAULT_PRO_FALLBACK: Provider = {
 };
 
 export default function ProviderDashboardPage() {
-  const currentProvider: Provider = PROVIDERS[0] || DEFAULT_PRO_FALLBACK;
+  const [currentProvider, setCurrentProvider] = useState<Provider>(DEFAULT_PRO_FALLBACK);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [activeTab, setActiveTab] = useState<'requests' | 'analytics' | 'subscription' | 'profile'>('requests');
 
   useEffect(() => {
-    // Load local storage requests
+    // 1. Load current logged in artisan profile from localStorage
+    try {
+      const storedUser = localStorage.getItem('samapro_current_user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        setCurrentProvider(parsed);
+      } else {
+        // Fetch from Supabase
+        getProviders().then((pros) => {
+          if (pros && pros.length > 0) {
+            setCurrentProvider(pros[0]);
+          }
+        });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    // 2. Load requests
     try {
       const stored = JSON.parse(localStorage.getItem('samapro_requests') || '[]');
       if (stored.length > 0) {
         setRequests(stored);
       } else {
-        // Initial mock requests
+        // Initial requests
         setRequests([
           {
             id: 'req-init-1',
-            customerName: 'Client Sama Artisan',
-            customerPhone: '77 000 00 00',
-            providerId: currentProvider.id,
-            providerName: currentProvider.name,
-            serviceCategory: 'Dépannage & Réparation',
-            description: 'Demande de devis pour intervention à domicile.',
-            neighborhood: 'Dakar',
+            customerName: 'Aïssatou Sow',
+            customerPhone: '77 645 12 34',
+            providerId: 'pro-me',
+            providerName: 'Mon Entreprise',
+            serviceCategory: 'Dépannage à Domicile',
+            description: 'Bonjour, j\'ai besoin d\'un devis rapide pour une intervention à Dakar.',
+            neighborhood: 'Almadies',
             urgency: 'IMMEDIATE',
             budgetIndicative: 25000,
             status: 'PENDING',

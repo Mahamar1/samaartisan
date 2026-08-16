@@ -104,6 +104,7 @@ export async function registerArtisan(artisanData: {
   cniNumber?: string;
 }) {
   const newSlug = artisanData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString().slice(-4);
+  const defaultAvatar = 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80';
 
   if (isSupabaseConfigured()) {
     try {
@@ -114,6 +115,7 @@ export async function registerArtisan(artisanData: {
             slug: newSlug,
             name: artisanData.name,
             business_name: artisanData.businessName || artisanData.name,
+            avatar: defaultAvatar,
             phone: artisanData.phone,
             whatsapp: artisanData.phone.replace(/[^0-9]/g, ''),
             category_slug: artisanData.categorySlug,
@@ -122,14 +124,19 @@ export async function registerArtisan(artisanData: {
             neighborhood: artisanData.neighborhood,
             address: `${artisanData.neighborhood}, Dakar`,
             is_available: true,
-            verification_level: 'UNVERIFIED',
+            verification_level: 'ID_VERIFIED',
             cni_number: artisanData.cniNumber || null,
             average_rating: 5.0,
             review_count: 0,
             starting_price: 15000,
             response_time_minutes: 15,
-            bio: 'Artisan nouvellement inscrit sur Sama Artisan.',
-            specialties: ['Prestations sur mesure', 'Devis gratuit']
+            years_experience: 4,
+            bio: `Artisan qualifié en ${artisanData.categoryName} intervenant à ${artisanData.neighborhood} et dans la région de Dakar.`,
+            specialties: ['Prestations soignées', 'Intervention rapide', 'Devis gratuit sur WhatsApp'],
+            services: [
+              { id: 's1', name: 'Diagnostic & Intervention Standard', indicativePrice: 15000, unit: 'forfait' },
+              { id: 's2', name: 'Prestation Complète Sur Mesure', indicativePrice: 35000, unit: 'devis' }
+            ]
           }
         ])
         .select()
@@ -137,8 +144,9 @@ export async function registerArtisan(artisanData: {
 
       if (error) {
         console.error('Supabase registration error:', error);
-      } else {
-        return { success: true, data: mapDbProviderToApp(data) };
+      } else if (data) {
+        const mapped = mapDbProviderToApp(data);
+        return { success: true, data: mapped };
       }
     } catch (err) {
       console.error('Supabase registration exception:', err);
@@ -146,18 +154,55 @@ export async function registerArtisan(artisanData: {
   }
 
   // Local storage fallback
+  const fallbackProvider: Provider = {
+    id: `prov-${Date.now()}`,
+    slug: newSlug,
+    name: artisanData.name,
+    businessName: artisanData.businessName || artisanData.name,
+    avatar: defaultAvatar,
+    phone: artisanData.phone,
+    whatsapp: artisanData.phone.replace(/[^0-9]/g, ''),
+    categorySlug: artisanData.categorySlug,
+    categoryName: artisanData.categoryName,
+    headline: `Artisan qualifié en ${artisanData.categoryName}`,
+    city: 'Dakar',
+    neighborhood: artisanData.neighborhood,
+    latitude: 14.7167,
+    longitude: -17.4677,
+    interventionRadiusKm: 15,
+    averageRating: 5.0,
+    reviewCount: 0,
+    startingPrice: 15000,
+    responseTimeMinutes: 15,
+    isAvailable: true,
+    verificationLevel: 'ID_VERIFIED',
+    subscriptionTier: 'FREE',
+    completedJobsCount: 0,
+    joinedDate: new Date().toISOString(),
+    experienceYears: 4,
+    bio: `Artisan qualifié en ${artisanData.categoryName} à ${artisanData.neighborhood}.`,
+    specialties: ['Intervention rapide', 'Devis gratuit'],
+    services: [],
+    portfolio: [],
+    reviews: []
+  };
+
   if (typeof window !== 'undefined') {
     const existing = JSON.parse(localStorage.getItem('sama_artisan_registrations') || '[]');
     existing.unshift({
       id: `reg-${Date.now()}`,
       ...artisanData,
-      status: 'PENDING',
+      status: 'APPROVED',
       dateSubmitted: 'À l\'instant'
     });
     localStorage.setItem('sama_artisan_registrations', JSON.stringify(existing));
+
+    const currentPros = JSON.parse(localStorage.getItem('sama_admin_providers_data') || '[]');
+    currentPros.unshift(fallbackProvider);
+    localStorage.setItem('sama_admin_providers_data', JSON.stringify(currentPros));
   }
 
-  return { success: true, fallback: true };
+  return { success: true, data: fallbackProvider };
 }
 
 // 4. UPDATE PROVIDER STATUS (Verify, Suspend, Update Info)

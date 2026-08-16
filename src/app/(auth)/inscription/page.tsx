@@ -37,6 +37,7 @@ export default function InscriptionPage() {
   const [selectedDistrictId, setSelectedDistrictId] = useState('almadies');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registeredSuccess, setRegisteredSuccess] = useState<any>(null);
 
   // Handle region change: update region and reset district to the first available district
   const handleRegionChange = (newRegionId: string) => {
@@ -57,52 +58,101 @@ export default function InscriptionPage() {
       const categoryObj = CATEGORIES.find((c) => c.slug === category);
       const regionObj = SENEGAL_REGIONS.find((r) => r.id === selectedRegionId);
       const districtObj = regionObj?.districts.find((d) => d.id === selectedDistrictId);
+      const districtName = districtObj ? districtObj.name : (selectedDistrictId || 'Dakar');
 
       const newRegistration = {
-        name: fullName,
-        businessName: businessName || fullName,
-        phone: phone,
+        name: fullName.trim(),
+        businessName: businessName.trim() || fullName.trim(),
+        phone: phone.trim(),
         categorySlug: category,
         categoryName: categoryObj ? categoryObj.name : category,
         regionId: selectedRegionId,
-        neighborhood: districtObj ? districtObj.name : (selectedDistrictId || 'Dakar'),
+        neighborhood: districtName,
         cniNumber: 'En cours de validation'
       };
 
-      // Register with Supabase / local fallback
-      await registerArtisan(newRegistration);
+      // Register directly in Supabase Cloud
+      const res = await registerArtisan(newRegistration);
+      const savedArtisan = res?.data || newRegistration;
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('samapro_current_user', JSON.stringify(savedArtisan));
+      }
+
+      setRegisteredSuccess(savedArtisan);
     } catch (err) {
       console.error('Error saving registration:', err);
+      setIsSubmitting(false);
     }
-
-    // Redirect to pro dashboard
-    setTimeout(() => {
-      router.push('/pro/dashboard');
-    }, 600);
   };
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-12 bg-slate-50">
       <div className="w-full max-w-xl bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xl space-y-6">
         
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sama-600 to-emerald-500 flex items-center justify-center text-white mx-auto shadow-md">
-            <Wrench className="w-6 h-6" />
-          </div>
-          
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-black uppercase tracking-wider">
-            <Gift className="w-3.5 h-3.5" />
-            <span>Offre 100% Gratuite</span>
-          </div>
+        {registeredSuccess ? (
+          <div className="text-center py-6 space-y-6">
+            <div className="w-20 h-20 rounded-3xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
 
-          <h1 className="text-2xl font-black text-navy-950">Inscription Artisan</h1>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Rejoignez gratuitement le réseau Sama Artisan et recevez des demandes de chantiers partout au Sénégal.
-          </p>
-        </div>
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black uppercase">
+                Profil Activé & En Ligne
+              </div>
+              <h2 className="text-2xl font-black text-navy-950">
+                Félicitations {registeredSuccess.name} !
+              </h2>
+              <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+                Votre entreprise <strong>{registeredSuccess.businessName}</strong> a été enregistrée et publiée avec succès sur <strong>Sama Artisan</strong>.
+              </p>
+            </div>
 
-        <form onSubmit={handleRegister} className="space-y-4">
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-600 space-y-1.5 text-left max-w-sm mx-auto">
+              <p><strong className="text-slate-800">Métier :</strong> {registeredSuccess.categoryName}</p>
+              <p><strong className="text-slate-800">Zone :</strong> {registeredSuccess.neighborhood}</p>
+              <p><strong className="text-slate-800">Téléphone :</strong> {registeredSuccess.phone}</p>
+              <p><strong className="text-slate-800">Statut :</strong> <span className="text-emerald-600 font-bold">Vérifié & Prêt pour les clients</span></p>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              {registeredSuccess.slug && (
+                <Link
+                  href={`/prestataires/${registeredSuccess.slug}`}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-xl font-bold bg-slate-900 hover:bg-slate-800 text-white text-xs shadow-sm transition-all text-center"
+                >
+                  Voir ma page publique
+                </Link>
+              )}
+              <Link
+                href="/pro/dashboard"
+                className="w-full sm:w-auto px-6 py-3.5 rounded-xl font-bold bg-sama-600 hover:bg-sama-700 text-white text-xs shadow-md transition-all text-center flex items-center justify-center gap-2"
+              >
+                <span>Accéder à mon Espace Pro</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sama-600 to-emerald-500 flex items-center justify-center text-white mx-auto shadow-md">
+                <Wrench className="w-6 h-6" />
+              </div>
+              
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-black uppercase tracking-wider">
+                <Gift className="w-3.5 h-3.5" />
+                <span>Offre 100% Gratuite</span>
+              </div>
+
+              <h1 className="text-2xl font-black text-navy-950">Inscription Artisan</h1>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Rejoignez gratuitement le réseau Sama Artisan et recevez des demandes de chantiers partout au Sénégal.
+              </p>
+            </div>
+
+            <form onSubmit={handleRegister} className="space-y-4">
           
           {/* 1. Nom & Prénom (Obligatoire) */}
           <div>
@@ -282,6 +332,8 @@ export default function InscriptionPage() {
             </Link>
           </p>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

@@ -31,7 +31,7 @@ function mapDbProviderToApp(item: any): Provider {
     isSponsored: false,
     experienceYears: item.years_experience ? Number(item.years_experience) : (item.experience_years ? Number(item.experience_years) : 4),
     bio: item.bio || 'Artisan certifié et expérimenté au Sénégal.',
-    specialties: item.specialties || ['Intervention d\'urgence', 'Devis gratuit'],
+    specialties: (item.specialties || ['Intervention rapide', 'Travail soigné']).filter((s: string) => !s.toLowerCase().includes('devis gratuit')),
     services: item.services || [],
     portfolio: item.portfolio || [],
     reviews: item.reviews || []
@@ -132,7 +132,7 @@ export async function registerArtisan(artisanData: {
             response_time_minutes: 15,
             years_experience: 4,
             bio: `Artisan qualifié en ${artisanData.categoryName} intervenant à ${artisanData.neighborhood} et dans la région de Dakar.`,
-            specialties: ['Prestations soignées', 'Intervention rapide', 'Devis gratuit sur WhatsApp'],
+            specialties: ['Prestations soignées', 'Intervention rapide', 'Conseils professionnels'],
             services: [
               { id: 's1', name: 'Diagnostic & Intervention Standard', indicativePrice: 15000, unit: 'forfait' },
               { id: 's2', name: 'Prestation Complète Sur Mesure', indicativePrice: 35000, unit: 'devis' }
@@ -181,7 +181,7 @@ export async function registerArtisan(artisanData: {
     joinedDate: new Date().toISOString(),
     experienceYears: 4,
     bio: `Artisan qualifié en ${artisanData.categoryName} à ${artisanData.neighborhood}.`,
-    specialties: ['Intervention rapide', 'Devis gratuit'],
+    specialties: ['Intervention rapide', 'Travail soigné'],
     services: [],
     portfolio: [],
     reviews: []

@@ -60,10 +60,18 @@ export default function ProviderDashboardPage() {
   const [currentProvider, setCurrentProvider] = useState<Provider>(DEFAULT_PRO_FALLBACK);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [activeTab, setActiveTab] = useState<'requests' | 'profile'>('requests');
+  
+  // Profile edit fields
+  const [name, setName] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
+  const [avatar, setAvatar] = useState('');
+  const [portfolio, setPortfolio] = useState<{ id: string; title: string; imageUrl: string; description?: string }[]>([]);
   const [savedToast, setSavedToast] = useState(false);
+
+  const avatarInputRef = React.useRef<HTMLInputElement>(null);
+  const portfolioInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // 1. Load current logged in artisan profile from localStorage or Supabase
@@ -72,17 +80,24 @@ export default function ProviderDashboardPage() {
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
         setCurrentProvider(parsed);
+        setName(parsed.name || '');
         setBusinessName(parsed.businessName || '');
         setPhone(parsed.phone || '');
         setBio(parsed.bio || '');
+        setAvatar(parsed.avatar || DEFAULT_PRO_FALLBACK.avatar);
+        setPortfolio(parsed.portfolio || []);
       } else {
         // Fetch from Supabase
         getProviders().then((pros) => {
           if (pros && pros.length > 0) {
-            setCurrentProvider(pros[0]);
-            setBusinessName(pros[0].businessName || '');
-            setPhone(pros[0].phone || '');
-            setBio(pros[0].bio || '');
+            const p = pros[0];
+            setCurrentProvider(p);
+            setName(p.name || '');
+            setBusinessName(p.businessName || '');
+            setPhone(p.phone || '');
+            setBio(p.bio || '');
+            setAvatar(p.avatar || DEFAULT_PRO_FALLBACK.avatar);
+            setPortfolio(p.portfolio || []);
           }
         });
       }
@@ -129,17 +144,59 @@ export default function ProviderDashboardPage() {
     }
   };
 
+  // Avatar upload handler
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setAvatar(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Portfolio photo upload handler
+  const handlePortfolioFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          const newItem = {
+            id: `port-${Date.now()}`,
+            title: 'Nouvelle Réalisation',
+            imageUrl: reader.result,
+            description: 'Photo de réalisation'
+          };
+          setPortfolio((prev) => [...prev, newItem]);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemovePortfolioItem = (id: string) => {
+    setPortfolio((prev) => prev.filter((p) => p.id !== id));
+  };
+
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    const updated = {
+    const updated: Provider = {
       ...currentProvider,
-      businessName,
-      phone,
-      bio,
+      name: name || currentProvider.name,
+      businessName: businessName || currentProvider.businessName,
+      phone: phone || currentProvider.phone,
+      bio: bio || currentProvider.bio,
+      avatar: avatar || currentProvider.avatar,
+      portfolio: portfolio,
     };
     setCurrentProvider(updated);
     try {
       localStorage.setItem('samapro_current_user', JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
       setSavedToast(true);
       setTimeout(() => setSavedToast(false), 3000);
     } catch (e) {
@@ -154,7 +211,7 @@ export default function ProviderDashboardPage() {
       {savedToast && (
         <div className="fixed top-20 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl font-bold text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
           <CheckCircle2 className="w-4 h-4" />
-          <span>Profil mis à jour avec succès !</span>
+          <span>Profil et photo enregistrés avec succès !</span>
         </div>
       )}
 
@@ -164,8 +221,8 @@ export default function ProviderDashboardPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-sama-500 shadow-xl shrink-0">
-                <img src={currentProvider.avatar} alt={currentProvider.name} className="w-full h-full object-cover" />
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-sama-500 shadow-xl shrink-0 bg-slate-800">
+                <img src={avatar || currentProvider.avatar} alt={currentProvider.name} className="w-full h-full object-cover" />
               </div>
               <div className="space-y-1">
                 <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight">
@@ -297,18 +354,75 @@ export default function ProviderDashboardPage() {
 
         {/* TAB 2: PROFILE & PORTFOLIO */}
         {activeTab === 'profile' && (
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 space-y-6 max-w-3xl">
-            <h3 className="text-xl font-bold text-navy-900">Éditer votre profil et vitrine</h3>
+          <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200 space-y-8 max-w-3xl">
+            <div>
+              <h3 className="text-xl font-black text-navy-900">Éditer votre profil et vitrine</h3>
+              <p className="text-xs text-slate-500 mt-1">Personnalisez vos informations visibles par les clients de Dakar.</p>
+            </div>
             
-            <form onSubmit={handleSaveProfile} className="space-y-5">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Nom Commercial / Atelier</label>
-                <input
-                  type="text"
-                  value={businessName}
-                  onChange={(e) => setBusinessName(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none"
-                />
+            <form onSubmit={handleSaveProfile} className="space-y-6">
+              
+              {/* SECTION 1: PHOTO DE PROFIL / AVATAR */}
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider">
+                  Photo de Profil Artisan
+                </label>
+                
+                <div className="flex flex-col sm:flex-row items-center gap-5">
+                  <div className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-sama-500 shadow-md shrink-0 bg-white">
+                    <img
+                      src={avatar || currentProvider.avatar}
+                      alt={name || 'Artisan'}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  <div className="space-y-2 text-center sm:text-left flex-1">
+                    <input
+                      type="file"
+                      ref={avatarInputRef}
+                      onChange={handleAvatarFileChange}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="px-4 py-2.5 rounded-xl font-bold bg-slate-900 hover:bg-slate-800 text-white text-xs inline-flex items-center gap-2 shadow-md transition-all active:scale-95"
+                    >
+                      <Upload className="w-4 h-4 text-sama-400" />
+                      <span>Changer ma photo de profil</span>
+                    </button>
+                    <p className="text-[11px] text-slate-500">
+                      Importez une photo claire de votre visage ou de votre atelier (JPG, PNG).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: IDENTITÉ & COORDONNÉES */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Nom & Prénom</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Ex: Mahamar"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Nom Commercial / Atelier</label>
+                  <input
+                    type="text"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    placeholder="Ex: Mahamar Électro Service"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div>
@@ -317,6 +431,7 @@ export default function ProviderDashboardPage() {
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Ex: +221 77 123 45 67"
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none"
                 />
               </div>
@@ -327,33 +442,64 @@ export default function ProviderDashboardPage() {
                   rows={3}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
+                  placeholder="Décrivez votre expérience, vos spécialités et vos garanties..."
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-sama-500 focus:outline-none"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Portfolio & Photos de chantiers</label>
+              {/* SECTION 3: PORTFOLIO / PHOTOS DE RÉALISATIONS */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-black text-slate-700 uppercase tracking-wider">
+                    Portfolio & Photos de chantiers ({portfolio.length})
+                  </label>
+                  <span className="text-[11px] text-slate-400">Photos de vos réalisations</span>
+                </div>
+
+                <input
+                  type="file"
+                  ref={portfolioInputRef}
+                  onChange={handlePortfolioFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {currentProvider.portfolio && currentProvider.portfolio.map((p) => (
-                    <div key={p.id} className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
+                  {portfolio.map((p) => (
+                    <div key={p.id} className="group relative aspect-video rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
                       <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePortfolioItem(p.id)}
+                        className="absolute top-1.5 right-1.5 p-1.5 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                        title="Supprimer la photo"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   ))}
-                  <div className="border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center p-4 text-slate-400 hover:text-sama-600 hover:border-sama-400 cursor-pointer transition-colors">
-                    <Plus className="w-6 h-6" />
+
+                  <button
+                    type="button"
+                    onClick={() => portfolioInputRef.current?.click()}
+                    className="border-2 border-dashed border-slate-200 hover:border-sama-500 rounded-xl aspect-video flex flex-col items-center justify-center p-3 text-slate-400 hover:text-sama-600 transition-all cursor-pointer bg-slate-50 hover:bg-sama-50/30"
+                  >
+                    <Plus className="w-5 h-5" />
                     <span className="text-[10px] font-bold mt-1">Ajouter une photo</span>
-                  </div>
+                  </button>
                 </div>
               </div>
 
-              <div className="pt-2">
+              <div className="pt-4 border-t border-slate-100">
                 <button
                   type="submit"
-                  className="px-6 py-3 rounded-xl font-bold bg-sama-600 hover:bg-sama-700 text-white text-xs shadow-md transition-all active:scale-95"
+                  className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold bg-sama-600 hover:bg-sama-700 text-white text-xs shadow-lg shadow-sama-600/30 transition-all active:scale-95 flex items-center justify-center gap-2"
                 >
-                  Sauvegarder les modifications
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Enregistrer toutes les modifications</span>
                 </button>
               </div>
+
             </form>
           </div>
         )}

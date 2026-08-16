@@ -45,7 +45,7 @@ export default function ProviderProfilePage() {
   useEffect(() => {
     if (!slug) return;
 
-    // 1. Check if logged in user matches this slug
+    // 1. Check if logged in artisan profile in localStorage matches this slug
     try {
       const stored = localStorage.getItem('samapro_current_user');
       if (stored) {
@@ -61,8 +61,18 @@ export default function ProviderProfilePage() {
     // 2. Fetch from Supabase
     getProviderBySlug(slug).then((livePro) => {
       if (livePro) {
-        setProvider(livePro);
-        setReviews(livePro.reviews || []);
+        let finalPro = livePro;
+        try {
+          const stored = localStorage.getItem('samapro_current_user');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.slug === slug || parsed.id === livePro.id) {
+              finalPro = { ...livePro, ...parsed };
+            }
+          }
+        } catch (e) {}
+        setProvider(finalPro);
+        setReviews(finalPro.reviews || []);
       }
       setLoading(false);
     }).catch(() => {
@@ -398,7 +408,9 @@ export default function ProviderProfilePage() {
                   <div className="pt-2">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">Domaines d'expertise & Services</h4>
                     <div className="flex flex-wrap gap-2">
-                      {provider.specialties.map((s, i) => (
+                      {provider.specialties
+                        .filter((s) => !s.toLowerCase().includes('devis'))
+                        .map((s, i) => (
                         <span key={i} className="px-3.5 py-1.5 bg-slate-100 text-slate-800 rounded-xl text-xs font-semibold">
                           ✓ {s}
                         </span>

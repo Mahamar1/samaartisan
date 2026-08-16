@@ -351,7 +351,7 @@ export default function AdminDashboardPage() {
       isSponsored: false,
       experienceYears: 4,
       bio: `Artisan ajouté et vérifié par l'administration.`,
-      specialties: ['Intervention rapide', 'Devis gratuit'],
+      specialties: ['Intervention rapide', 'Travail soigné'],
       services: [],
       portfolio: [],
       reviews: []

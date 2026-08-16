@@ -150,17 +150,20 @@ export default function ProviderCard({ provider, userDistanceKm }: ProviderCardP
 
             {/* Specialties Badges */}
             <div className="mt-4 flex flex-wrap gap-1.5">
-              {provider.specialties.slice(0, 3).map((spec, i) => (
-                <span 
-                  key={i} 
-                  className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg border border-slate-100 transition-colors"
-                >
-                  ✓ {spec}
-                </span>
-              ))}
-              {provider.specialties.length > 3 && (
+              {(provider.specialties || [])
+                .filter(spec => spec && !spec.toLowerCase().includes('devis'))
+                .slice(0, 3)
+                .map((spec, i) => (
+                  <span 
+                    key={i} 
+                    className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg border border-slate-100 transition-colors"
+                  >
+                    ✓ {spec}
+                  </span>
+                ))}
+              {(provider.specialties || []).filter(spec => spec && !spec.toLowerCase().includes('devis')).length > 3 && (
                 <span className="px-2 py-1 text-[11px] font-medium text-slate-400">
-                  +{provider.specialties.length - 3} autres
+                  +{(provider.specialties || []).filter(spec => spec && !spec.toLowerCase().includes('devis')).length - 3} autres
                 </span>
               )}
             </div>
@@ -188,34 +191,27 @@ export default function ProviderCard({ provider, userDistanceKm }: ProviderCardP
         </div>
 
         {/* Card Footer Actions */}
-        <div className="p-4 bg-slate-50/80 border-t border-slate-100 mt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Tarif de départ</span>
-            <span className="text-sm font-black text-navy-900">
-              Dès {formatFcfa(provider.startingPrice)}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="p-3.5 sm:p-4 bg-slate-50/90 border-t border-slate-100 mt-2 flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5 w-full">
             
-            {/* 1. Direct Call (En avant / 1er) */}
+            {/* 1. Direct Call */}
             <a
               href={`tel:${provider.phone}`}
               onClick={(e) => {
                 e.stopPropagation();
                 handleCallClick();
               }}
-              className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-sm hover:shadow text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-sm hover:shadow text-xs flex items-center justify-center gap-2 transition-all active:scale-95"
               title={`Appeler directement au ${provider.phone}`}
             >
               <Phone className="w-3.5 h-3.5 text-amber-400" />
               <span>Appeler</span>
             </a>
 
-            {/* 2. WhatsApp (De l'autre côté / 2ème) */}
+            {/* 2. WhatsApp */}
             <button
               onClick={handleWhatsAppClick}
-              className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow text-xs flex items-center justify-center gap-2 transition-all active:scale-95"
               title="Discuter directement sur WhatsApp"
             >
               <MessageSquare className="w-3.5 h-3.5" />
@@ -224,7 +220,7 @@ export default function ProviderCard({ provider, userDistanceKm }: ProviderCardP
 
             <Link
               href={`/prestataires/${provider.slug}`}
-              className="p-2.5 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200/80 transition-colors"
+              className="p-2.5 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200/80 transition-colors shrink-0"
               title="Voir le profil complet"
             >
               <ChevronRight className="w-4 h-4" />

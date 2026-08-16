@@ -122,6 +122,7 @@ export default function ProviderProfilePage() {
   const [activeTab, setActiveTab] = useState<'services' | 'portfolio' | 'reviews'>('services');
   const [isFavorite, setIsFavorite] = useState(false);
   const [copiedToast, setCopiedToast] = useState(false);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
 
   // Fetch live artisan details from Supabase or local session
   useEffect(() => {
@@ -149,6 +150,7 @@ export default function ProviderProfilePage() {
           const norm = normalizeProvider(parsed);
           setProvider(norm);
           setReviews(norm.reviews || []);
+          setIsOwnProfile(true);
           setLoading(false);
           return;
         }
@@ -203,6 +205,7 @@ export default function ProviderProfilePage() {
               const parsed = JSON.parse(stored);
               if (parsed.slug === livePro.slug || parsed.id === livePro.id) {
                 finalPro = { ...livePro, ...parsed };
+                setIsOwnProfile(true);
               }
             }
           } catch (e) {}
@@ -219,6 +222,7 @@ export default function ProviderProfilePage() {
                 const norm = normalizeProvider(parsed);
                 setProvider(norm);
                 setReviews(norm.reviews || []);
+                setIsOwnProfile(true);
               }
             }
           } catch (e) {}
@@ -234,6 +238,7 @@ export default function ProviderProfilePage() {
               const norm = normalizeProvider(parsed);
               setProvider(norm);
               setReviews(norm.reviews || []);
+              setIsOwnProfile(true);
             }
           }
         } catch (e) {}
@@ -249,8 +254,28 @@ export default function ProviderProfilePage() {
     try {
       const favs = JSON.parse(localStorage.getItem('samapro_favorites') || '[]');
       setIsFavorite(favs.includes(provider.id));
+
+      const proStored = localStorage.getItem('samapro_current_user');
+      const sessionStored = localStorage.getItem('sama_user_session');
+      let loggedUser: any = null;
+      if (proStored) loggedUser = JSON.parse(proStored);
+      else if (sessionStored) loggedUser = JSON.parse(sessionStored);
+
+      if (loggedUser) {
+        const userPhone = (loggedUser.phone || '').replace(/[^0-9]/g, '');
+        const provPhone = (provider.phone || '').replace(/[^0-9]/g, '');
+        const isSelf = 
+          loggedUser.id === provider.id ||
+          (loggedUser.slug && loggedUser.slug === provider.slug) ||
+          (userPhone && provPhone && userPhone === provPhone) ||
+          (loggedUser.role === 'pro' && loggedUser.id === provider.id);
+        
+        setIsOwnProfile(Boolean(isSelf));
+      } else {
+        setIsOwnProfile(false);
+      }
     } catch (e) {}
-  }, [provider?.id]);
+  }, [provider?.id, provider?.slug, provider?.phone]);
 
   const toggleFavorite = () => {
     if (!provider) return;
@@ -634,13 +659,20 @@ export default function ProviderProfilePage() {
                     <h3 className="text-lg font-bold text-navy-900">Notes & Commentaires des Clients</h3>
                     <p className="text-xs text-slate-500 mt-0.5">{reviews.length} avis certifiés à Dakar</p>
                   </div>
-                  <button
-                    onClick={() => setIsReviewModalOpen(true)}
-                    className="px-4 py-2 rounded-xl font-bold bg-sama-600 hover:bg-sama-700 text-white text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Laisser un avis</span>
-                  </button>
+                  {isOwnProfile ? (
+                    <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 text-xs font-semibold">
+                      <ShieldCheck className="w-4 h-4 text-sama-600" />
+                      <span>Votre vitrine (Avis réservés aux clients)</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setIsReviewModalOpen(true)}
+                      className="px-4 py-2 rounded-xl font-bold bg-sama-600 hover:bg-sama-700 text-white text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Laisser un avis</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="space-y-4">

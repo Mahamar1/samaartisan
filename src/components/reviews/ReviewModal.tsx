@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Star, 
@@ -8,7 +8,8 @@ import {
   ThumbsUp, 
   MessageSquare, 
   Send,
-  Sparkles
+  Sparkles,
+  AlertCircle
 } from 'lucide-react';
 import { Provider, Review } from '@/lib/types';
 
@@ -28,11 +29,43 @@ export default function ReviewModal({ provider, isOpen, onClose, onReviewAdded }
   const [customerCity, setCustomerCity] = useState(provider?.neighborhood || 'Dakar');
   const [comment, setComment] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isSelfReview, setIsSelfReview] = useState(false);
+
+  useEffect(() => {
+    try {
+      const proStored = localStorage.getItem('samapro_current_user');
+      const sessionStored = localStorage.getItem('sama_user_session');
+      let loggedUser: any = null;
+      if (proStored) loggedUser = JSON.parse(proStored);
+      else if (sessionStored) loggedUser = JSON.parse(sessionStored);
+
+      if (loggedUser) {
+        const userPhone = (loggedUser.phone || '').replace(/[^0-9]/g, '');
+        const provPhone = (provider?.phone || '').replace(/[^0-9]/g, '');
+        const isSelf = 
+          loggedUser.id === provider?.id ||
+          (loggedUser.slug && loggedUser.slug === provider?.slug) ||
+          (userPhone && provPhone && userPhone === provPhone) ||
+          (loggedUser.role === 'pro' && loggedUser.id === provider?.id);
+
+        setIsSelfReview(Boolean(isSelf));
+      } else {
+        setIsSelfReview(false);
+      }
+    } catch (e) {
+      setIsSelfReview(false);
+    }
+  }, [provider]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isSelfReview) {
+      alert("Action non autorisée : Vous ne pouvez pas déposer d'avis sur votre propre profil artisan.");
+      return;
+    }
 
     if (!customerName.trim() || !comment.trim()) {
       alert('Veuillez renseigner votre nom et votre avis.');
@@ -84,7 +117,26 @@ export default function ReviewModal({ provider, isOpen, onClose, onReviewAdded }
         </div>
 
         <div className="p-6">
-          {!isSuccess ? (
+          {isSelfReview ? (
+            <div className="py-8 text-center space-y-4 animate-in fade-in">
+              <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-sm">
+                <AlertCircle className="w-8 h-8" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-base font-bold text-navy-950">Action non autorisée</h4>
+                <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
+                  Vous êtes actuellement connecté sur cet espace artisan. <strong>Un artisan ne peut pas s'auto-évaluer ni déposer d'avis client sur son propre profil vitrine.</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-6 py-2.5 rounded-xl font-bold bg-slate-900 hover:bg-slate-800 text-white text-xs shadow-md transition-all active:scale-95"
+              >
+                Fermer
+              </button>
+            </div>
+          ) : !isSuccess ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               
               {/* Overall Star Rating */}

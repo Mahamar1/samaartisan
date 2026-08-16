@@ -84,16 +84,31 @@ export default function ProviderProfilePage() {
           name: matched.name,
           businessName: matched.businessName || matched.name,
           phone: matched.phone,
+          whatsapp: (matched.phone || '').replace(/[^0-9]/g, ''),
+          headline: matched.headline || 'Artisan Qualifié',
           categorySlug: matched.categorySlug || 'plomberie',
           categoryName: matched.categoryName || 'Artisanat & Services',
           neighborhood: matched.neighborhood || 'Dakar',
           city: 'Dakar',
+          latitude: 14.7167,
+          longitude: -17.4677,
+          interventionRadiusKm: 20,
+          experienceYears: matched.yearsExperience || 5,
+          subscriptionTier: 'FREE',
+          isAvailable: true,
+          startingPrice: 15000,
+          responseTimeMinutes: 15,
+          specialties: matched.specialties || ['Services & Réparations'],
+          services: [],
           avatar: matched.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
           bio: matched.bio || `Artisan professionnel qualifié au Sénégal.`,
           verificationLevel: 'ID_VERIFIED',
           averageRating: 5.0,
           reviewCount: 0,
-          portfolio: []
+          completedJobsCount: 0,
+          joinedDate: '2026-01-01',
+          reviews: [],
+          portfolio: matched.portfolio || []
         };
         setProvider(proUser);
         setReviews([]);

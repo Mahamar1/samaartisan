@@ -1,17 +1,75 @@
 import { NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { 
+  sanitizeText, 
+  sanitizePhone, 
+  sanitizeEmail, 
+  containsMaliciousPattern, 
+  checkRateLimit 
+} from '@/lib/security';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    // 1. IP Rate Limiting Protection (Max 10 contact requests per minute per IP)
+    const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown-ip';
+    const rateLimit = checkRateLimit(`contact_${clientIp}`, 10, 60000, 300000);
+    
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Trop de tentatives rapprochées. Par mesure de sécurité, veuillez patienter 5 minutes avant de renvoyer un message.' 
+        },
+        { status: 429 }
+      );
+    }
+
+    // 2. Payload size protection (Prevent DoS)
+    const rawText = await request.text();
+    if (rawText.length > 15000) {
+      return NextResponse.json(
+        { success: false, error: 'Taille du message trop volumineuse (limite max: 15 Ko).' },
+        { status: 413 }
+      );
+    }
+
+    // Parse JSON
+    let body: any;
+    try {
+      body = JSON.parse(rawText);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Format de requête invalide.' },
+        { status: 400 }
+      );
+    }
+
     const { fullName, phone, email, subject, message, userType } = body;
 
+    // 3. Mandatory field check
     if (!fullName || !phone || !message) {
       return NextResponse.json(
         { success: false, error: 'Veuillez remplir tous les champs obligatoires (Nom, Téléphone, Message).' },
         { status: 400 }
       );
     }
+
+    // 4. Malicious pattern / Injection detection
+    const fullCheckString = `${fullName} ${phone} ${email || ''} ${subject || ''} ${message}`;
+    if (containsMaliciousPattern(fullCheckString)) {
+      console.warn(`[SECURITY ALERT] Malicious payload attempt blocked from IP ${clientIp}`);
+      return NextResponse.json(
+        { success: false, error: 'Contenu non autorisé détecté. Votre requête a été bloquée par le pare-feu de sécurité.' },
+        { status: 403 }
+      );
+    }
+
+    // 5. Data Sanitization
+    const cleanFullName = sanitizeText(fullName, 100);
+    const cleanPhone = sanitizePhone(phone);
+    const cleanEmail = sanitizeEmail(email);
+    const cleanMessage = sanitizeText(message, 3000);
+    const cleanSubject = sanitizeText(subject, 100);
 
     const subjectLabels: Record<string, string> = {
       trouver_artisan: 'Aide pour trouver un artisan qualifié',
@@ -27,19 +85,19 @@ export async function POST(request: Request) {
       presse: 'Demande média / Presse',
     };
 
-    const readableSubject = subjectLabels[subject] || subject || 'Message de contact';
+    const readableSubject = subjectLabels[cleanSubject] || cleanSubject || 'Message de contact';
     const profileLabel = userType === 'pro' ? 'Artisan Pro' : userType === 'partner' ? 'Entreprise' : 'Particulier';
 
-    // 1. Sauvegarde dans Supabase (messages / notifications)
+    // 6. Sauvegarde sécurisée dans Supabase (contact_messages)
     if (isSupabaseConfigured()) {
       try {
         await supabase.from('contact_messages').insert([
           {
-            full_name: fullName,
-            phone,
-            email: email || null,
+            full_name: cleanFullName,
+            phone: cleanPhone,
+            email: cleanEmail || null,
             subject: readableSubject,
-            message,
+            message: cleanMessage,
             user_type: profileLabel,
             created_at: new Date().toISOString()
           }
@@ -49,7 +107,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 2. Envoi direct d'email à mmahamar32@gmail.com via FormSubmit
+    // 7. Envoi direct d'email à mmahamar32@gmail.com via FormSubmit
     try {
       await fetch('https://formsubmit.co/ajax/mmahamar32@gmail.com', {
         method: 'POST',
@@ -60,15 +118,15 @@ export async function POST(request: Request) {
           'Referer': 'https://samaartisan.vercel.app/contact'
         },
         body: JSON.stringify({
-          _subject: `[Sama Artisan] Nouveau message de ${fullName} (${profileLabel})`,
-          'Nom Complet': fullName,
+          _subject: `[Sama Artisan] Nouveau message de ${cleanFullName} (${profileLabel})`,
+          'Nom Complet': cleanFullName,
           'Profil': profileLabel,
-          'Téléphone': phone,
-          'Email': email || 'Non renseigné',
+          'Téléphone': cleanPhone,
+          'Email': cleanEmail || 'Non renseigné',
           'Objet': readableSubject,
-          'Message': message,
+          'Message': cleanMessage,
           _template: 'table',
-          _replyto: email || undefined
+          _replyto: cleanEmail || undefined
         })
       });
     } catch (mailErr) {

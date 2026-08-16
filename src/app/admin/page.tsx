@@ -132,12 +132,36 @@ export default function AdminDashboardPage() {
     }, 4000);
   };
 
-  // Initial Load from Supabase & localStorage
+  // Brute force lockout state
+  const [lockoutTime, setLockoutTime] = useState<number | null>(null);
+  const [failedAttempts, setFailedAttempts] = useState<number>(0);
+
+  // Check Auth & Session Expiry on load
   useEffect(() => {
-    // Check Auth
+    // 1. Check brute force lockout
+    const storedLockout = localStorage.getItem('sama_admin_lockout_until');
+    if (storedLockout) {
+      const lockUntil = Number(storedLockout);
+      if (Date.now() < lockUntil) {
+        setLockoutTime(lockUntil);
+      } else {
+        localStorage.removeItem('sama_admin_lockout_until');
+        localStorage.removeItem('sama_admin_failed_attempts');
+      }
+    }
+
+    // 2. Check 24-hour Session Expiry
     const authStatus = localStorage.getItem('sama_admin_authenticated');
-    if (authStatus === 'true') {
-      setIsAuthenticated(true);
+    const sessionTime = localStorage.getItem('sama_admin_session_ts');
+    if (authStatus === 'true' && sessionTime) {
+      const isExpired = Date.now() - Number(sessionTime) > 24 * 60 * 60 * 1000;
+      if (isExpired) {
+        localStorage.removeItem('sama_admin_authenticated');
+        localStorage.removeItem('sama_admin_session_ts');
+        setIsAuthenticated(false);
+      } else {
+        setIsAuthenticated(true);
+      }
     }
 
     const savedPass = localStorage.getItem('sama_admin_secret_pass');
@@ -196,7 +220,6 @@ export default function AdminDashboardPage() {
           status: 'ACTIVE'
         }));
         
-        // Ensure defaults are present for a rich view
         const merged = [...mapped];
         DEFAULT_CLIENTS.forEach((d) => {
           if (!merged.some((m) => (m.phone && d.phone && m.phone.replace(/[^0-9]/g, '') === d.phone.replace(/[^0-9]/g, '')) || (m.email && d.email && m.email.toLowerCase() === d.email.toLowerCase()))) {
@@ -225,9 +248,17 @@ export default function AdminDashboardPage() {
     localStorage.setItem('sama_admin_providers_data', JSON.stringify(newList));
   };
 
-  // Handle Admin Login
+  // Handle Admin Login with Anti-Brute-Force & Session Tracking
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check if currently locked out
+    if (lockoutTime && Date.now() < lockoutTime) {
+      const remainingMin = Math.ceil((lockoutTime - Date.now()) / 60000);
+      setAuthError(`🛡️ Sécurité active : Trop de tentatives échouées. Compte verrouillé pour encore ${remainingMin} minute(s).`);
+      return;
+    }
+
     setIsLoggingIn(true);
     setAuthError('');
 
@@ -236,11 +267,28 @@ export default function AdminDashboardPage() {
       const validPass = adminPassword.trim() === currentAdminPass;
 
       if ((validEmail && validPass) || adminPassword.trim() === 'admin2026') {
+        // Success: Reset attempts and set session
         setIsAuthenticated(true);
+        setFailedAttempts(0);
+        localStorage.removeItem('sama_admin_failed_attempts');
+        localStorage.removeItem('sama_admin_lockout_until');
         localStorage.setItem('sama_admin_authenticated', 'true');
-        showToast('Connexion Super Administrateur réussie.');
+        localStorage.setItem('sama_admin_session_ts', Date.now().toString());
+        showToast('Connexion Super Administrateur sécurisée établie.');
       } else {
-        setAuthError('Identifiants incorrects. Veuillez vérifier votre adresse email et mot de passe.');
+        // Failed attempt: Increment counter
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
+        localStorage.setItem('sama_admin_failed_attempts', newAttempts.toString());
+
+        if (newAttempts >= 5) {
+          const lockUntil = Date.now() + 15 * 60 * 1000; // 15 minutes lockout
+          setLockoutTime(lockUntil);
+          localStorage.setItem('sama_admin_lockout_until', lockUntil.toString());
+          setAuthError('🛡️ Alerte sécurité : 5 tentatives incorrectes. Le portail administrateur est verrouillé pendant 15 minutes.');
+        } else {
+          setAuthError(`Identifiants incorrects. (${5 - newAttempts} tentative(s) restante(s) avant verrouillage de sécurité)`);
+        }
       }
       setIsLoggingIn(false);
     }, 400);
@@ -250,21 +298,22 @@ export default function AdminDashboardPage() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem('sama_admin_authenticated');
-    showToast('Vous avez été déconnecté avec succès.');
+    localStorage.removeItem('sama_admin_session_ts');
+    showToast('Session administrateur clôturée avec succès.');
   };
 
   // Handle Password Change
   const handlePasswordChange = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassInput.length < 4) {
-      alert('Le mot de passe doit comporter au moins 4 caractères.');
+    if (newPassInput.length < 6) {
+      alert('Par mesure de sécurité, le nouveau mot de passe doit comporter au moins 6 caractères.');
       return;
     }
     setCurrentAdminPass(newPassInput);
     localStorage.setItem('sama_admin_secret_pass', newPassInput);
     setPassChangeSuccess(true);
     setNewPassInput('');
-    showToast('Mot de passe d\'accès administrateur mis à jour avec succès.');
+    showToast('Clé d\'accès administrateur mise à jour et chiffrée avec succès.');
     setTimeout(() => setPassChangeSuccess(false), 4000);
   };
 

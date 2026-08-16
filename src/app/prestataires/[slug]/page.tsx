@@ -526,31 +526,6 @@ export default function ProviderProfilePage() {
 
               </div>
 
-              {/* Verified Trust Checklist */}
-              {provider.documentsVerified && (
-                <div className="mt-6 p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-wrap items-center gap-4 text-xs font-bold text-slate-700">
-                  <span className="text-slate-400 uppercase tracking-wider text-[10px]">Garanties de confiance :</span>
-                  {provider.documentsVerified.cni && (
-                    <span className="flex items-center gap-1 text-emerald-700">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>Pièce d'Identité Validée</span>
-                    </span>
-                  )}
-                  {provider.documentsVerified.businessRegister && (
-                    <span className="flex items-center gap-1 text-emerald-700">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>NINEA / Registre Pro</span>
-                    </span>
-                  )}
-                  {provider.documentsVerified.diploma && (
-                    <span className="flex items-center gap-1 text-emerald-700">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>Diplôme / Formation Certifiée</span>
-                    </span>
-                  )}
-                </div>
-              )}
-
             </div>
 
             {/* Navigation Tabs */}

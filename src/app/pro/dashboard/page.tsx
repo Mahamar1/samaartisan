@@ -55,6 +55,11 @@ export default function ProviderDashboardPage() {
       if (storedUser) {
         const parsed: Provider = JSON.parse(storedUser);
         if (parsed && (parsed.name || parsed.phone)) {
+          // Garantir un slug valide
+          if (!parsed.slug) {
+            parsed.slug = (parsed.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            localStorage.setItem('samapro_current_user', JSON.stringify(parsed));
+          }
           setCurrentProvider(parsed);
           setName(parsed.name || '');
           setBusinessName(parsed.businessName || '');
@@ -71,10 +76,14 @@ export default function ProviderDashboardPage() {
       setIsLoading(false);
     }
 
-    // 2. Charger les demandes réelles enregistrées
+    // 2. Charger les demandes réelles enregistrées (en nettoyant tout reliquat de fausse demande)
     try {
       const storedReqs = JSON.parse(localStorage.getItem('samapro_requests') || '[]');
-      setRequests(storedReqs);
+      const realReqs = Array.isArray(storedReqs) 
+        ? storedReqs.filter((r: any) => r && r.id !== 'req-init-1' && r.customerName !== 'Aïssatou Sow')
+        : [];
+      setRequests(realReqs);
+      localStorage.setItem('samapro_requests', JSON.stringify(realReqs));
     } catch (err) {
       console.error('Error loading requests:', err);
       setRequests([]);
@@ -297,12 +306,11 @@ export default function ProviderDashboardPage() {
               </button>
 
               <Link
-                href={`/prestataires/${currentProvider.slug}`}
-                target="_blank"
+                href={`/prestataires/${currentProvider.slug || (currentProvider.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                 className="px-4 py-2.5 rounded-xl text-xs font-bold bg-sama-600 hover:bg-sama-700 text-white flex items-center gap-2 shadow-lg shadow-sama-600/30 transition-all active:scale-95"
               >
                 <ExternalLink className="w-4 h-4" />
-                <span>Voir ma vitrine publique</span>
+                <span>Voir mon profil public</span>
               </Link>
 
               <button

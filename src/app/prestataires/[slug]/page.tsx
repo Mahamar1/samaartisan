@@ -44,38 +44,105 @@ export default function ProviderProfilePage() {
   // Fetch live artisan details from Supabase or local session
   useEffect(() => {
     if (!slug) return;
+    const decodedSlug = decodeURIComponent(slug).toLowerCase().trim();
 
-    // 1. Check if logged in artisan profile in localStorage matches this slug
+    // 1. Check if logged in artisan profile in localStorage matches this slug or is the active pro
     try {
       const stored = localStorage.getItem('samapro_current_user');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed.slug === slug || parsed.id === slug) {
+        const pSlug = (parsed.slug || '').toLowerCase();
+        const pNameSlug = (parsed.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        if (
+          pSlug === decodedSlug || 
+          parsed.id === decodedSlug || 
+          pNameSlug === decodedSlug ||
+          decodedSlug === 'mon-profil' ||
+          decodedSlug === 'me'
+        ) {
           setProvider(parsed);
           setReviews(parsed.reviews || []);
           setLoading(false);
+          return;
         }
       }
     } catch (e) {}
 
-    // 2. Fetch from Supabase
-    getProviderBySlug(slug).then((livePro) => {
+    // 2. Check in registered accounts
+    try {
+      const accounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
+      const matched = accounts.find((a: any) => {
+        const aSlug = (a.slug || '').toLowerCase();
+        const aNameSlug = (a.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        return aSlug === decodedSlug || a.id === decodedSlug || aNameSlug === decodedSlug;
+      });
+
+      if (matched) {
+        const proUser: Provider = {
+          id: matched.id || `pro-${Date.now()}`,
+          slug: matched.slug || matched.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          name: matched.name,
+          businessName: matched.businessName || matched.name,
+          phone: matched.phone,
+          categorySlug: matched.categorySlug || 'plomberie',
+          categoryName: matched.categoryName || 'Artisanat & Services',
+          neighborhood: matched.neighborhood || 'Dakar',
+          city: 'Dakar',
+          avatar: matched.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
+          bio: matched.bio || `Artisan professionnel qualifié au Sénégal.`,
+          verificationLevel: 'ID_VERIFIED',
+          averageRating: 5.0,
+          reviewCount: 0,
+          portfolio: []
+        };
+        setProvider(proUser);
+        setReviews([]);
+        setLoading(false);
+        return;
+      }
+    } catch (e) {}
+
+    // 3. Fetch from Supabase
+    getProviderBySlug(decodedSlug).then((livePro) => {
       if (livePro) {
         let finalPro = livePro;
         try {
           const stored = localStorage.getItem('samapro_current_user');
           if (stored) {
             const parsed = JSON.parse(stored);
-            if (parsed.slug === slug || parsed.id === livePro.id) {
+            if (parsed.slug === livePro.slug || parsed.id === livePro.id) {
               finalPro = { ...livePro, ...parsed };
             }
           }
         } catch (e) {}
         setProvider(finalPro);
         setReviews(finalPro.reviews || []);
+      } else {
+        // Fallback to active logged in pro if available
+        try {
+          const stored = localStorage.getItem('samapro_current_user');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && (parsed.name || parsed.phone)) {
+              setProvider(parsed);
+              setReviews(parsed.reviews || []);
+            }
+          }
+        } catch (e) {}
       }
       setLoading(false);
     }).catch(() => {
+      // Fallback on error
+      try {
+        const stored = localStorage.getItem('samapro_current_user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && (parsed.name || parsed.phone)) {
+            setProvider(parsed);
+            setReviews(parsed.reviews || []);
+          }
+        }
+      } catch (e) {}
       setLoading(false);
     });
   }, [slug]);

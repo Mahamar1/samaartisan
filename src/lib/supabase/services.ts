@@ -72,12 +72,15 @@ export async function getProviders(): Promise<Provider[]> {
 
 // 2. FETCH A SINGLE PROVIDER BY SLUG (Supabase Live with Fallback)
 export async function getProviderBySlug(slug: string): Promise<Provider | null> {
+  if (!slug || slug === 'undefined' || slug === 'null') return null;
+  const decodedSlug = decodeURIComponent(slug).toLowerCase().trim();
+
   if (isSupabaseConfigured()) {
     try {
       const { data, error } = await supabase
         .from('providers')
         .select('*')
-        .eq('slug', slug)
+        .or(`slug.eq.${decodedSlug},id.eq.${decodedSlug}`)
         .maybeSingle();
 
       if (!error && data) {
@@ -89,7 +92,12 @@ export async function getProviderBySlug(slug: string): Promise<Provider | null> 
   }
 
   const all = await getProviders();
-  return all.find((p) => p.slug === slug) || null;
+  return all.find((p) => {
+    if (!p) return false;
+    const pSlug = (p.slug || '').toLowerCase();
+    const pNameSlug = (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    return pSlug === decodedSlug || p.id === decodedSlug || pNameSlug === decodedSlug;
+  }) || null;
 }
 
 // 3. REGISTER A NEW ARTISAN (Supabase Live Insert)

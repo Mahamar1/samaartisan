@@ -50,7 +50,12 @@ export async function getProviders(): Promise<Provider[]> {
         .order('created_at', { ascending: false });
 
       if (!error && data && data.length > 0) {
-        dbPros = data.map(mapDbProviderToApp);
+        // Exclude internal client accounts from public artisan search
+        const actualArtisans = data.filter(item => 
+          item.category_name !== 'Client Particulier' && 
+          !item.slug?.startsWith('usr-')
+        );
+        dbPros = actualArtisans.map(mapDbProviderToApp);
       }
     } catch (err) {
       console.warn('Supabase fetch failed, falling back to local dataset:', err);
@@ -324,5 +329,244 @@ export async function logServiceRequest(request: {
     } catch (err) {
       console.warn('Logging request failed:', err);
     }
+  }
+}
+
+// 7. CROSS-DEVICE USER ACCOUNT REGISTRATION & CLOUD SYNC
+export interface UserAccountData {
+  name: string;
+  phone: string;
+  email?: string;
+  password?: string;
+  role?: 'user' | 'pro' | 'admin';
+  businessName?: string;
+  categorySlug?: string;
+  categoryName?: string;
+  neighborhood?: string;
+}
+
+export async function registerUserAccount(userData: UserAccountData): Promise<{ success: boolean; user?: any; error?: string }> {
+  try {
+    const cleanPhone = userData.phone ? userData.phone.replace(/[^0-9]/g, '') : '';
+    const cleanEmail = userData.email ? userData.email.trim().toLowerCase() : '';
+    const cleanName = userData.name ? userData.name.trim() : 'Utilisateur Sama';
+    const role = userData.role || 'user';
+    const password = userData.password || '';
+    const passwordHash = typeof btoa !== 'undefined' ? btoa(password) : Buffer.from(password).toString('base64');
+    const slug = `usr-${cleanPhone || Date.now()}`;
+
+    // 1. Cloud Save in Supabase
+    if (isSupabaseConfigured()) {
+      try {
+        const metadata = {
+          email: cleanEmail,
+          passwordHash,
+          password,
+          role,
+          businessName: userData.businessName || cleanName,
+          registeredAt: new Date().toISOString()
+        };
+
+        const { data, error } = await supabase
+          .from('providers')
+          .insert([{
+            slug,
+            name: cleanName,
+            business_name: userData.businessName || (role === 'pro' ? cleanName : `Compte Client (${cleanName})`),
+            phone: userData.phone.trim(),
+            whatsapp: cleanPhone || '221770000000',
+            category_slug: userData.categorySlug || 'plomberie',
+            category_name: role === 'pro' ? (userData.categoryName || 'Artisan') : 'Client Particulier',
+            neighborhood: userData.neighborhood || 'Dakar',
+            verification_level: 'ID_VERIFIED',
+            bio: JSON.stringify(metadata)
+          }])
+          .select();
+
+        if (error) {
+          console.warn('Supabase account register note:', error.message);
+        }
+      } catch (err) {
+        console.warn('Supabase register exception:', err);
+      }
+    }
+
+    const newUser = {
+      name: cleanName,
+      phone: userData.phone.trim(),
+      email: cleanEmail,
+      role,
+      passwordHash,
+      businessName: userData.businessName || cleanName,
+      categorySlug: userData.categorySlug,
+      categoryName: userData.categoryName,
+      neighborhood: userData.neighborhood,
+      registeredAt: new Date().toISOString()
+    };
+
+    // 2. Local Cache
+    if (typeof window !== 'undefined') {
+      const existingAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
+      const filtered = existingAccounts.filter((a: any) => {
+        const aClean = (a.phone || '').replace(/[^0-9]/g, '');
+        return aClean !== cleanPhone;
+      });
+      filtered.push(newUser);
+      localStorage.setItem('sama_registered_accounts', JSON.stringify(filtered));
+      localStorage.setItem('sama_user_session', JSON.stringify(newUser));
+
+      if (role === 'pro') {
+        localStorage.setItem('samapro_current_user', JSON.stringify(newUser));
+      }
+
+      window.dispatchEvent(new Event('storage'));
+    }
+
+    return { success: true, user: newUser };
+  } catch (err: any) {
+    console.error('registerUserAccount error:', err);
+    return { success: false, error: err.message || "Erreur lors de l'enregistrement." };
+  }
+}
+
+// 8. CROSS-DEVICE USER LOGIN & INSTANT CLOUD SYNC
+export async function loginUserAccount(identifier: string, password: string): Promise<{ success: boolean; user?: any; error?: string }> {
+  try {
+    const cleanIdent = identifier.trim().toLowerCase();
+    const cleanDigits = identifier.replace(/[^0-9]/g, '');
+    const givenHash = typeof btoa !== 'undefined' ? btoa(password) : Buffer.from(password).toString('base64');
+
+    let foundUser: any = null;
+
+    // 1. Check Cloud Supabase First (Enables cross-device phone <-> PC sync)
+    if (isSupabaseConfigured()) {
+      try {
+        const { data: dbPros } = await supabase
+          .from('providers')
+          .select('*');
+
+        if (dbPros && dbPros.length > 0) {
+          const match = dbPros.find((p: any) => {
+            const pPhoneDigits = (p.phone || '').replace(/[^0-9]/g, '');
+            const pWhatsAppDigits = (p.whatsapp || '').replace(/[^0-9]/g, '');
+            
+            // Check direct phone matches
+            if (cleanDigits.length >= 7) {
+              if (pPhoneDigits.includes(cleanDigits) || cleanDigits.includes(pPhoneDigits)) return true;
+              if (pWhatsAppDigits.includes(cleanDigits) || cleanDigits.includes(pWhatsAppDigits)) return true;
+            }
+
+            // Check metadata in bio
+            try {
+              if (p.bio && p.bio.startsWith('{')) {
+                const meta = JSON.parse(p.bio);
+                if (meta.email && meta.email.toLowerCase() === cleanIdent) return true;
+                if (meta.phone && meta.phone.replace(/[^0-9]/g, '').includes(cleanDigits)) return true;
+              }
+            } catch (e) {}
+
+            return false;
+          });
+
+          if (match) {
+            let meta: any = {};
+            try {
+              if (match.bio && match.bio.startsWith('{')) {
+                meta = JSON.parse(match.bio);
+              }
+            } catch (e) {}
+
+            const isPro = match.category_name !== 'Client Particulier' && !match.slug?.startsWith('usr-');
+            const expectedHash = meta.passwordHash;
+            const expectedPlain = meta.password;
+
+            // Password check (if password was stored)
+            if (expectedHash || expectedPlain) {
+              const matches = (expectedHash && expectedHash === givenHash) || (expectedPlain && expectedPlain === password);
+              if (!matches) {
+                return { success: false, error: 'Mot de passe incorrect. Veuillez vérifier votre mot de passe.' };
+              }
+            }
+
+            foundUser = {
+              name: match.name,
+              phone: match.phone,
+              email: meta.email || (isPro ? 'pro@samaartisan.sn' : 'client@samaartisan.sn'),
+              role: isPro ? 'pro' : (meta.role || 'user'),
+              businessName: match.business_name,
+              categorySlug: match.category_slug,
+              categoryName: match.category_name,
+              neighborhood: match.neighborhood,
+              avatar: match.avatar,
+              registeredAt: match.created_at || new Date().toISOString()
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase cloud login fetch failed:', err);
+      }
+    }
+
+    // 2. Check Local Storage fallback
+    if (!foundUser && typeof window !== 'undefined') {
+      const localAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
+      const localMatch = localAccounts.find((a: any) => {
+        const aDigits = (a.phone || '').replace(/[^0-9]/g, '');
+        const aEmail = (a.email || '').toLowerCase();
+        return (cleanDigits.length >= 7 && (aDigits.includes(cleanDigits) || cleanDigits.includes(aDigits))) || (aEmail && aEmail === cleanIdent);
+      });
+
+      if (localMatch) {
+        if (localMatch.passwordHash && localMatch.passwordHash !== givenHash && localMatch.password !== password) {
+          return { success: false, error: 'Mot de passe incorrect. Veuillez vérifier votre mot de passe.' };
+        }
+        foundUser = localMatch;
+      }
+
+      // Check Pro session fallback
+      if (!foundUser) {
+        const storedPro = localStorage.getItem('samapro_current_user');
+        if (storedPro) {
+          try {
+            const p = JSON.parse(storedPro);
+            const pDigits = (p.phone || '').replace(/[^0-9]/g, '');
+            if (cleanDigits.length >= 7 && (pDigits.includes(cleanDigits) || cleanDigits.includes(pDigits))) {
+              foundUser = {
+                name: p.name,
+                phone: p.phone,
+                email: p.email || 'pro@samaartisan.sn',
+                role: 'pro',
+                businessName: p.businessName || p.name
+              };
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
+    if (!foundUser) {
+      return { success: false, error: "Aucun compte trouvé avec ce numéro ou email. Veuillez d'abord créer un compte." };
+    }
+
+    // 3. Activate session locally on device
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sama_user_session', JSON.stringify(foundUser));
+      if (foundUser.role === 'pro') {
+        localStorage.setItem('samapro_current_user', JSON.stringify(foundUser));
+      }
+      
+      const localAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
+      if (!localAccounts.some((a: any) => a.phone === foundUser.phone)) {
+        localAccounts.push(foundUser);
+        localStorage.setItem('sama_registered_accounts', JSON.stringify(localAccounts));
+      }
+
+      window.dispatchEvent(new Event('storage'));
+    }
+
+    return { success: true, user: foundUser };
+  } catch (err: any) {
+    console.error('loginUserAccount error:', err);
+    return { success: false, error: err.message || 'Erreur lors de la connexion.' };
   }
 }

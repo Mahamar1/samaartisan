@@ -17,7 +17,7 @@ import {
   Globe2
 } from 'lucide-react';
 import { CATEGORIES, SENEGAL_REGIONS } from '@/lib/data';
-import { registerArtisan } from '@/lib/supabase/services';
+import { registerArtisan, registerUserAccount } from '@/lib/supabase/services';
 
 export default function InscriptionPage() {
   const router = useRouter();
@@ -102,26 +102,18 @@ export default function InscriptionPage() {
       const res = await registerArtisan(newRegistration);
       const savedArtisan = res?.data || newRegistration;
 
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('samapro_current_user', JSON.stringify(savedArtisan));
-        
-        // Enregistrer également dans sama_registered_accounts pour la connexion
-        accounts.push({
-          name: savedArtisan.name,
-          phone: savedArtisan.phone,
-          email: cleanEmail,
-          role: 'pro',
-          registeredAt: new Date().toISOString()
-        });
-        localStorage.setItem('sama_registered_accounts', JSON.stringify(accounts));
-        localStorage.setItem('sama_user_session', JSON.stringify({
-          name: savedArtisan.name,
-          phone: savedArtisan.phone,
-          email: cleanEmail,
-          role: 'pro'
-        }));
-        window.dispatchEvent(new Event('storage'));
-      }
+      // Register account credentials for cross-device login
+      await registerUserAccount({
+        name: newRegistration.name,
+        phone: newRegistration.phone,
+        email: cleanEmail,
+        password: password,
+        role: 'pro',
+        businessName: newRegistration.businessName,
+        categorySlug: newRegistration.categorySlug,
+        categoryName: newRegistration.categoryName,
+        neighborhood: newRegistration.neighborhood
+      });
 
       setRegisteredSuccess(savedArtisan);
     } catch (err) {

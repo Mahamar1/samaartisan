@@ -39,7 +39,7 @@ import {
   Check
 } from 'lucide-react';
 import { CATEGORIES, SENEGAL_REGIONS } from '@/lib/data';
-import { logServiceRequest } from '@/lib/supabase/services';
+import { logServiceRequest, registerUserAccount, loginUserAccount } from '@/lib/supabase/services';
 
 export default function HomePage() {
   const [sessionUser, setSessionUser] = useState<any>(null);
@@ -78,7 +78,7 @@ export default function HomePage() {
     }
   }, []);
 
-  const handleRegisterEntry = (e: React.FormEvent) => {
+  const handleRegisterEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
@@ -101,60 +101,30 @@ export default function HomePage() {
 
     setIsSubmitting(true);
 
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
-
     try {
-      const existingAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
-      
-      // 1. Vérifier si l'adresse email existe déjà
-      const emailExists = existingAccounts.some(
-        (a: any) => a.email && a.email.toLowerCase() === cleanEmail
-      );
-      if (emailExists) {
-        setFormError('Cette adresse email est déjà associée à un compte. Veuillez vous connecter avec vos identifiants.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // 2. Vérifier si le numéro de téléphone existe déjà
-      const phoneExists = existingAccounts.some((a: any) => {
-        if (!a.phone || cleanPhone.length < 6) return false;
-        const aCleanPhone = a.phone.replace(/[^0-9]/g, '');
-        return aCleanPhone.includes(cleanPhone) || cleanPhone.includes(aCleanPhone);
+      const res = await registerUserAccount({
+        name: fullName,
+        phone,
+        email,
+        password,
+        role: 'user'
       });
-      if (phoneExists) {
-        setFormError('Ce numéro de téléphone est déjà associé à un compte. Veuillez vous connecter avec vos identifiants.');
+
+      if (!res.success) {
+        setFormError(res.error || "Une erreur est survenue lors de l'inscription.");
         setIsSubmitting(false);
         return;
       }
 
-      const newUser = {
-        name: fullName.trim(),
-        phone: phone.trim(),
-        email: cleanEmail,
-        role: 'user',
-        passwordHash: btoa(password),
-        registeredAt: new Date().toISOString()
-      };
+      setSessionUser(res.user);
 
-      // Sauvegarder dans la base locale
-      existingAccounts.push(newUser);
-      localStorage.setItem('sama_registered_accounts', JSON.stringify(existingAccounts));
-
-      // Activer la session
-      localStorage.setItem('sama_user_session', JSON.stringify(newUser));
-      setSessionUser(newUser);
-
-      // Log anonyme dans Supabase
+      // Log request to Supabase
       logServiceRequest({
-        clientName: newUser.name,
-        clientPhone: newUser.phone,
-        serviceType: 'Création Compte Utilisateur',
+        clientName: res.user.name,
+        clientPhone: res.user.phone,
+        serviceType: 'Création Compte Utilisateur (Cross-Device)',
         channel: 'FORM'
       }).catch(() => {});
-
-      window.dispatchEvent(new Event('storage'));
     } catch (err) {
       console.error(err);
       setFormError("Une erreur est survenue lors de l'inscription.");
@@ -163,7 +133,7 @@ export default function HomePage() {
     }
   };
 
-  const handleQuickLogin = (e: React.FormEvent) => {
+  const handleQuickLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
@@ -176,63 +146,23 @@ export default function HomePage() {
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
-      const existingAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
-      const cleanIdent = loginIdentifier.trim().toLowerCase();
-      const cleanDigits = loginIdentifier.replace(/[^0-9]/g, '');
+      const res = await loginUserAccount(loginIdentifier, loginPassword);
 
-      // 1. Chercher dans les comptes enregistrés
-      const found = existingAccounts.find(
-        (a: any) =>
-          (a.email && a.email.toLowerCase() === cleanIdent) ||
-          (cleanDigits.length >= 7 && a.phone && a.phone.replace(/[^0-9]/g, '').includes(cleanDigits)) ||
-          (cleanDigits.length >= 7 && a.phone && cleanDigits.includes(a.phone.replace(/[^0-9]/g, '')))
-      );
-
-      // 2. Chercher dans les artisans enregistrés localement
-      let foundPro = null;
-      const storedProStr = localStorage.getItem('samapro_current_user');
-      if (storedProStr) {
-        try {
-          const proObj = JSON.parse(storedProStr);
-          if (
-            (proObj.email && proObj.email.toLowerCase() === cleanIdent) ||
-            (cleanDigits.length >= 7 && proObj.phone && proObj.phone.replace(/[^0-9]/g, '').includes(cleanDigits)) ||
-            (cleanDigits.length >= 7 && proObj.phone && cleanDigits.includes(proObj.phone.replace(/[^0-9]/g, '')))
-          ) {
-            foundPro = proObj;
-          }
-        } catch (e) {}
-      }
-
-      // Si le compte n'existe pas du tout : REFUSER LA CONNEXION et demander de créer un compte
-      if (!found && !foundPro) {
-        setFormError("Aucun compte trouvé avec ces identifiants. Vous devez d'abord créer un compte.");
+      if (!res.success) {
+        setFormError(res.error || 'Erreur de connexion. Veuillez vérifier vos identifiants.');
+        setIsSubmitting(false);
         return;
       }
 
-      // Si le compte existe avec un mot de passe hashé, vérifier la validité
-      if (found && found.passwordHash) {
-        if (btoa(loginPassword) !== found.passwordHash && loginPassword !== found.password) {
-          setFormError('Mot de passe incorrect. Veuillez vérifier votre saisie.');
-          return;
-        }
-      }
-
-      const user = found || {
-        name: foundPro?.name || foundPro?.businessName || 'Artisan Sama',
-        phone: foundPro?.phone || loginIdentifier,
-        email: foundPro?.email || 'artisan@samaartisan.sn',
-        role: 'pro',
-        registeredAt: new Date().toISOString()
-      };
-
-      localStorage.setItem('sama_user_session', JSON.stringify(user));
-      setSessionUser(user);
-      window.dispatchEvent(new Event('storage'));
+      setSessionUser(res.user);
     } catch (err) {
       console.error(err);
       setFormError('Erreur de connexion. Veuillez réessayer.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

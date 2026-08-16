@@ -64,6 +64,7 @@ export interface Provider {
   categoryName: string;
   specialties: string[];
   city: string;
+  region?: string;
   neighborhood: string;
   latitude: number;
   longitude: number;

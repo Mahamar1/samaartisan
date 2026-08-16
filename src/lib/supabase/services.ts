@@ -212,6 +212,8 @@ export async function updateProvider(id: string, updates: Partial<Provider>) {
       const dbUpdates: any = {};
       if (updates.verificationLevel !== undefined) dbUpdates.verification_level = updates.verificationLevel;
       if (updates.isAvailable !== undefined) dbUpdates.is_available = updates.isAvailable;
+      if (updates.bio !== undefined) dbUpdates.bio = updates.bio;
+      if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
       if (updates.name !== undefined) dbUpdates.name = updates.name;
       if (updates.businessName !== undefined) dbUpdates.business_name = updates.businessName;
       if (updates.phone !== undefined) dbUpdates.phone = updates.phone;

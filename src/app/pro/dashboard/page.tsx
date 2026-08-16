@@ -10,7 +10,6 @@ import {
   PhoneCall, 
   CheckCircle2, 
   Clock, 
-  CreditCard, 
   Sparkles, 
   ShieldCheck, 
   Settings, 
@@ -18,47 +17,20 @@ import {
   Plus, 
   Trash2,
   ExternalLink,
-  LogOut
+  LogOut,
+  Wrench,
+  ArrowRight,
+  Share2,
+  MapPin,
+  Inbox
 } from 'lucide-react';
-import { PROVIDERS, formatFcfa } from '@/lib/data';
+import { formatFcfa } from '@/lib/data';
 import { Provider, ServiceRequest } from '@/lib/types';
-import { getProviders } from '@/lib/supabase/services';
-
-const DEFAULT_PRO_FALLBACK: Provider = {
-  id: 'pro-me',
-  slug: 'mon-profil-artisan',
-  name: 'Mon Compte Artisan',
-  businessName: 'Entreprise Artisanale',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-  headline: 'Artisan Professionnel Certifié',
-  bio: 'Bienvenue sur votre espace professionnel.',
-  categorySlug: 'plomberie',
-  categoryName: 'Artisanat & Services',
-  specialties: ['Dépannage', 'Installation'],
-  city: 'Dakar',
-  neighborhood: 'Dakar',
-  latitude: 14.7167,
-  longitude: -17.4677,
-  interventionRadiusKm: 20,
-  phone: '+221 77 000 00 00',
-  whatsapp: '221770000000',
-  experienceYears: 5,
-  verificationLevel: 'ID_VERIFIED',
-  subscriptionTier: 'FREE',
-  isAvailable: true,
-  averageRating: 5.0,
-  reviewCount: 0,
-  completedJobsCount: 0,
-  responseTimeMinutes: 15,
-  services: [],
-  portfolio: [],
-  reviews: [],
-  startingPrice: 15000,
-  joinedDate: '2026-01-01'
-};
+import { updateProvider } from '@/lib/supabase/services';
 
 export default function ProviderDashboardPage() {
-  const [currentProvider, setCurrentProvider] = useState<Provider>(DEFAULT_PRO_FALLBACK);
+  const [currentProvider, setCurrentProvider] = useState<Provider | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [activeTab, setActiveTab] = useState<'requests' | 'profile'>('requests');
   
@@ -67,71 +39,45 @@ export default function ProviderDashboardPage() {
   const [businessName, setBusinessName] = useState('');
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
   const [avatar, setAvatar] = useState('');
   const [portfolio, setPortfolio] = useState<{ id: string; title: string; imageUrl: string; description?: string }[]>([]);
   const [savedToast, setSavedToast] = useState(false);
+  const [shareToast, setShareToast] = useState(false);
 
   const avatarInputRef = React.useRef<HTMLInputElement>(null);
   const portfolioInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // 1. Load current logged in artisan profile from localStorage or Supabase
+    // 1. Charger UNIQUEMENT le profil de l'artisan actuellement connecté
     try {
       const storedUser = localStorage.getItem('samapro_current_user');
       if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        setCurrentProvider(parsed);
-        setName(parsed.name || '');
-        setBusinessName(parsed.businessName || '');
-        setPhone(parsed.phone || '');
-        setBio(parsed.bio || '');
-        setAvatar(parsed.avatar || DEFAULT_PRO_FALLBACK.avatar);
-        setPortfolio(parsed.portfolio || []);
-      } else {
-        // Fetch from Supabase
-        getProviders().then((pros) => {
-          if (pros && pros.length > 0) {
-            const p = pros[0];
-            setCurrentProvider(p);
-            setName(p.name || '');
-            setBusinessName(p.businessName || '');
-            setPhone(p.phone || '');
-            setBio(p.bio || '');
-            setAvatar(p.avatar || DEFAULT_PRO_FALLBACK.avatar);
-            setPortfolio(p.portfolio || []);
-          }
-        });
+        const parsed: Provider = JSON.parse(storedUser);
+        if (parsed && (parsed.name || parsed.phone)) {
+          setCurrentProvider(parsed);
+          setName(parsed.name || '');
+          setBusinessName(parsed.businessName || '');
+          setPhone(parsed.phone || '');
+          setBio(parsed.bio || '');
+          setNeighborhood(parsed.neighborhood || 'Dakar');
+          setAvatar(parsed.avatar || '');
+          setPortfolio(parsed.portfolio || []);
+        }
       }
     } catch (e) {
-      console.error(e);
+      console.error('Error loading provider profile:', e);
+    } finally {
+      setIsLoading(false);
     }
 
-    // 2. Load requests
+    // 2. Charger les demandes réelles enregistrées
     try {
-      const stored = JSON.parse(localStorage.getItem('samapro_requests') || '[]');
-      if (stored.length > 0) {
-        setRequests(stored);
-      } else {
-        // Initial requests
-        setRequests([
-          {
-            id: 'req-init-1',
-            customerName: 'Aïssatou Sow',
-            customerPhone: '77 645 12 34',
-            providerId: 'pro-me',
-            providerName: 'Mon Entreprise',
-            serviceCategory: 'Dépannage à Domicile',
-            description: 'Bonjour, j\'ai besoin d\'un devis rapide pour une intervention à Dakar.',
-            neighborhood: 'Almadies',
-            urgency: 'IMMEDIATE',
-            budgetIndicative: 25000,
-            status: 'PENDING',
-            createdAt: 'Aujourd\'hui',
-          }
-        ]);
-      }
+      const storedReqs = JSON.parse(localStorage.getItem('samapro_requests') || '[]');
+      setRequests(storedReqs);
     } catch (err) {
-      console.error(err);
+      console.error('Error loading requests:', err);
+      setRequests([]);
     }
   }, []);
 
@@ -183,25 +129,54 @@ export default function ProviderDashboardPage() {
     setPortfolio((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentProvider) return;
+
     const updated: Provider = {
       ...currentProvider,
-      name: name || currentProvider.name,
-      businessName: businessName || currentProvider.businessName,
-      phone: phone || currentProvider.phone,
-      bio: bio || currentProvider.bio,
+      name: name.trim() || currentProvider.name,
+      businessName: businessName.trim() || currentProvider.businessName,
+      phone: phone.trim() || currentProvider.phone,
+      bio: bio.trim() || currentProvider.bio,
+      neighborhood: neighborhood.trim() || currentProvider.neighborhood,
       avatar: avatar || currentProvider.avatar,
       portfolio: portfolio,
     };
+
     setCurrentProvider(updated);
+
     try {
+      // Sauvegarder dans localStorage
       localStorage.setItem('samapro_current_user', JSON.stringify(updated));
+      
+      // Mettre à jour dans Supabase si l'id existe
+      if (updated.id) {
+        await updateProvider(updated.id, {
+          name: updated.name,
+          businessName: updated.businessName,
+          phone: updated.phone,
+          bio: updated.bio,
+          neighborhood: updated.neighborhood,
+          avatar: updated.avatar
+        });
+      }
+
       window.dispatchEvent(new Event('storage'));
       setSavedToast(true);
-      setTimeout(() => setSavedToast(false), 3000);
+      setTimeout(() => setSavedToast(false), 3500);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleShareProfile = () => {
+    if (!currentProvider) return;
+    const url = typeof window !== 'undefined' ? `${window.location.origin}/prestataires/${currentProvider.slug}` : `https://samaartisan.vercel.app/prestataires/${currentProvider.slug}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      setShareToast(true);
+      setTimeout(() => setShareToast(false), 3000);
     }
   };
 
@@ -210,11 +185,56 @@ export default function ProviderDashboardPage() {
       localStorage.removeItem('samapro_current_user');
       localStorage.removeItem('sama_user_session');
       window.dispatchEvent(new Event('storage'));
-      window.location.href = '/';
+      window.location.href = '/connexion';
     } catch (e) {
-      window.location.href = '/';
+      window.location.href = '/connexion';
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sama-600"></div>
+      </div>
+    );
+  }
+
+  // SI AUCUN ARTISAN N'EST CONNECTÉ : Pas de compte par défaut factice !
+  if (!currentProvider) {
+    return (
+      <div className="min-h-[75vh] flex items-center justify-center px-4 py-12 bg-slate-50">
+        <div className="w-full max-w-lg bg-white rounded-3xl p-8 border border-slate-200 shadow-xl text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-sama-600 to-emerald-500 flex items-center justify-center text-white mx-auto shadow-lg">
+            <Wrench className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-2xl font-black text-navy-950">Espace Professionnel Artisan</h1>
+            <p className="text-sm text-slate-600 leading-relaxed max-w-md mx-auto">
+              Vous n'êtes pas encore connecté à votre compte artisan. Créez votre profil avec vos vraies coordonnées ou connectez-vous pour accéder à votre espace de gestion.
+            </p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <Link
+              href="/inscription"
+              className="w-full py-3.5 bg-gradient-to-r from-sama-600 to-emerald-600 hover:from-sama-700 hover:to-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 active:scale-95"
+            >
+              <span>Créer mon profil Artisan (100% Gratuit)</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
+            <Link
+              href="/connexion"
+              className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+            >
+              <span>Se connecter avec mes identifiants</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
@@ -223,46 +243,75 @@ export default function ProviderDashboardPage() {
       {savedToast && (
         <div className="fixed top-20 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl font-bold text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
           <CheckCircle2 className="w-4 h-4" />
-          <span>Profil et photo enregistrés avec succès !</span>
+          <span>Vos vraies informations ont été enregistrées avec succès !</span>
         </div>
       )}
 
-      {/* Top Banner */}
+      {/* Toast Share */}
+      {shareToast && (
+        <div className="fixed top-20 right-6 z-50 bg-navy-900 text-white px-5 py-3 rounded-2xl shadow-xl font-bold text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top-2 border border-slate-700">
+          <Share2 className="w-4 h-4 text-sama-400" />
+          <span>Lien de votre vitrine copié ! Vous pouvez le coller sur WhatsApp ou Facebook.</span>
+        </div>
+      )}
+
+      {/* Top Banner avec les VRAIES informations de l'artisan */}
       <div className="bg-gradient-to-r from-navy-950 via-slate-900 to-navy-900 text-white py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-sama-500 shadow-xl shrink-0 bg-slate-800">
-                <img src={avatar || currentProvider.avatar} alt={currentProvider.name} className="w-full h-full object-cover" />
+                <img 
+                  src={avatar || currentProvider.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80'} 
+                  alt={currentProvider.name} 
+                  className="w-full h-full object-cover" 
+                />
               </div>
               <div className="space-y-1">
-                <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight">
-                  Mon Espace Artisan : <span className="text-sama-400">{currentProvider.name || currentProvider.businessName}</span>
-                </h1>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                    {currentProvider.name}
+                  </h1>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold">
+                    Profil Actif & En Ligne
+                  </span>
+                </div>
                 <p className="text-xs sm:text-sm text-slate-300">
-                  {currentProvider.businessName} • {currentProvider.categoryName} • {currentProvider.neighborhood}, Dakar
+                  {currentProvider.businessName} • {currentProvider.categoryName} • {currentProvider.neighborhood || 'Dakar'}, Sénégal
+                </p>
+                <p className="text-xs text-slate-400 flex items-center gap-1">
+                  <span>Tél : <strong>{currentProvider.phone}</strong></span>
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                onClick={handleShareProfile}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 flex items-center gap-2 transition-all active:scale-95"
+                title="Partager mon lien"
+              >
+                <Share2 className="w-4 h-4 text-sama-400" />
+                <span>Partager mon lien</span>
+              </button>
+
               <Link
                 href={`/prestataires/${currentProvider.slug}`}
                 target="_blank"
-                className="px-5 py-3 rounded-2xl text-xs font-bold bg-sama-600 hover:bg-sama-700 text-white flex items-center gap-2 shadow-lg shadow-sama-600/30 transition-all active:scale-95"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-sama-600 hover:bg-sama-700 text-white flex items-center gap-2 shadow-lg shadow-sama-600/30 transition-all active:scale-95"
               >
                 <ExternalLink className="w-4 h-4" />
-                <span>Voir mon profil public</span>
+                <span>Voir ma vitrine publique</span>
               </Link>
 
               <button
                 onClick={handleLogout}
-                className="px-4 py-3 rounded-2xl text-xs font-bold bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 hover:border-red-600 flex items-center gap-2 transition-all active:scale-95 shadow-sm"
+                className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 hover:border-red-600 flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
                 title="Se déconnecter de votre espace artisan"
               >
                 <LogOut className="w-4 h-4" />
-                <span>Se déconnecter</span>
+                <span>Déconnexion</span>
               </button>
             </div>
 
@@ -270,10 +319,53 @@ export default function ProviderDashboardPage() {
         </div>
       </div>
 
-      {/* Main Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      {/* Cartes Métriques Réelles */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Demandes Reçues</span>
+              <MessageSquare className="w-4 h-4 text-sama-600" />
+            </div>
+            <p className="text-xl font-black text-navy-950">{requests.length}</p>
+            <p className="text-[10px] text-slate-500">Demandes de clients</p>
+          </div>
 
-        {/* Navigation Tabs */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Statut Compte</span>
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            </div>
+            <p className="text-xl font-black text-emerald-600">100% Gratuit</p>
+            <p className="text-[10px] text-slate-500">Accès Partenaire Actif</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Zone Couverte</span>
+              <MapPin className="w-4 h-4 text-blue-600" />
+            </div>
+            <p className="text-base font-black text-navy-950 truncate">{currentProvider.neighborhood || 'Dakar'}</p>
+            <p className="text-[10px] text-slate-500">Sénégal</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Disponibilité</span>
+              <Clock className="w-4 h-4 text-amber-600" />
+            </div>
+            <p className="text-base font-black text-navy-950">Disponible 24/7</p>
+            <p className="text-[10px] text-slate-500">Réponse directe WhatsApp</p>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Conteneur Principal */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+
+        {/* Navigation Onglets */}
         <div className="flex items-center gap-3 border-b border-slate-200 pb-3 mb-6">
           <button
             onClick={() => setActiveTab('requests')}
@@ -297,102 +389,127 @@ export default function ProviderDashboardPage() {
                 : 'text-slate-600 hover:bg-white hover:text-navy-900'
             }`}
           >
-            Éditer profil & portfolio
+            Éditer mes vraies informations & portfolio
           </button>
         </div>
 
-        {/* TAB 1: REQUESTS CRM */}
+        {/* ONGLETS 1 : DEMANDES CLIENTS */}
         {activeTab === 'requests' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-navy-900">Demandes des clients</h3>
-              <span className="text-xs text-slate-500">Contactez directement les clients sur WhatsApp</span>
+              <h3 className="text-lg font-bold text-navy-900">Demandes de prestations entrantes</h3>
+              <span className="text-xs text-slate-500">Contactez directement vos clients sur WhatsApp</span>
             </div>
 
-            <div className="space-y-3">
-              {requests.map((req) => (
-                <div
-                  key={req.id}
-                  className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1.5 max-w-2xl">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-navy-900 text-base">{req.customerName}</span>
-                      <span className="text-xs text-slate-400">({req.customerPhone})</span>
-                      <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-slate-100 text-slate-700">
-                        {req.neighborhood}
-                      </span>
-                      {req.urgency === 'IMMEDIATE' && (
-                        <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-red-100 text-red-700">
-                          🚨 URGENCE IMMÉDIATE
+            {requests.length === 0 ? (
+              <div className="bg-white rounded-3xl p-12 border border-slate-200 text-center space-y-4 shadow-sm max-w-2xl mx-auto">
+                <div className="w-16 h-16 rounded-3xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                  <Inbox className="w-8 h-8" />
+                </div>
+                <div className="space-y-1.5">
+                  <h4 className="text-lg font-bold text-navy-950">Aucune demande reçue pour le moment</h4>
+                  <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+                    Votre profil <strong>{currentProvider.name}</strong> est actif et visible auprès des clients de <strong>{currentProvider.neighborhood || 'Dakar'}</strong>. Dès qu'un client vous sollicite, ses coordonnées apparaîtront ici.
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <button
+                    onClick={handleShareProfile}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-sama-50 text-sama-700 font-bold text-xs hover:bg-sama-100 transition-all border border-sama-200"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>Partager mon profil sur WhatsApp pour obtenir des clients</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {requests.map((req) => (
+                  <div
+                    key={req.id}
+                    className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1.5 max-w-2xl">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-navy-900 text-base">{req.customerName}</span>
+                        <span className="text-xs text-slate-400">({req.customerPhone})</span>
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-slate-100 text-slate-700">
+                          {req.neighborhood || currentProvider.neighborhood}
+                        </span>
+                        {req.urgency === 'IMMEDIATE' && (
+                          <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-red-100 text-red-700">
+                            🚨 URGENCE IMMÉDIATE
+                          </span>
+                        )}
+                      </div>
+                      
+                      <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                        "{req.description}"
+                      </p>
+
+                      <div className="flex items-center gap-4 text-xs text-slate-400 pt-1">
+                        <span>Service : <strong>{req.serviceCategory || currentProvider.categoryName}</strong></span>
+                        {req.budgetIndicative && (
+                          <span>Budget estimé : <strong className="text-emerald-700">{formatFcfa(req.budgetIndicative)}</strong></span>
+                        )}
+                        <span>{req.createdAt}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions WhatsApp */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a
+                        href={`https://wa.me/221${(req.customerPhone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Bonjour ${req.customerName}, je suis ${currentProvider.name} (${currentProvider.businessName}) sur Sama Artisan suite à votre demande. Je suis disponible !`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        <span>Répondre sur WhatsApp</span>
+                      </a>
+
+                      {req.status === 'PENDING' ? (
+                        <button
+                          onClick={() => handleUpdateStatus(req.id, 'ACCEPTED')}
+                          className="px-3.5 py-2.5 rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs transition-all"
+                        >
+                          Accepter
+                        </button>
+                      ) : (
+                        <span className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          ✓ Traitée
                         </span>
                       )}
                     </div>
-                    
-                    <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-                      "{req.description}"
-                    </p>
-
-                    <div className="flex items-center gap-4 text-xs text-slate-400 pt-1">
-                      <span>Service : <strong>{req.serviceCategory}</strong></span>
-                      {req.budgetIndicative && (
-                        <span>Budget estimé : <strong className="text-emerald-700">{formatFcfa(req.budgetIndicative)}</strong></span>
-                      )}
-                      <span>{req.createdAt}</span>
-                    </div>
                   </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <a
-                      href={`https://wa.me/221${req.customerPhone.replace(/\s+/g, '')}?text=${encodeURIComponent(`Bonjour ${req.customerName}, je suis ${currentProvider.name} de Sama Artisan suite à votre demande. Je suis disponible !`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Répondre sur WhatsApp</span>
-                    </a>
-
-                    {req.status === 'PENDING' ? (
-                      <button
-                        onClick={() => handleUpdateStatus(req.id, 'ACCEPTED')}
-                        className="px-3.5 py-2.5 rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs transition-all"
-                      >
-                        Accepter
-                      </button>
-                    ) : (
-                      <span className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        ✓ Acceptée
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* TAB 2: PROFILE & PORTFOLIO */}
+        {/* ONGLETS 2 : ÉDITION DU PROFIL & PORTFOLIO */}
         {activeTab === 'profile' && (
           <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200 space-y-8 max-w-3xl">
             <div>
-              <h3 className="text-xl font-black text-navy-900">Éditer votre profil et vitrine</h3>
-              <p className="text-xs text-slate-500 mt-1">Personnalisez vos informations visibles par les clients de Dakar.</p>
+              <h3 className="text-xl font-black text-navy-900">Éditer vos vraies informations</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Vos modifications seront visibles immédiatement par tous les clients sur votre vitrine publique.
+              </p>
             </div>
             
             <form onSubmit={handleSaveProfile} className="space-y-6">
               
-              {/* SECTION 1: PHOTO DE PROFIL / AVATAR */}
+              {/* SECTION 1: PHOTO DE PROFIL */}
               <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
                 <label className="block text-xs font-black text-slate-700 uppercase tracking-wider">
-                  Photo de Profil Artisan
+                  Votre Photo de Profil / Atelier
                 </label>
                 
                 <div className="flex flex-col sm:flex-row items-center gap-5">
                   <div className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-sama-500 shadow-md shrink-0 bg-white">
                     <img
-                      src={avatar || currentProvider.avatar}
+                      src={avatar || currentProvider.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80'}
                       alt={name || 'Artisan'}
                       className="w-full h-full object-cover"
                     />
@@ -412,24 +529,25 @@ export default function ProviderDashboardPage() {
                       className="px-4 py-2.5 rounded-xl font-bold bg-slate-900 hover:bg-slate-800 text-white text-xs inline-flex items-center gap-2 shadow-md transition-all active:scale-95"
                     >
                       <Upload className="w-4 h-4 text-sama-400" />
-                      <span>Changer ma photo de profil</span>
+                      <span>Télécharger une nouvelle photo</span>
                     </button>
                     <p className="text-[11px] text-slate-500">
-                      Importez une photo claire de votre visage ou de votre atelier (JPG, PNG).
+                      Formats acceptés : JPG, PNG. Une photo claire rassure vos futurs clients.
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* SECTION 2: IDENTITÉ & COORDONNÉES */}
+              {/* SECTION 2: IDENTITÉ & CONTACT */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Nom & Prénom</label>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Votre Nom & Prénom</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Ex: Mahamar"
+                    required
+                    placeholder="Ex: Moussa Ndiaye"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none"
                   />
                 </div>
@@ -440,30 +558,44 @@ export default function ProviderDashboardPage() {
                     type="text"
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
-                    placeholder="Ex: Mahamar Électro Service"
+                    placeholder="Ex: Ndiaye Plomberie Express"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Numéro de Téléphone & WhatsApp</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                    placeholder="Ex: +221 77 123 45 67"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Quartier & Zone d'intervention</label>
+                  <input
+                    type="text"
+                    value={neighborhood}
+                    onChange={(e) => setNeighborhood(e.target.value)}
+                    placeholder="Ex: Grand Yoff, Almadies, Sacré-Cœur..."
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Numéro de Téléphone & WhatsApp</label>
-                <input
-                  type="text"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Ex: +221 77 123 45 67"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Présentation / Description</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Présentation de votre savoir-faire</label>
                 <textarea
                   rows={3}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Décrivez votre expérience, vos spécialités et vos garanties..."
+                  placeholder="Décrivez votre expérience, vos spécialités et vos engagements qualité..."
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-sama-500 focus:outline-none"
                 />
               </div>
@@ -474,7 +606,7 @@ export default function ProviderDashboardPage() {
                   <label className="block text-xs font-black text-slate-700 uppercase tracking-wider">
                     Portfolio & Photos de chantiers ({portfolio.length})
                   </label>
-                  <span className="text-[11px] text-slate-400">Photos de vos réalisations</span>
+                  <span className="text-[11px] text-slate-400">Photos de vos travaux réels</span>
                 </div>
 
                 <input
@@ -506,7 +638,7 @@ export default function ProviderDashboardPage() {
                     className="border-2 border-dashed border-slate-200 hover:border-sama-500 rounded-xl aspect-video flex flex-col items-center justify-center p-3 text-slate-400 hover:text-sama-600 transition-all cursor-pointer bg-slate-50 hover:bg-sama-50/30"
                   >
                     <Plus className="w-5 h-5" />
-                    <span className="text-[10px] font-bold mt-1">Ajouter une photo</span>
+                    <span className="text-[10px] font-bold mt-1">Ajouter une réalisation</span>
                   </button>
                 </div>
               </div>
@@ -517,7 +649,7 @@ export default function ProviderDashboardPage() {
                   className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold bg-sama-600 hover:bg-sama-700 text-white text-xs shadow-lg shadow-sama-600/30 transition-all active:scale-95 flex items-center justify-center gap-2"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Enregistrer toutes les modifications</span>
+                  <span>Enregistrer toutes mes vraies informations</span>
                 </button>
 
                 <button
@@ -526,7 +658,7 @@ export default function ProviderDashboardPage() {
                   className="w-full sm:w-auto px-5 py-3 rounded-xl font-bold bg-red-50 hover:bg-red-100 text-red-600 text-xs border border-red-200 transition-all flex items-center justify-center gap-2"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Se déconnecter de la session</span>
+                  <span>Se déconnecter</span>
                 </button>
               </div>
 

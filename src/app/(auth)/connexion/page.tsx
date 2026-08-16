@@ -20,31 +20,72 @@ export default function ConnexionPage() {
 
     try {
       const cleanPhone = phone.replace(/[^0-9]/g, '');
+      if (cleanPhone.length < 6) {
+        setErrorMessage('Veuillez renseigner un numéro de téléphone valide.');
+        setIsLoading(false);
+        return;
+      }
+
+      // 1. Chercher dans les prestataires Supabase
       const pros = await getProviders();
-      const matched = pros.find((p) => {
-        const pClean = p.phone.replace(/[^0-9]/g, '');
+      const matchedPro = pros.find((p) => {
+        const pClean = (p.phone || '').replace(/[^0-9]/g, '');
         return pClean.includes(cleanPhone) || cleanPhone.includes(pClean);
       });
 
-      if (matched) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('samapro_current_user', JSON.stringify(matched));
-        }
+      // 2. Chercher dans les comptes enregistrés
+      const accounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
+      const matchedAccount = accounts.find((a: any) => {
+        if (!a.phone) return false;
+        const aClean = a.phone.replace(/[^0-9]/g, '');
+        return aClean.includes(cleanPhone) || cleanPhone.includes(aClean);
+      });
+
+      if (matchedPro) {
+        localStorage.setItem('samapro_current_user', JSON.stringify(matchedPro));
+        localStorage.setItem('sama_user_session', JSON.stringify({
+          name: matchedPro.name,
+          phone: matchedPro.phone,
+          role: 'pro'
+        }));
+        window.dispatchEvent(new Event('storage'));
         router.push('/pro/dashboard');
+        return;
+      } else if (matchedAccount) {
+        // Créer l'objet pro à partir du compte
+        const proUser = {
+          id: matchedAccount.id || `pro-${Date.now()}`,
+          slug: matchedAccount.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString().slice(-4),
+          name: matchedAccount.name,
+          businessName: matchedAccount.businessName || matchedAccount.name,
+          phone: matchedAccount.phone,
+          categorySlug: matchedAccount.categorySlug || 'plomberie',
+          categoryName: matchedAccount.categoryName || 'Artisanat & Services',
+          neighborhood: matchedAccount.neighborhood || 'Dakar',
+          city: 'Dakar',
+          avatar: matchedAccount.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
+          bio: matchedAccount.bio || `Artisan professionnel au Sénégal.`,
+          verificationLevel: 'ID_VERIFIED',
+          averageRating: 5.0,
+          reviewCount: 0,
+          portfolio: []
+        };
+        localStorage.setItem('samapro_current_user', JSON.stringify(proUser));
+        localStorage.setItem('sama_user_session', JSON.stringify({
+          name: matchedAccount.name,
+          phone: matchedAccount.phone,
+          email: matchedAccount.email,
+          role: 'pro'
+        }));
+        window.dispatchEvent(new Event('storage'));
+        router.push('/pro/dashboard');
+        return;
       } else {
-        // If not found in database, check local storage or log in with fallback
-        if (typeof window !== 'undefined') {
-          const stored = localStorage.getItem('samapro_current_user');
-          if (stored) {
-            router.push('/pro/dashboard');
-            return;
-          }
-        }
-        setErrorMessage('Numéro non reconnu. Si vous êtes nouveau, créez un compte gratuitement.');
+        setErrorMessage('Aucun compte artisan trouvé avec ce numéro. Veuillez d\'abord vous inscrire gratuitement.');
       }
     } catch (err) {
       console.error(err);
-      router.push('/pro/dashboard');
+      setErrorMessage('Une erreur est survenue lors de la connexion. Veuillez réessayer.');
     } finally {
       setIsLoading(false);
     }

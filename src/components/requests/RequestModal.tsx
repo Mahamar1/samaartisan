@@ -23,10 +23,10 @@ interface RequestModalProps {
 
 export default function RequestModal({ provider, isOpen, onClose }: RequestModalProps) {
   const [urgency, setUrgency] = useState<UrgencyLevel>('TODAY');
-  const [selectedService, setSelectedService] = useState<string>(provider.services[0]?.name || provider.categoryName);
+  const [selectedService, setSelectedService] = useState<string>(provider?.services?.[0]?.name || provider?.categoryName || 'Prestation & Travaux');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [neighborhood, setNeighborhood] = useState(provider.neighborhood);
+  const [neighborhood, setNeighborhood] = useState(provider?.neighborhood || 'Dakar');
   const [description, setDescription] = useState('');
   const [budget, setBudget] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);

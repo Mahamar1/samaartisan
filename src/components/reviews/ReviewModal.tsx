@@ -25,7 +25,7 @@ export default function ReviewModal({ provider, isOpen, onClose, onReviewAdded }
   const [punctualityRating, setPunctualityRating] = useState(5);
   const [communicationRating, setCommunicationRating] = useState(5);
   const [customerName, setCustomerName] = useState('');
-  const [customerCity, setCustomerCity] = useState(provider.neighborhood);
+  const [customerCity, setCustomerCity] = useState(provider?.neighborhood || 'Dakar');
   const [comment, setComment] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 

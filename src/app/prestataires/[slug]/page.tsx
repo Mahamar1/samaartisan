@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { notFound, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { 
   ShieldCheck, 
   Star, 
@@ -27,9 +27,91 @@ import { Review, Provider } from '@/lib/types';
 import RequestModal from '@/components/requests/RequestModal';
 import ReviewModal from '@/components/reviews/ReviewModal';
 
+function normalizeProvider(raw: any): Provider {
+  if (!raw) {
+    return {
+      id: `pro-${Date.now()}`,
+      slug: 'artisan',
+      name: 'Artisan Professionnel',
+      businessName: 'Artisan Professionnel',
+      phone: '+221 77 000 00 00',
+      whatsapp: '221770000000',
+      headline: 'Artisan Qualifié et Vérifié',
+      categorySlug: 'plomberie',
+      categoryName: 'Artisanat & Services',
+      neighborhood: 'Dakar',
+      city: 'Dakar',
+      latitude: 14.7167,
+      longitude: -17.4677,
+      interventionRadiusKm: 20,
+      experienceYears: 5,
+      subscriptionTier: 'FREE',
+      isAvailable: true,
+      startingPrice: 15000,
+      responseTimeMinutes: 15,
+      specialties: ['Prestations & Travaux', 'Intervention Rapide'],
+      services: [],
+      avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
+      bio: 'Artisan professionnel qualifié et expérimenté au Sénégal.',
+      verificationLevel: 'ID_VERIFIED',
+      averageRating: 5.0,
+      reviewCount: 0,
+      completedJobsCount: 0,
+      joinedDate: '2026-01-01',
+      reviews: [],
+      portfolio: [],
+      documentsVerified: { cni: true, diploma: true }
+    };
+  }
+
+  const cleanPhone = (raw.phone || '').replace(/[^0-9]/g, '');
+  const cleanWhatsapp = (raw.whatsapp || raw.phone || '').replace(/[^0-9]/g, '');
+  const cleanNameSlug = (raw.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const safeSlug = raw.slug || (cleanPhone ? `pro-${cleanPhone}` : cleanNameSlug);
+
+  return {
+    id: raw.id || `pro-${Date.now()}`,
+    slug: safeSlug,
+    name: raw.name || 'Artisan Professionnel',
+    businessName: raw.businessName || raw.name || 'Atelier & Services Pro',
+    phone: raw.phone || '+221 77 000 00 00',
+    whatsapp: cleanWhatsapp || '221770000000',
+    headline: raw.headline || 'Artisan Qualifié & Vérifié à Dakar',
+    categorySlug: raw.categorySlug || 'plomberie',
+    categoryName: raw.categoryName || 'Artisanat & Services',
+    neighborhood: raw.neighborhood || 'Dakar',
+    city: raw.city || 'Dakar',
+    latitude: typeof raw.latitude === 'number' ? raw.latitude : 14.7167,
+    longitude: typeof raw.longitude === 'number' ? raw.longitude : -17.4677,
+    interventionRadiusKm: typeof raw.interventionRadiusKm === 'number' ? raw.interventionRadiusKm : 20,
+    experienceYears: typeof raw.experienceYears === 'number' ? raw.experienceYears : (raw.yearsExperience || 5),
+    subscriptionTier: raw.subscriptionTier || 'FREE',
+    isAvailable: raw.isAvailable !== false,
+    startingPrice: typeof raw.startingPrice === 'number' ? raw.startingPrice : 15000,
+    responseTimeMinutes: typeof raw.responseTimeMinutes === 'number' ? raw.responseTimeMinutes : 15,
+    specialties: Array.isArray(raw.specialties) && raw.specialties.length > 0 
+      ? raw.specialties 
+      : ['Intervention rapide', 'Garantie travaux'],
+    services: Array.isArray(raw.services) ? raw.services : [],
+    avatar: raw.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
+    coverImage: raw.coverImage,
+    bio: raw.bio || `Artisan professionnel au service des particuliers et entreprises à Dakar.`,
+    verificationLevel: raw.verificationLevel || 'ID_VERIFIED',
+    averageRating: typeof raw.averageRating === 'number' ? raw.averageRating : (parseFloat(raw.averageRating) || 5.0),
+    reviewCount: typeof raw.reviewCount === 'number' ? raw.reviewCount : (Array.isArray(raw.reviews) ? raw.reviews.length : 0),
+    completedJobsCount: typeof raw.completedJobsCount === 'number' ? raw.completedJobsCount : 0,
+    joinedDate: raw.joinedDate || '2026-01-01',
+    reviews: Array.isArray(raw.reviews) ? raw.reviews : [],
+    portfolio: Array.isArray(raw.portfolio) ? raw.portfolio : [],
+    documentsVerified: raw.documentsVerified || { cni: true, diploma: true },
+    isSponsored: Boolean(raw.isSponsored)
+  };
+}
+
 export default function ProviderProfilePage() {
   const params = useParams();
-  const slug = params?.slug as string;
+  const rawSlug = params?.slug;
+  const slug = Array.isArray(rawSlug) ? rawSlug[0] : (typeof rawSlug === 'string' ? rawSlug : '');
   
   const [provider, setProvider] = useState<Provider | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -43,8 +125,7 @@ export default function ProviderProfilePage() {
 
   // Fetch live artisan details from Supabase or local session
   useEffect(() => {
-    if (!slug) return;
-    const decodedSlug = decodeURIComponent(slug).toLowerCase().trim();
+    const decodedSlug = decodeURIComponent(slug || '').toLowerCase().trim();
 
     // 1. Instant check in local pro session
     try {
@@ -57,6 +138,7 @@ export default function ProviderProfilePage() {
         const targetPhone = decodedSlug.replace(/[^0-9]/g, '');
 
         if (
+          !decodedSlug ||
           pSlug === decodedSlug || 
           parsed.id === decodedSlug || 
           pNameSlug === decodedSlug ||
@@ -64,8 +146,9 @@ export default function ProviderProfilePage() {
           decodedSlug === 'mon-profil' ||
           decodedSlug === 'me'
         ) {
-          setProvider(parsed);
-          setReviews(parsed.reviews || []);
+          const norm = normalizeProvider(parsed);
+          setProvider(norm);
+          setReviews(norm.reviews || []);
           setLoading(false);
           return;
         }
@@ -84,40 +167,9 @@ export default function ProviderProfilePage() {
       });
 
       if (matched) {
-        const proUser: Provider = {
-          id: matched.id || `pro-${Date.now()}`,
-          slug: matched.slug || (matched.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          name: matched.name,
-          businessName: matched.businessName || matched.name,
-          phone: matched.phone,
-          whatsapp: (matched.phone || '').replace(/[^0-9]/g, ''),
-          headline: matched.headline || 'Artisan Qualifié',
-          categorySlug: matched.categorySlug || 'plomberie',
-          categoryName: matched.categoryName || 'Artisanat & Services',
-          neighborhood: matched.neighborhood || 'Dakar',
-          city: 'Dakar',
-          latitude: 14.7167,
-          longitude: -17.4677,
-          interventionRadiusKm: 20,
-          experienceYears: matched.yearsExperience || 5,
-          subscriptionTier: 'FREE',
-          isAvailable: true,
-          startingPrice: 15000,
-          responseTimeMinutes: 15,
-          specialties: matched.specialties || ['Services & Réparations'],
-          services: [],
-          avatar: matched.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
-          bio: matched.bio || `Artisan professionnel qualifié au Sénégal.`,
-          verificationLevel: 'ID_VERIFIED',
-          averageRating: 5.0,
-          reviewCount: 0,
-          completedJobsCount: 0,
-          joinedDate: '2026-01-01',
-          reviews: [],
-          portfolio: matched.portfolio || []
-        };
-        setProvider(proUser);
-        setReviews([]);
+        const norm = normalizeProvider(matched);
+        setProvider(norm);
+        setReviews(norm.reviews || []);
         setLoading(false);
         return;
       }
@@ -133,55 +185,63 @@ export default function ProviderProfilePage() {
     });
 
     if (staticMatch) {
-      setProvider(staticMatch);
-      setReviews(staticMatch.reviews || []);
+      const norm = normalizeProvider(staticMatch);
+      setProvider(norm);
+      setReviews(norm.reviews || []);
       setLoading(false);
       return;
     }
 
     // 4. Fetch from Supabase cloud
-    getProviderBySlug(decodedSlug).then((livePro) => {
-      if (livePro) {
-        let finalPro = livePro;
-        try {
-          const stored = localStorage.getItem('samapro_current_user');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed.slug === livePro.slug || parsed.id === livePro.id) {
-              finalPro = { ...livePro, ...parsed };
+    if (decodedSlug) {
+      getProviderBySlug(decodedSlug).then((livePro) => {
+        if (livePro) {
+          let finalPro = livePro;
+          try {
+            const stored = localStorage.getItem('samapro_current_user');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (parsed.slug === livePro.slug || parsed.id === livePro.id) {
+                finalPro = { ...livePro, ...parsed };
+              }
             }
-          }
-        } catch (e) {}
-        setProvider(finalPro);
-        setReviews(finalPro.reviews || []);
-      } else {
-        // Fallback to active logged in pro if available
+          } catch (e) {}
+          const norm = normalizeProvider(finalPro);
+          setProvider(norm);
+          setReviews(norm.reviews || []);
+        } else {
+          // Fallback to active logged in pro if available
+          try {
+            const stored = localStorage.getItem('samapro_current_user') || localStorage.getItem('sama_user_session');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (parsed && (parsed.name || parsed.phone)) {
+                const norm = normalizeProvider(parsed);
+                setProvider(norm);
+                setReviews(norm.reviews || []);
+              }
+            }
+          } catch (e) {}
+        }
+        setLoading(false);
+      }).catch(() => {
+        // Fallback on error
         try {
           const stored = localStorage.getItem('samapro_current_user') || localStorage.getItem('sama_user_session');
           if (stored) {
             const parsed = JSON.parse(stored);
             if (parsed && (parsed.name || parsed.phone)) {
-              setProvider(parsed);
-              setReviews(parsed.reviews || []);
+              const norm = normalizeProvider(parsed);
+              setProvider(norm);
+              setReviews(norm.reviews || []);
             }
           }
         } catch (e) {}
-      }
+        setLoading(false);
+      });
+    } else {
       setLoading(false);
-    }).catch(() => {
-      // Fallback on error
-      try {
-        const stored = localStorage.getItem('samapro_current_user') || localStorage.getItem('sama_user_session');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed && (parsed.name || parsed.phone)) {
-            setProvider(parsed);
-            setReviews(parsed.reviews || []);
-          }
-        }
-      } catch (e) {}
-      setLoading(false);
-    });
+    }
   }, [slug]);
 
   useEffect(() => {
@@ -210,13 +270,13 @@ export default function ProviderProfilePage() {
 
   const handleShare = () => {
     if (!provider) return;
-    if (navigator.share) {
+    if (typeof navigator !== 'undefined' && navigator.share) {
       navigator.share({
         title: `${provider.businessName} sur Sama Artisan`,
         text: `Découvrez ${provider.businessName} (${provider.categoryName}) à ${provider.neighborhood}, Dakar.`,
         url: window.location.href,
       }).catch(() => {});
-    } else {
+    } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(window.location.href);
       setCopiedToast(true);
       setTimeout(() => setCopiedToast(false), 2500);
@@ -229,8 +289,8 @@ export default function ProviderProfilePage() {
     setReviews(updated);
     
     // Recalculate average rating
-    const sum = updated.reduce((acc, r) => acc + r.rating, 0);
-    const newAvg = Math.round((sum / updated.length) * 100) / 100;
+    const sum = updated.reduce((acc, r) => acc + (r.rating || 5), 0);
+    const newAvg = Math.round((sum / updated.length) * 10) / 10;
     
     setProvider({
       ...provider,
@@ -241,10 +301,11 @@ export default function ProviderProfilePage() {
 
   const handleWhatsApp = () => {
     if (!provider) return;
+    const cleanNumber = (provider.whatsapp || provider.phone || '').replace(/[^0-9]/g, '');
     const defaultMsg = encodeURIComponent(
       `Bonjour ${provider.name}, je vous contacte via Sama Artisan après avoir vu votre profil pro (${provider.categoryName}). Êtes-vous disponible pour une prestation ?`
     );
-    window.open(`https://wa.me/${provider.whatsapp}?text=${defaultMsg}`, '_blank');
+    window.open(`https://wa.me/${cleanNumber}?text=${defaultMsg}`, '_blank');
   };
 
   if (loading) {
@@ -291,6 +352,11 @@ export default function ProviderProfilePage() {
       </div>
     );
   }
+
+  const avgRatingNum = typeof provider.averageRating === 'number' ? provider.averageRating : (parseFloat(String(provider.averageRating)) || 5.0);
+  const formattedRating = avgRatingNum.toFixed(1);
+  const specialtiesList = Array.isArray(provider.specialties) ? provider.specialties : [];
+  const portfolioList = Array.isArray(provider.portfolio) ? provider.portfolio : [];
 
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
@@ -416,7 +482,7 @@ export default function ProviderProfilePage() {
                   <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-4 text-xs font-medium text-slate-600">
                     <div className="flex items-center gap-1 font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
                       <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                      <span>{provider.averageRating.toFixed(2)}</span>
+                      <span>{formattedRating}</span>
                       <span className="text-slate-400 font-normal">({reviews.length} avis)</span>
                     </div>
 
@@ -483,7 +549,7 @@ export default function ProviderProfilePage() {
                     : 'text-slate-600 hover:bg-white'
                 }`}
               >
-                Galerie de Réalisations ({provider.portfolio.length})
+                Galerie de Réalisations ({portfolioList.length})
               </button>
 
               <button
@@ -512,7 +578,7 @@ export default function ProviderProfilePage() {
                   <div className="pt-2">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">Domaines d'expertise & Services</h4>
                     <div className="flex flex-wrap gap-2">
-                      {provider.specialties
+                      {specialtiesList
                         .filter((s) => !s.toLowerCase().includes('devis'))
                         .map((s, i) => (
                         <span key={i} className="px-3.5 py-1.5 bg-slate-100 text-slate-800 rounded-xl text-xs font-semibold">
@@ -530,27 +596,33 @@ export default function ProviderProfilePage() {
             {activeTab === 'portfolio' && (
               <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200/80 space-y-6">
                 <h3 className="text-lg font-bold text-navy-900">Photos de Chantiers Récents</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {provider.portfolio.map((photo) => (
-                    <div 
-                      key={photo.id} 
-                      onClick={() => setSelectedPhoto(photo.imageUrl)}
-                      className="group relative rounded-2xl overflow-hidden bg-slate-100 cursor-pointer aspect-video border border-slate-200 shadow-sm"
-                    >
-                      <img
-                        src={photo.imageUrl}
-                        alt={photo.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4 flex flex-col justify-end text-white opacity-90">
-                        <p className="font-bold text-sm">{photo.title}</p>
-                        {photo.description && (
-                          <p className="text-xs text-slate-300 line-clamp-1 mt-0.5">{photo.description}</p>
-                        )}
+                {portfolioList.length === 0 ? (
+                  <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    <p className="text-sm text-slate-500">Aucune photo de réalisation publiée pour l'instant.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {portfolioList.map((photo) => (
+                      <div 
+                        key={photo.id} 
+                        onClick={() => setSelectedPhoto(photo.imageUrl)}
+                        className="group relative rounded-2xl overflow-hidden bg-slate-100 cursor-pointer aspect-video border border-slate-200 shadow-sm"
+                      >
+                        <img
+                          src={photo.imageUrl}
+                          alt={photo.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4 flex flex-col justify-end text-white opacity-90">
+                          <p className="font-bold text-sm">{photo.title}</p>
+                          {photo.description && (
+                            <p className="text-xs text-slate-300 line-clamp-1 mt-0.5">{photo.description}</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -572,36 +644,42 @@ export default function ProviderProfilePage() {
                 </div>
 
                 <div className="space-y-4">
-                  {reviews.map((rev) => (
-                    <div key={rev.id} className="p-5 rounded-2xl bg-slate-50 border border-slate-100 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-sama-600 text-white font-bold flex items-center justify-center text-xs">
-                            {rev.customerName.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-navy-900">{rev.customerName}</p>
-                            <p className="text-[10px] text-slate-400">{rev.customerCity || 'Dakar'} • {rev.date}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 text-amber-500 font-bold text-xs">
-                          <Star className="w-3.5 h-3.5 fill-amber-400" />
-                          <span>{rev.rating}/5</span>
-                        </div>
-                      </div>
-
-                      <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-                        "{rev.comment}"
-                      </p>
-
-                      {rev.providerReply && (
-                        <div className="mt-2 p-3 rounded-xl bg-white border border-slate-200 text-xs text-slate-600">
-                          <span className="font-bold text-navy-900 block mb-0.5">Réponse du professionnel :</span>
-                          {rev.providerReply}
-                        </div>
-                      )}
+                  {reviews.length === 0 ? (
+                    <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                      <p className="text-sm text-slate-500">Aucun avis pour l'instant. Soyez le premier à noter cet artisan !</p>
                     </div>
-                  ))}
+                  ) : (
+                    reviews.map((rev) => (
+                      <div key={rev.id} className="p-5 rounded-2xl bg-slate-50 border border-slate-100 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-sama-600 text-white font-bold flex items-center justify-center text-xs">
+                              {(rev.customerName || 'C').charAt(0)}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-navy-900">{rev.customerName}</p>
+                              <p className="text-[10px] text-slate-400">{rev.customerCity || 'Dakar'} • {rev.date || "Récemment"}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 text-amber-500 font-bold text-xs">
+                            <Star className="w-3.5 h-3.5 fill-amber-400" />
+                            <span>{rev.rating || 5}/5</span>
+                          </div>
+                        </div>
+
+                        <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                          "{rev.comment}"
+                        </p>
+
+                        {rev.providerReply && (
+                          <div className="mt-2 p-3 rounded-xl bg-white border border-slate-200 text-xs text-slate-600">
+                            <span className="font-bold text-navy-900 block mb-0.5">Réponse du professionnel :</span>
+                            {rev.providerReply}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}

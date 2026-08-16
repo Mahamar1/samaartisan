@@ -141,7 +141,7 @@ function InscriptionContent() {
           phone: phone.trim(),
           email: cleanEmail,
           password: password,
-          role: 'client',
+          role: 'client' as const,
           neighborhood: districtName,
           regionId: selectedRegionId
         };

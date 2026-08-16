@@ -134,6 +134,11 @@ export default function Footer() {
             </h5>
             <ul className="space-y-2.5 text-sm">
               <li>
+                <Link href="/landing" className="text-sama-400 font-semibold hover:underline">
+                  ⚡ Présentation & Découverte
+                </Link>
+              </li>
+              <li>
                 <Link href="/devenir-prestataire" className="text-emerald-400 font-semibold hover:underline">
                   ★ Devenir artisan
                 </Link>

@@ -88,6 +88,19 @@ function SearchContent() {
     return (providersList || []).filter((p) => {
       if (!p) return false;
 
+      // 0. STRICT CLIENT EXCLUSION: Only display real artisan professionals
+      const catName = (p.categoryName || (p as any).category_name || '').toLowerCase();
+      const catSlug = (p.categorySlug || (p as any).category_slug || '').toLowerCase();
+      const pSlug = (p.slug || '').toLowerCase();
+      const pName = (p.name || '').toLowerCase();
+      const bName = (p.businessName || (p as any).business_name || '').toLowerCase();
+      const role = ((p as any).role || '').toLowerCase();
+
+      if (catName.includes('client') || catSlug.includes('client')) return false;
+      if (pSlug.startsWith('usr-')) return false;
+      if (pName.includes('compte client') || bName.includes('compte client')) return false;
+      if (role === 'user' || role === 'client') return false;
+
       // 1. Category filter
       if (selectedCategory) {
         const pCat = (p.categorySlug || '').toLowerCase();

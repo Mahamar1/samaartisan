@@ -50,11 +50,19 @@ export async function getProviders(): Promise<Provider[]> {
         .order('created_at', { ascending: false });
 
       if (!error && data && data.length > 0) {
-        // Exclude internal client accounts from public artisan search
-        const actualArtisans = data.filter(item => 
-          item.category_name !== 'Client Particulier' && 
-          !item.slug?.startsWith('usr-')
-        );
+        // Exclude all client accounts strictly from public artisan search
+        const actualArtisans = data.filter(item => {
+          const catName = (item.category_name || '').toLowerCase();
+          const catSlug = (item.category_slug || '').toLowerCase();
+          const pSlug = (item.slug || '').toLowerCase();
+          const pName = (item.name || '').toLowerCase();
+          const bName = (item.business_name || '').toLowerCase();
+
+          if (catName.includes('client') || catSlug.includes('client')) return false;
+          if (pSlug.startsWith('usr-')) return false;
+          if (pName.includes('compte client') || bName.includes('compte client')) return false;
+          return true;
+        });
         dbPros = actualArtisans.map(mapDbProviderToApp);
       }
     } catch (err) {
@@ -62,7 +70,7 @@ export async function getProviders(): Promise<Provider[]> {
     }
   }
 
-  // Also include any artisan registered locally
+  // Also include any real artisan registered locally (strictly NO clients)
   const localPros: Provider[] = [];
   if (typeof window !== 'undefined') {
     try {
@@ -70,7 +78,28 @@ export async function getProviders(): Promise<Provider[]> {
       if (storedPro) {
         const parsed = JSON.parse(storedPro);
         if (parsed && (parsed.name || parsed.phone)) {
-          localPros.push(parsed);
+          const catName = (parsed.categoryName || parsed.category_name || '').toLowerCase();
+          const catSlug = (parsed.categorySlug || parsed.category_slug || '').toLowerCase();
+          const pSlug = (parsed.slug || '').toLowerCase();
+          const pName = (parsed.name || '').toLowerCase();
+          const bName = (parsed.businessName || parsed.business_name || '').toLowerCase();
+          const role = (parsed.role || '').toLowerCase();
+
+          const isClient = 
+            catName.includes('client') || 
+            catSlug.includes('client') || 
+            pSlug.startsWith('usr-') || 
+            pName.includes('compte client') || 
+            bName.includes('compte client') || 
+            role === 'user' || 
+            role === 'client';
+
+          if (!isClient) {
+            localPros.push(parsed);
+          } else {
+            // Clean up accidental client data stored in pro slot
+            localStorage.removeItem('samapro_current_user');
+          }
         }
       }
 
@@ -78,7 +107,13 @@ export async function getProviders(): Promise<Provider[]> {
       if (adminData) {
         const parsedAdmin = JSON.parse(adminData);
         if (Array.isArray(parsedAdmin)) {
-          localPros.push(...parsedAdmin);
+          for (const item of parsedAdmin) {
+            const catName = (item.categoryName || item.category_name || '').toLowerCase();
+            const pName = (item.name || '').toLowerCase();
+            if (!catName.includes('client') && !pName.includes('compte client')) {
+              localPros.push(item);
+            }
+          }
         }
       }
     } catch {}
@@ -99,7 +134,24 @@ export async function getProviders(): Promise<Provider[]> {
     }
   }
 
-  return combined;
+  // Final absolute guarantee: ONLY real artisans, NEVER client accounts
+  const strictlyPros = combined.filter((p: any) => {
+    if (!p) return false;
+    const catName = (p.categoryName || p.category_name || '').toLowerCase();
+    const catSlug = (p.categorySlug || p.category_slug || '').toLowerCase();
+    const pSlug = (p.slug || '').toLowerCase();
+    const pName = (p.name || '').toLowerCase();
+    const bName = (p.businessName || p.business_name || '').toLowerCase();
+    const role = (p.role || '').toLowerCase();
+
+    if (catName.includes('client') || catSlug.includes('client')) return false;
+    if (pSlug.startsWith('usr-')) return false;
+    if (pName.includes('compte client') || bName.includes('compte client')) return false;
+    if (role === 'user' || role === 'client') return false;
+    return true;
+  });
+
+  return strictlyPros;
 }
 
 // 2. FETCH A SINGLE PROVIDER BY SLUG (Supabase Live with Fallback)
@@ -355,36 +407,36 @@ export async function registerUserAccount(userData: UserAccountData): Promise<{ 
     const passwordHash = typeof btoa !== 'undefined' ? btoa(password) : Buffer.from(password).toString('base64');
     const slug = `usr-${cleanPhone || Date.now()}`;
 
-    // 1. Cloud Save in Supabase
-    if (isSupabaseConfigured()) {
+    // 1. Cloud Save in Supabase (STRICTLY FOR ARTISANS ONLY, NEVER FOR CLIENTS)
+    if (role === 'pro' && isSupabaseConfigured()) {
       try {
         const metadata = {
           email: cleanEmail,
           passwordHash,
           password,
-          role,
+          role: 'pro',
           businessName: userData.businessName || cleanName,
           registeredAt: new Date().toISOString()
         };
 
-        const { data, error } = await supabase
+        const proSlug = `pro-${cleanPhone || Date.now()}`;
+        const { error } = await supabase
           .from('providers')
           .insert([{
-            slug,
+            slug: proSlug,
             name: cleanName,
-            business_name: userData.businessName || (role === 'pro' ? cleanName : `Compte Client (${cleanName})`),
+            business_name: userData.businessName || cleanName,
             phone: userData.phone.trim(),
             whatsapp: cleanPhone || '221770000000',
             category_slug: userData.categorySlug || 'plomberie',
-            category_name: role === 'pro' ? (userData.categoryName || 'Artisan') : 'Client Particulier',
+            category_name: userData.categoryName || 'Artisan Qualifié',
             neighborhood: userData.neighborhood || 'Dakar',
             verification_level: 'ID_VERIFIED',
             bio: JSON.stringify(metadata)
-          }])
-          .select();
+          }]);
 
         if (error) {
-          console.warn('Supabase account register note:', error.message);
+          console.warn('Supabase pro register note:', error.message);
         }
       } catch (err) {
         console.warn('Supabase register exception:', err);
@@ -404,7 +456,7 @@ export async function registerUserAccount(userData: UserAccountData): Promise<{ 
       registeredAt: new Date().toISOString()
     };
 
-    // 2. Local Cache
+    // 2. Local Session Cache
     if (typeof window !== 'undefined') {
       const existingAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
       const filtered = existingAccounts.filter((a: any) => {
@@ -417,6 +469,8 @@ export async function registerUserAccount(userData: UserAccountData): Promise<{ 
 
       if (role === 'pro') {
         localStorage.setItem('samapro_current_user', JSON.stringify(newUser));
+      } else {
+        localStorage.removeItem('samapro_current_user');
       }
 
       window.dispatchEvent(new Event('storage'));

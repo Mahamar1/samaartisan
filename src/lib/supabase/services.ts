@@ -792,3 +792,209 @@ export async function loginUserAccount(identifier: string, password: string): Pr
     return { success: false, error: err.message || 'Erreur lors de la connexion.' };
   }
 }
+
+// ----------------------------------------------------
+// CONTACT MESSAGES & EMAIL INBOX SERVICES
+// ----------------------------------------------------
+export interface ContactMessage {
+  id: string;
+  full_name: string;
+  phone: string;
+  email?: string;
+  subject: string;
+  message: string;
+  user_type?: string;
+  status: 'NEW' | 'READ' | 'REPLIED' | 'ARCHIVED';
+  created_at: string;
+  replied_at?: string;
+  reply_notes?: string;
+}
+
+export const DEFAULT_CONTACT_MESSAGES: ContactMessage[] = [
+  {
+    id: 'msg-1',
+    full_name: 'Moussa Diagne',
+    phone: '+221 77 555 44 33',
+    email: 'moussa.diagne@gmail.com',
+    subject: 'Urgence : Fuite d\'eau sous évier à Mermoz',
+    message: 'Bonjour, j\'ai une fuite d\'eau importante sous mon évier de cuisine. J\'ai besoin d\'un bon plombier disponible dès aujourd\'hui vers 14h.',
+    user_type: 'Particulier',
+    status: 'NEW',
+    created_at: new Date(Date.now() - 35 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'msg-2',
+    full_name: 'Aminata Ndiaye',
+    phone: '+221 78 432 11 00',
+    email: 'aminata.ndiaye@outlook.com',
+    subject: 'Devis pour rénovation électrique complète',
+    message: 'Bonjour l\'équipe Sama Artisan, nous venons d\'emménager dans un appartement aux Almadies et souhaitons refaire tout le tableau électrique et les prises.',
+    user_type: 'Particulier',
+    status: 'NEW',
+    created_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString()
+  },
+  {
+    id: 'msg-3',
+    full_name: 'Babacar Cissé',
+    phone: '+221 76 890 12 34',
+    email: 'cisse.menuiserie@gmail.com',
+    subject: 'Demande de vérification de profil artisan (Badge CNI)',
+    message: 'Bonjour M. l\'Administrateur, j\'ai soumis mes documents CNI hier pour mon profil Menuiserie Cissé & Fils. Pourriez-vous valider mon badge vérifié ? Merci d\'avance.',
+    user_type: 'Artisan Pro',
+    status: 'READ',
+    created_at: new Date(Date.now() - 18 * 3600 * 1000).toISOString()
+  },
+  {
+    id: 'msg-4',
+    full_name: 'Société IMMO DAKAR SARL (M. Sylla)',
+    phone: '+221 70 888 99 00',
+    email: 'contact@immo-dakar.sn',
+    subject: 'Partenariat gestion parc immobilier (Climatisation & Peinture)',
+    message: 'Bonjour Mohamed, nous gérons un parc de 45 appartements sur Dakar et cherchons des artisans fiables et certifiés pour des contrats de maintenance récurrents.',
+    user_type: 'Entreprise',
+    status: 'REPLIED',
+    created_at: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
+    replied_at: new Date(Date.now() - 20 * 3600 * 1000).toISOString(),
+    reply_notes: 'Appel téléphonique passé, proposition de contrat cadre envoyée par email.'
+  }
+];
+
+// Fetch all contact messages
+export async function getContactMessages(): Promise<ContactMessage[]> {
+  let dbMessages: ContactMessage[] = [];
+
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from('contact_messages')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        dbMessages = data.map((m: any) => ({
+          id: String(m.id),
+          full_name: m.full_name || 'Expéditeur anonyme',
+          phone: m.phone || '',
+          email: m.email || '',
+          subject: m.subject || 'Message de contact',
+          message: m.message || '',
+          user_type: m.user_type || 'Particulier',
+          status: (m.status || 'NEW') as any,
+          created_at: m.created_at || new Date().toISOString(),
+          replied_at: m.replied_at,
+          reply_notes: m.reply_notes
+        }));
+      }
+    } catch (err) {
+      console.warn('Supabase getContactMessages error:', err);
+    }
+  }
+
+  // Local storage cache & default merge
+  let localMessages: ContactMessage[] = [];
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('sama_contact_messages_cache');
+      if (stored) {
+        localMessages = JSON.parse(stored);
+      }
+    } catch {}
+  }
+
+  const combined = [...dbMessages];
+  for (const lm of localMessages) {
+    if (!combined.some(c => c.id === lm.id)) {
+      combined.push(lm);
+    }
+  }
+
+  // Include default samples if none exist
+  for (const def of DEFAULT_CONTACT_MESSAGES) {
+    if (!combined.some(c => c.id === def.id || (c.phone === def.phone && c.subject === def.subject))) {
+      combined.push(def);
+    }
+  }
+
+  // Sort descending by created_at
+  combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('sama_contact_messages_cache', JSON.stringify(combined));
+  }
+
+  return combined;
+}
+
+// Update contact message status
+export async function updateContactMessageStatus(
+  id: string, 
+  status: 'NEW' | 'READ' | 'REPLIED' | 'ARCHIVED',
+  replyNotes?: string
+): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    try {
+      const updateData: any = { status };
+      if (status === 'REPLIED') {
+        updateData.replied_at = new Date().toISOString();
+        if (replyNotes) updateData.reply_notes = replyNotes;
+      }
+      await supabase
+        .from('contact_messages')
+        .update(updateData)
+        .eq('id', id);
+    } catch (err) {
+      console.warn('Supabase updateContactMessageStatus notice:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('sama_contact_messages_cache');
+      if (stored) {
+        const parsed: ContactMessage[] = JSON.parse(stored);
+        const updated = parsed.map(m => {
+          if (m.id === id) {
+            return {
+              ...m,
+              status,
+              replied_at: status === 'REPLIED' ? new Date().toISOString() : m.replied_at,
+              reply_notes: replyNotes || m.reply_notes
+            };
+          }
+          return m;
+        });
+        localStorage.setItem('sama_contact_messages_cache', JSON.stringify(updated));
+      }
+    } catch {}
+  }
+
+  return true;
+}
+
+// Delete contact message
+export async function deleteContactMessage(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    try {
+      await supabase
+        .from('contact_messages')
+        .delete()
+        .eq('id', id);
+    } catch (err) {
+      console.warn('Supabase deleteContactMessage notice:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('sama_contact_messages_cache');
+      if (stored) {
+        const parsed: ContactMessage[] = JSON.parse(stored);
+        const filtered = parsed.filter(m => m.id !== id);
+        localStorage.setItem('sama_contact_messages_cache', JSON.stringify(filtered));
+      }
+    } catch {}
+  }
+
+  return true;
+}
+

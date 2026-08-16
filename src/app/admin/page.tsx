@@ -35,10 +35,28 @@ import {
   UserCheck,
   User,
   Wrench,
-  MessageCircle
+  MessageCircle,
+  Inbox,
+  Send,
+  Reply,
+  MailCheck,
+  MailQuestion,
+  Archive,
+  Forward,
+  MessageSquare,
+  FileText
 } from 'lucide-react';
 import { PROVIDERS, MOCK_ADMIN_METRICS, CATEGORIES, SENEGAL_REGIONS, formatFcfa } from '@/lib/data';
-import { getProviders, updateProvider, deleteProvider, registerArtisan } from '@/lib/supabase/services';
+import { 
+  getProviders, 
+  updateProvider, 
+  deleteProvider, 
+  registerArtisan,
+  getContactMessages,
+  updateContactMessageStatus,
+  deleteContactMessage,
+  ContactMessage 
+} from '@/lib/supabase/services';
 import { Provider, VerificationLevel } from '@/lib/types';
 
 interface PendingArtisan {
@@ -93,10 +111,29 @@ export default function AdminDashboardPage() {
   const [passChangeSuccess, setPassChangeSuccess] = useState(false);
 
   // Dashboard Data State
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'verifications' | 'providers' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'users' | 'verifications' | 'providers' | 'settings'>('overview');
   const [providersList, setProvidersList] = useState<Provider[]>([]);
   const [pendingList, setPendingList] = useState<PendingArtisan[]>([]);
   const [clientsList, setClientsList] = useState<AppUser[]>([]);
+  
+  // Contact Messages & Email Inbox State
+  const [messagesList, setMessagesList] = useState<ContactMessage[]>([]);
+  const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [messageSearchQuery, setMessageSearchQuery] = useState('');
+  const [messageStatusFilter, setMessageStatusFilter] = useState<'ALL' | 'NEW' | 'READ' | 'REPLIED' | 'ARCHIVED'>('ALL');
+  const [messageTypeFilter, setMessageTypeFilter] = useState<'ALL' | 'Particulier' | 'Artisan Pro' | 'Entreprise'>('ALL');
+
+  // Email Reply Composer State
+  const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
+  const [replyMessageId, setReplyMessageId] = useState<string>('');
+  const [replyRecipientEmail, setReplyRecipientEmail] = useState('');
+  const [replyRecipientName, setReplyRecipientName] = useState('');
+  const [replyRecipientPhone, setReplyRecipientPhone] = useState('');
+  const [replySubject, setReplySubject] = useState('');
+  const [replyBody, setReplyBody] = useState('');
+  const [replyNotes, setReplyNotes] = useState('');
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState('mise_en_relation');
   
   // Users search & filter
   const [userSearchQuery, setUserSearchQuery] = useState('');
@@ -176,6 +213,13 @@ export default function AdminDashboardPage() {
       }
     });
 
+    // Load Contact Messages Live
+    getContactMessages().then((msgs) => {
+      if (msgs && msgs.length > 0) {
+        setMessagesList(msgs);
+      }
+    });
+
     // Load Pending Submissions
     const storedRegistrations = localStorage.getItem('sama_artisan_registrations');
     let localPending: PendingArtisan[] = [];
@@ -235,6 +279,96 @@ export default function AdminDashboardPage() {
       localStorage.setItem('sama_registered_accounts', JSON.stringify(DEFAULT_CLIENTS));
     }
   }, []);
+
+  // Email Template generator
+  const getEmailTemplate = (key: string, name: string, phone: string, subject: string) => {
+    switch (key) {
+      case 'mise_en_relation':
+        return `Bonjour ${name},\n\nMerci d'avoir contacté Sama Artisan concernant votre demande "${subject}".\n\nNos équipes ont sélectionné des artisans professionnels qualifiés et certifiés CNI dans votre zone.\n\nUn artisan de confiance va prendre contact avec vous directement au numéro ${phone}.\n\nRestant à votre entière disposition,\n\nBien cordialement,\nMohamed - Service Client Sama Artisan\nGrand Dakar, Sénégal\nTel / WhatsApp : +221 78 750 52 18\nEmail : mmahamar32@gmail.com\nSite : https://samaartisan.vercel.app`;
+      case 'validation_artisan':
+        return `Bonjour ${name},\n\nNous avons le plaisir de vous informer que votre profil d'artisan sur Sama Artisan a été vérifié et activé avec succès avec le badge de confiance CNI.\n\nVous pouvez dès à présent recevoir les demandes de devis et appels directs des clients sur votre numéro WhatsApp ${phone}.\n\nLien de votre vitrine pro : https://samaartisan.vercel.app\n\nBien cordialement,\nL'équipe Sama Artisan Sénégal\nService Artisans : +221 78 750 52 18`;
+      case 'info_complementaire':
+        return `Bonjour ${name},\n\nMerci pour votre message sur Sama Artisan concernant "${subject}".\n\nPour vous orienter vers le meilleur professionnel disponible, pourriez-vous nous préciser votre quartier exact à Dakar ainsi que la date ou le créneau souhaité pour l'intervention ?\n\nVous pouvez également nous joindre directement au +221 78 750 52 18.\n\nBien cordialement,\nL'équipe Sama Artisan`;
+      case 'partenariat':
+        return `Bonjour ${name},\n\nNous vous remercions pour l'intérêt que vous portez à la plateforme Sama Artisan.\n\nVotre proposition concernant "${subject}" a retenu toute notre attention. Notre responsable de développement vous propose un échange téléphonique ou un rendez-vous à notre siège de Grand Dakar.\n\nBien cordialement,\nMohamed - Direction Sama Artisan\nEmail : mmahamar32@gmail.com | Tel : +221 78 750 52 18`;
+      default:
+        return `Bonjour ${name},\n\nMerci pour votre message concernant "${subject}".\n\nNous avons bien pris en compte votre demande et revenons vers vous dans les plus brefs délais.\n\nBien cordialement,\nL'équipe Sama Artisan\nTel : +221 78 750 52 18\nhttps://samaartisan.vercel.app`;
+    }
+  };
+
+  // Open Message Detail & Mark as READ
+  const handleOpenMessageDetail = (msg: ContactMessage) => {
+    setSelectedMessage(msg);
+    setIsDetailModalOpen(true);
+    if (msg.status === 'NEW') {
+      handleMarkMessageStatus(msg.id, 'READ');
+    }
+  };
+
+  // Open Reply Modal
+  const handleOpenReplyModal = (msg: ContactMessage) => {
+    setReplyMessageId(msg.id);
+    setReplyRecipientName(msg.full_name);
+    setReplyRecipientPhone(msg.phone);
+    setReplyRecipientEmail(msg.email || '');
+    setReplySubject(`Re: ${msg.subject}`);
+    const defaultBody = getEmailTemplate('mise_en_relation', msg.full_name, msg.phone, msg.subject);
+    setReplyBody(defaultBody);
+    setSelectedTemplateKey('mise_en_relation');
+    setReplyNotes('');
+    setIsReplyModalOpen(true);
+  };
+
+  // Change selected template in composer
+  const handleChangeTemplate = (templateKey: string) => {
+    setSelectedTemplateKey(templateKey);
+    const cleanSubj = replySubject.replace(/^Re:\s*/, '');
+    const newBody = getEmailTemplate(templateKey, replyRecipientName, replyRecipientPhone, cleanSubj);
+    setReplyBody(newBody);
+  };
+
+  // Send Email Reply (via mailto + status update)
+  const handleSendEmailReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const mailtoUrl = `mailto:${replyRecipientEmail}?subject=${encodeURIComponent(replySubject)}&body=${encodeURIComponent(replyBody)}`;
+    
+    // Mark as REPLIED in database
+    await updateContactMessageStatus(replyMessageId, 'REPLIED', replyNotes || `Répondu par email (${replySubject})`);
+    
+    setMessagesList(prev => prev.map(m => m.id === replyMessageId ? { ...m, status: 'REPLIED', replied_at: new Date().toISOString(), reply_notes: replyNotes } : m));
+    
+    setIsReplyModalOpen(false);
+    if (selectedMessage && selectedMessage.id === replyMessageId) {
+      setSelectedMessage(prev => prev ? { ...prev, status: 'REPLIED', replied_at: new Date().toISOString(), reply_notes: replyNotes } : null);
+    }
+    
+    showToast(`Réponse enregistrée pour ${replyRecipientName}. Ouverture de votre boîte email...`);
+    
+    // Open email client
+    window.location.href = mailtoUrl;
+  };
+
+  // Change Message Status (READ, NEW, REPLIED, ARCHIVED)
+  const handleMarkMessageStatus = async (id: string, newStatus: 'NEW' | 'READ' | 'REPLIED' | 'ARCHIVED') => {
+    await updateContactMessageStatus(id, newStatus);
+    setMessagesList(prev => prev.map(m => m.id === id ? { ...m, status: newStatus } : m));
+    if (selectedMessage && selectedMessage.id === id) {
+      setSelectedMessage(prev => prev ? { ...prev, status: newStatus } : null);
+    }
+    showToast(`Statut du message mis à jour : ${newStatus === 'READ' ? 'Marqué comme Lu' : newStatus === 'REPLIED' ? 'Marqué comme Répondu' : newStatus === 'ARCHIVED' ? 'Archivé' : 'Marqué comme Nouveau'}.`);
+  };
+
+  // Delete Message
+  const handleDeleteMessage = async (id: string, name: string) => {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement le message de "${name}" ?`)) return;
+    await deleteContactMessage(id);
+    setMessagesList(prev => prev.filter(m => m.id !== id));
+    if (selectedMessage && selectedMessage.id === id) {
+      setSelectedMessage(null);
+      setIsDetailModalOpen(false);
+    }
+    showToast(`Message de ${name} supprimé avec succès.`);
+  };
 
   // Save clients to state & localStorage
   const updateClients = (newList: AppUser[]) => {
@@ -602,6 +736,25 @@ export default function AdminDashboardPage() {
     return matchesSearch && matchesRole;
   });
 
+  // Contact Messages stats & filtered list
+  const unreadMessagesCount = messagesList.filter((m) => m.status === 'NEW').length;
+  const repliedMessagesCount = messagesList.filter((m) => m.status === 'REPLIED').length;
+
+  const filteredMessages = messagesList.filter((m) => {
+    const query = messageSearchQuery.toLowerCase();
+    const matchesSearch =
+      m.full_name.toLowerCase().includes(query) ||
+      m.phone.includes(messageSearchQuery) ||
+      (m.email && m.email.toLowerCase().includes(query)) ||
+      m.subject.toLowerCase().includes(query) ||
+      m.message.toLowerCase().includes(query);
+
+    const matchesStatus = messageStatusFilter === 'ALL' || m.status === messageStatusFilter;
+    const matchesType = messageTypeFilter === 'ALL' || m.user_type === messageTypeFilter;
+
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
   // ----------------------------------------------------
   // VIEW 1: AUTHENTICATION LOGIN GATE (If not logged in)
   // ----------------------------------------------------
@@ -778,7 +931,7 @@ export default function AdminDashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
         
         {/* KPI Counter Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           
           {/* Card 1: Total Users */}
           <div 
@@ -786,75 +939,101 @@ export default function AdminDashboardPage() {
             className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-sama-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
           >
             <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
-              <span>Total Utilisateurs</span>
+              <span>Utilisateurs</span>
               <Users className="w-4 h-4 text-sama-400 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-xl sm:text-2xl font-black text-white mt-1.5 sm:mt-2">
-              {totalUsersCount} <span className="text-xs font-medium text-slate-400">inscrits</span>
+              {totalUsersCount}
             </div>
             <p className="text-[10px] sm:text-[11px] text-sama-400 font-bold mt-1">
               {clientsCount} clients • {prosCount} pros
             </p>
           </div>
 
-          {/* Card 2: Clients Particuliers */}
+          {/* Card 2: Inbox & Messages (NEW) */}
+          <div 
+            onClick={() => setActiveTab('inbox')}
+            className={`p-4 sm:p-5 rounded-3xl bg-slate-900 border transition-all active:scale-95 cursor-pointer group shadow-lg ${
+              unreadMessagesCount > 0 
+                ? 'border-sama-500/60 bg-gradient-to-b from-slate-900 to-sama-950/20' 
+                : 'border-slate-800 hover:border-sama-500/40'
+            }`}
+          >
+            <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
+              <span>Boîte E-mails</span>
+              <Inbox className="w-4 h-4 text-sama-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-white mt-1.5 sm:mt-2 flex items-center gap-2">
+              <span>{messagesList.length}</span>
+              {unreadMessagesCount > 0 && (
+                <span className="animate-pulse px-2 py-0.5 rounded-full bg-sama-500 text-white font-black text-[10px]">
+                  {unreadMessagesCount} new
+                </span>
+              )}
+            </div>
+            <p className="text-[10px] sm:text-[11px] text-emerald-400 font-bold mt-1">
+              {repliedMessagesCount} répondus
+            </p>
+          </div>
+
+          {/* Card 3: Clients Particuliers */}
           <div 
             onClick={() => { setActiveTab('users'); setUserRoleFilter('client'); }}
             className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-blue-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
           >
             <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
-              <span>Clients & Demandeurs</span>
+              <span>Clients</span>
               <User className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-xl sm:text-2xl font-black text-blue-400 mt-1.5 sm:mt-2">
-              {clientsCount} <span className="text-xs font-medium text-slate-400">particuliers</span>
+              {clientsCount}
             </div>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-1">Comptes actifs</p>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-1">Demandeurs</p>
           </div>
 
-          {/* Card 3: Artisans Pros */}
+          {/* Card 4: Artisans Pros */}
           <div 
             onClick={() => { setActiveTab('providers'); }}
             className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
           >
             <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
-              <span>Artisans Répertoriés</span>
+              <span>Artisans Pros</span>
               <Wrench className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-xl sm:text-2xl font-black text-white mt-1.5 sm:mt-2">
-              {providersList.length} <span className="text-xs font-medium text-slate-400">pros</span>
+              {providersList.length}
             </div>
-            <p className="text-[10px] sm:text-[11px] text-emerald-400 font-bold mt-1">100% Inscriptions Gratuites</p>
+            <p className="text-[10px] sm:text-[11px] text-emerald-400 font-bold mt-1">Vitrine Active</p>
           </div>
 
-          {/* Card 4: Verified CNI */}
+          {/* Card 5: Verified CNI */}
           <div 
             onClick={() => setActiveTab('providers')}
             className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
           >
             <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
-              <span>Profils Vérifiés CNI</span>
+              <span>Vérifiés CNI</span>
               <ShieldCheck className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1.5 sm:mt-2">
-              {verifiedCount} <span className="text-xs font-medium text-slate-400">certifiés</span>
+              {verifiedCount}
             </div>
             <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-1">Badge de confiance</p>
           </div>
 
-          {/* Card 5: Pending Submissions */}
+          {/* Card 6: Pending Submissions */}
           <div 
             onClick={() => setActiveTab('verifications')}
-            className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group col-span-2 sm:col-span-1"
+            className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-amber-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
           >
             <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
               <span>En Attente CNI</span>
               <Clock className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-xl sm:text-2xl font-black text-amber-300 mt-1.5 sm:mt-2">
-              {pendingList.length} <span className="text-xs font-medium text-slate-400">dossiers</span>
+              {pendingList.length}
             </div>
-            <p className="text-[10px] sm:text-[11px] text-amber-400/80 font-medium mt-1">À vérifier par vous</p>
+            <p className="text-[10px] sm:text-[11px] text-amber-400/80 font-medium mt-1">À traiter</p>
           </div>
 
         </div>
@@ -871,6 +1050,23 @@ export default function AdminDashboardPage() {
           >
             <LayoutDashboard className="w-4 h-4" />
             <span>Vue d'Ensemble & Métriques</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('inbox')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 relative ${
+              activeTab === 'inbox'
+                ? 'bg-sama-600 text-white shadow-lg shadow-sama-600/30'
+                : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+            }`}
+          >
+            <Inbox className="w-4 h-4" />
+            <span>Boîte E-mails & Messages ({messagesList.length})</span>
+            {unreadMessagesCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-sama-500 text-white font-black text-[10px] animate-pulse">
+                {unreadMessagesCount} nouveaux
+              </span>
+            )}
           </button>
 
           <button
@@ -1006,7 +1202,359 @@ export default function AdminDashboardPage() {
         )}
 
         {/* ---------------------------------------------------- */}
-        {/* TAB 2: USERS & ACCOUNTS MANAGEMENT (CLIENTS & PROS)  */}
+        {/* TAB: INBOX & EMAIL MESSAGES MANAGEMENT               */}
+        {/* ---------------------------------------------------- */}
+        {activeTab === 'inbox' && (
+          <div className="space-y-6 animate-in fade-in">
+            
+            {/* Top Messages Statistics Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>Total Messages</span>
+                  <Inbox className="w-4 h-4 text-sama-400" />
+                </div>
+                <div className="text-2xl font-black text-white mt-2">
+                  {messagesList.length} <span className="text-xs font-medium text-slate-400">reçus</span>
+                </div>
+                <p className="text-[11px] text-sama-400 font-bold mt-1">Formulaire & Direct Contact</p>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>Non Lus / Nouveaux</span>
+                  <MailQuestion className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="text-2xl font-black text-emerald-400 mt-2 flex items-center gap-2">
+                  <span>{unreadMessagesCount}</span>
+                  {unreadMessagesCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold animate-pulse">
+                      À traiter
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400 font-medium mt-1">Nécessitent une réponse</p>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>Répondus</span>
+                  <MailCheck className="w-4 h-4 text-blue-400" />
+                </div>
+                <div className="text-2xl font-black text-blue-400 mt-2">
+                  {repliedMessagesCount} <span className="text-xs font-medium text-slate-400">traités</span>
+                </div>
+                <p className="text-[11px] text-blue-400/80 font-medium mt-1">Par Email ou WhatsApp</p>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>Email Officiel Réception</span>
+                  <Mail className="w-4 h-4 text-purple-400" />
+                </div>
+                <div className="text-xs font-mono font-black text-white mt-3 truncate" title="mmahamar32@gmail.com">
+                  mmahamar32@gmail.com
+                </div>
+                <p className="text-[11px] text-emerald-400 font-bold mt-1">✓ Notification en direct active</p>
+              </div>
+            </div>
+
+            {/* Search, Status and User Type Filter Bar */}
+            <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Inbox className="w-5 h-5 text-sama-400" />
+                    <span>Boîte de Réception ({filteredMessages.length} affichés)</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Lisez, gérez et répondez instantanément aux e-mails et demandes reçues depuis votre site.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <a
+                    href="mailto:mmahamar32@gmail.com"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-700 transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-sama-400" />
+                    <span>Ouvrir Gmail</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 pt-2">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher par nom, sujet, téléphone, email ou mot-clé..."
+                    value={messageSearchQuery}
+                    onChange={(e) => setMessageSearchQuery(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-sama-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Status toggle filters */}
+                <div className="flex items-center gap-1.5 p-1 bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto">
+                  <button
+                    onClick={() => setMessageStatusFilter('ALL')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
+                      messageStatusFilter === 'ALL' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Tous ({messagesList.length})
+                  </button>
+                  <button
+                    onClick={() => setMessageStatusFilter('NEW')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                      messageStatusFilter === 'NEW' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>Non lus</span>
+                    {unreadMessagesCount > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black">
+                        {unreadMessagesCount}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setMessageStatusFilter('REPLIED')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
+                      messageStatusFilter === 'REPLIED' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Répondus ({repliedMessagesCount})
+                  </button>
+                  <button
+                    onClick={() => setMessageStatusFilter('ARCHIVED')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
+                      messageStatusFilter === 'ARCHIVED' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Archivés
+                  </button>
+                </div>
+
+                {/* User type selector */}
+                <div className="flex items-center gap-1.5 p-1 bg-slate-950 border border-slate-800 rounded-xl">
+                  <select
+                    value={messageTypeFilter}
+                    onChange={(e) => setMessageTypeFilter(e.target.value as any)}
+                    className="bg-transparent text-xs text-slate-300 font-bold px-2.5 py-1 focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL" className="bg-slate-900 text-white">Tous les Profils</option>
+                    <option value="Particulier" className="bg-slate-900 text-white">Particuliers</option>
+                    <option value="Artisan Pro" className="bg-slate-900 text-white">Artisans Pros</option>
+                    <option value="Entreprise" className="bg-slate-900 text-white">Entreprises / Partenaires</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Messages List / Table */}
+              <div className="pt-2">
+                {filteredMessages.length === 0 ? (
+                  <div className="text-center py-16 bg-slate-950/50 rounded-2xl border border-slate-800/80 space-y-3">
+                    <Inbox className="w-12 h-12 text-slate-600 mx-auto" />
+                    <p className="text-sm font-bold text-slate-300">Aucun message trouvé dans votre boîte</p>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                      Les messages envoyés depuis le formulaire de contact apparaîtront directement ici en temps réel.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredMessages.map((msg) => {
+                      const isUnread = msg.status === 'NEW';
+                      const isReplied = msg.status === 'REPLIED';
+                      
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 hover:border-sama-500/40 group ${
+                            isUnread 
+                              ? 'bg-slate-900/90 border-sama-500/40 shadow-lg shadow-sama-950/30' 
+                              : isReplied 
+                              ? 'bg-slate-900/40 border-slate-800/80 hover:bg-slate-900' 
+                              : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900'
+                          }`}
+                        >
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                            
+                            {/* Left: Sender & Message Header */}
+                            <div className="flex items-start gap-3.5 flex-1 cursor-pointer" onClick={() => handleOpenMessageDetail(msg)}>
+                              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 border ${
+                                msg.user_type === 'Artisan Pro'
+                                  ? 'bg-sama-500/20 text-sama-400 border-sama-500/30'
+                                  : msg.user_type === 'Entreprise'
+                                  ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                                  : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                              }`}>
+                                {msg.full_name.charAt(0).toUpperCase()}
+                              </div>
+
+                              <div className="space-y-1 min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className={`text-sm font-black ${isUnread ? 'text-white' : 'text-slate-200'}`}>
+                                    {msg.full_name}
+                                  </span>
+
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                    msg.user_type === 'Artisan Pro'
+                                      ? 'bg-sama-500/15 text-sama-300 border-sama-500/30'
+                                      : msg.user_type === 'Entreprise'
+                                      ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                                      : 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                                  }`}>
+                                    {msg.user_type}
+                                  </span>
+
+                                  {/* Status Pill */}
+                                  {isUnread && (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse">
+                                      ✨ Nouveau
+                                    </span>
+                                  )}
+                                  {isReplied && (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                                      ✓ Répondu
+                                    </span>
+                                  )}
+                                  {msg.status === 'READ' && (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+                                      Lu
+                                    </span>
+                                  )}
+                                  {msg.status === 'ARCHIVED' && (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-500 border border-slate-700">
+                                      Archivé
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="text-xs font-bold text-slate-200 line-clamp-1">
+                                  {msg.subject}
+                                </div>
+
+                                <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                                  {msg.message}
+                                </p>
+
+                                <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-500 pt-1">
+                                  <span className="flex items-center gap-1">
+                                    <Phone className="w-3 h-3 text-slate-400" />
+                                    <span className="font-mono text-slate-300">{msg.phone}</span>
+                                  </span>
+                                  {msg.email && (
+                                    <span className="flex items-center gap-1">
+                                      <Mail className="w-3 h-3 text-slate-400" />
+                                      <span className="text-slate-300">{msg.email}</span>
+                                    </span>
+                                  )}
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="w-3 h-3 text-slate-400" />
+                                    <span>
+                                      {msg.created_at ? (msg.created_at.includes('T') ? new Date(msg.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : msg.created_at) : 'Récemment'}
+                                    </span>
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Right: Quick Action Buttons */}
+                            <div className="flex items-center flex-wrap gap-2 shrink-0 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-800/80">
+                              
+                              {/* Read Message Button */}
+                              <button
+                                onClick={() => handleOpenMessageDetail(msg)}
+                                className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                                title="Lire le message complet"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Lire</span>
+                              </button>
+
+                              {/* Reply by Email Button */}
+                              <button
+                                onClick={() => handleOpenReplyModal(msg)}
+                                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-sama-600 to-emerald-600 hover:from-sama-500 hover:to-emerald-500 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-sama-600/20 active:scale-95 transition-all"
+                                title="Rédiger une réponse par e-mail"
+                              >
+                                <Reply className="w-3.5 h-3.5" />
+                                <span>Répondre</span>
+                              </button>
+
+                              {/* Direct WhatsApp button */}
+                              {msg.phone && (
+                                <a
+                                  href={`https://wa.me/${msg.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Bonjour ${msg.full_name}, suite à votre message sur Sama Artisan Sénégal concernant "${msg.subject}"...`)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="p-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 transition-colors"
+                                  title="Contacter sur WhatsApp"
+                                >
+                                  <MessageCircle className="w-4 h-4" />
+                                </a>
+                              )}
+
+                              {/* Direct Call button */}
+                              {msg.phone && (
+                                <a
+                                  href={`tel:${msg.phone}`}
+                                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+                                  title="Appeler au téléphone"
+                                >
+                                  <Phone className="w-4 h-4" />
+                                </a>
+                              )}
+
+                              {/* Status Toggle (Archive / Unarchive) */}
+                              {msg.status !== 'ARCHIVED' ? (
+                                <button
+                                  onClick={() => handleMarkMessageStatus(msg.id, 'ARCHIVED')}
+                                  className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
+                                  title="Archiver ce message"
+                                >
+                                  <Archive className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleMarkMessageStatus(msg.id, 'READ')}
+                                  className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-colors"
+                                  title="Désarchiver le message"
+                                >
+                                  <RefreshCw className="w-4 h-4" />
+                                </button>
+                              )}
+
+                              {/* Delete message button */}
+                              <button
+                                onClick={() => handleDeleteMessage(msg.id, msg.full_name)}
+                                className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-colors"
+                                title="Supprimer définitivement"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+
+                            </div>
+
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+        {/* ---------------------------------------------------- */}
+        {/* TAB 3: USERS & ACCOUNTS MANAGEMENT (CLIENTS & PROS)  */}
         {/* ---------------------------------------------------- */}
         {activeTab === 'users' && (
           <div className="space-y-6 animate-in fade-in">
@@ -1813,6 +2361,331 @@ export default function AdminDashboardPage() {
                   <Check className="w-4 h-4" />
                   <span>Créer le Compte</span>
                 </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* MODAL: MESSAGE DETAIL PREVIEW                        */}
+      {/* ---------------------------------------------------- */}
+      {isDetailModalOpen && selectedMessage && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-sama-600/20 text-sama-400 border border-sama-500/30">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">{selectedMessage.full_name}</h3>
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <span className="text-sama-400 font-bold">{selectedMessage.user_type}</span>
+                    <span>•</span>
+                    <span>{selectedMessage.created_at ? (selectedMessage.created_at.includes('T') ? new Date(selectedMessage.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : selectedMessage.created_at) : 'Récemment'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsDetailModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Sender Metadata Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-500">Numéro de Téléphone</span>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="font-mono font-bold text-white">{selectedMessage.phone}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold text-slate-500">Adresse E-mail</span>
+                <div className="flex items-center gap-2">
+                  <Mail className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="font-bold text-white truncate">{selectedMessage.email || 'Non renseigné'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Subject and Message Content */}
+            <div className="space-y-2">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Objet de la demande :
+              </div>
+              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 text-sm font-black text-sama-300">
+                {selectedMessage.subject}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Message complet :
+              </div>
+              <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800/90 text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
+                {selectedMessage.message}
+              </div>
+            </div>
+
+            {/* If replied, show reply history */}
+            {selectedMessage.status === 'REPLIED' && (
+              <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/30 space-y-1.5 text-xs text-blue-200">
+                <div className="flex items-center gap-1.5 font-black text-blue-300">
+                  <CheckCircle2 className="w-4 h-4 text-blue-400" />
+                  <span>Réponse envoyée le {selectedMessage.replied_at ? (selectedMessage.replied_at.includes('T') ? new Date(selectedMessage.replied_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : selectedMessage.replied_at) : 'Récemment'}</span>
+                </div>
+                {selectedMessage.reply_notes && (
+                  <p className="text-[11px] text-blue-300/80 italic">
+                    Note interne : {selectedMessage.reply_notes}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Action Bar */}
+            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-800">
+              
+              <div className="flex items-center gap-2">
+                {selectedMessage.status !== 'ARCHIVED' ? (
+                  <button
+                    onClick={() => handleMarkMessageStatus(selectedMessage.id, 'ARCHIVED')}
+                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold flex items-center gap-1.5"
+                  >
+                    <Archive className="w-3.5 h-3.5" />
+                    <span>Archiver</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleMarkMessageStatus(selectedMessage.id, 'READ')}
+                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold flex items-center gap-1.5"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Désarchiver</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => handleDeleteMessage(selectedMessage.id, selectedMessage.full_name)}
+                  className="px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold flex items-center gap-1.5 border border-red-500/20"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Supprimer</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {selectedMessage.phone && (
+                  <a
+                    href={`https://wa.me/${selectedMessage.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Bonjour ${selectedMessage.full_name}, suite à votre message sur Sama Artisan concernant "${selectedMessage.subject}"...`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>WhatsApp</span>
+                  </a>
+                )}
+
+                <button
+                  onClick={() => {
+                    setIsDetailModalOpen(false);
+                    handleOpenReplyModal(selectedMessage);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sama-600 to-emerald-600 hover:from-sama-500 hover:to-emerald-500 text-white text-xs font-black flex items-center gap-1.5 shadow-lg shadow-sama-600/30 active:scale-95 transition-all"
+                >
+                  <Reply className="w-4 h-4" />
+                  <span>Répondre par E-mail</span>
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* MODAL: EMAIL REPLY COMPOSER                          */}
+      {/* ---------------------------------------------------- */}
+      {isReplyModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 max-h-[95vh] overflow-y-auto">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-sama-600/20 text-sama-400 border border-sama-500/30">
+                  <Reply className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">Rédiger une Réponse par E-mail</h3>
+                  <p className="text-xs text-slate-400">
+                    Destinataire : <span className="text-white font-bold">{replyRecipientName}</span> ({replyRecipientEmail || 'mmahamar32@gmail.com'})
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsReplyModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Templates Selector */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                ⚡ Modèles de Réponse Rapide en 1-Clic
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleChangeTemplate('mise_en_relation')}
+                  className={`p-2.5 rounded-xl text-left text-[11px] font-bold border transition-all ${
+                    selectedTemplateKey === 'mise_en_relation'
+                      ? 'bg-sama-600/20 border-sama-500 text-sama-300'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  🛠️ Mise en relation pro
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleChangeTemplate('validation_artisan')}
+                  className={`p-2.5 rounded-xl text-left text-[11px] font-bold border transition-all ${
+                    selectedTemplateKey === 'validation_artisan'
+                      ? 'bg-sama-600/20 border-sama-500 text-sama-300'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  🛡️ Validation profil
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleChangeTemplate('info_complementaire')}
+                  className={`p-2.5 rounded-xl text-left text-[11px] font-bold border transition-all ${
+                    selectedTemplateKey === 'info_complementaire'
+                      ? 'bg-sama-600/20 border-sama-500 text-sama-300'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  ❓ Infos requises
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleChangeTemplate('partenariat')}
+                  className={`p-2.5 rounded-xl text-left text-[11px] font-bold border transition-all ${
+                    selectedTemplateKey === 'partenariat'
+                      ? 'bg-sama-600/20 border-sama-500 text-sama-300'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  🤝 Partenariat siège
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSendEmailReply} className="space-y-4">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                    E-mail Destinataire *
+                  </label>
+                  <input
+                    type="email"
+                    value={replyRecipientEmail}
+                    onChange={(e) => setReplyRecipientEmail(e.target.value)}
+                    required
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:ring-2 focus:ring-sama-500 focus:outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                    Objet de la réponse *
+                  </label>
+                  <input
+                    type="text"
+                    value={replySubject}
+                    onChange={(e) => setReplySubject(e.target.value)}
+                    required
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:ring-2 focus:ring-sama-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1 flex items-center justify-between">
+                  <span>Corps du Message (Personnalisable) *</span>
+                  <span className="text-[10px] text-slate-500 lowercase">Prêt à l'envoi</span>
+                </label>
+                <textarea
+                  rows={8}
+                  value={replyBody}
+                  onChange={(e) => setReplyBody(e.target.value)}
+                  required
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-200 focus:ring-2 focus:ring-sama-500 focus:outline-none leading-relaxed font-sans"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+                  Note Interne Admin (Optionnel - archivée avec le statut)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Client rappelé au téléphone, artisan Samba orienté sur le dossier."
+                  value={replyNotes}
+                  onChange={(e) => setReplyNotes(e.target.value)}
+                  className="w-full bg-slate-950/60 border border-slate-800/80 rounded-xl px-3.5 py-2 text-xs text-slate-300 focus:ring-2 focus:ring-sama-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsReplyModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold"
+                >
+                  Annuler
+                </button>
+
+                <div className="flex items-center gap-2">
+                  {replyRecipientPhone && (
+                    <a
+                      href={`https://wa.me/${replyRecipientPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(replyBody)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 text-xs font-bold flex items-center justify-center gap-1.5"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>Envoyer sur WhatsApp</span>
+                    </a>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-sama-600 to-emerald-600 hover:from-sama-500 hover:to-emerald-500 text-white text-xs font-black flex items-center justify-center gap-2 shadow-lg shadow-sama-600/30 active:scale-95 transition-all"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>Envoyer la Réponse par E-mail</span>
+                  </button>
+                </div>
               </div>
             </form>
 

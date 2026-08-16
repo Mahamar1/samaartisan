@@ -17,7 +17,8 @@ import {
   Upload, 
   Plus, 
   Trash2,
-  ExternalLink
+  ExternalLink,
+  LogOut
 } from 'lucide-react';
 import { PROVIDERS, formatFcfa } from '@/lib/data';
 import { Provider, ServiceRequest } from '@/lib/types';
@@ -204,6 +205,17 @@ export default function ProviderDashboardPage() {
     }
   };
 
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('samapro_current_user');
+      localStorage.removeItem('sama_user_session');
+      window.dispatchEvent(new Event('storage'));
+      window.location.href = '/';
+    } catch (e) {
+      window.location.href = '/';
+    }
+  };
+
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
       
@@ -243,6 +255,15 @@ export default function ProviderDashboardPage() {
                 <ExternalLink className="w-4 h-4" />
                 <span>Voir mon profil public</span>
               </Link>
+
+              <button
+                onClick={handleLogout}
+                className="px-4 py-3 rounded-2xl text-xs font-bold bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 hover:border-red-600 flex items-center gap-2 transition-all active:scale-95 shadow-sm"
+                title="Se déconnecter de votre espace artisan"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Se déconnecter</span>
+              </button>
             </div>
 
           </div>
@@ -490,13 +511,22 @@ export default function ProviderDashboardPage() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100">
+              <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <button
                   type="submit"
                   className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold bg-sama-600 hover:bg-sama-700 text-white text-xs shadow-lg shadow-sama-600/30 transition-all active:scale-95 flex items-center justify-center gap-2"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Enregistrer toutes les modifications</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl font-bold bg-red-50 hover:bg-red-100 text-red-600 text-xs border border-red-200 transition-all flex items-center justify-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Se déconnecter de la session</span>
                 </button>
               </div>
 

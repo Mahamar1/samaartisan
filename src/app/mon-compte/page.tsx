@@ -47,14 +47,28 @@ export default function MonComptePage() {
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-navy-950 via-slate-900 to-navy-900 text-white py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-sama-600/30 border border-sama-500/40 flex items-center justify-center text-sama-400">
-              <User className="w-7 h-7" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-sama-600/30 border border-sama-500/40 flex items-center justify-center text-sama-400">
+                <User className="w-7 h-7" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Espace Client</h1>
+                <p className="text-xs text-slate-300">Suivez vos demandes d'intervention et vos artisans favoris à Dakar</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Espace Client</h1>
-              <p className="text-xs text-slate-300">Suivez vos demandes d'intervention et vos artisans favoris à Dakar</p>
-            </div>
+
+            <button
+              onClick={() => {
+                localStorage.removeItem('sama_user_session');
+                localStorage.removeItem('samapro_current_user');
+                window.dispatchEvent(new Event('storage'));
+                window.location.href = '/';
+              }}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 transition-all flex items-center gap-2 self-start sm:self-auto"
+            >
+              <span>Se déconnecter</span>
+            </button>
           </div>
         </div>
       </div>

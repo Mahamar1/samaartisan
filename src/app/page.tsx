@@ -101,21 +101,36 @@ export default function HomePage() {
 
     setIsSubmitting(true);
 
-    const newUser = {
-      name: fullName.trim(),
-      phone: phone.trim(),
-      email: email.trim().toLowerCase(),
-      role: 'user',
-      registeredAt: new Date().toISOString()
-    };
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
 
     try {
-      // Sauvegarder dans la base locale
       const existingAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
-      existingAccounts.push({
-        ...newUser,
-        passwordHash: btoa(password)
-      });
+      
+      // Vérifier si le compte existe déjà
+      const alreadyExists = existingAccounts.some(
+        (a: any) =>
+          (a.email && a.email.toLowerCase() === cleanEmail) ||
+          (cleanPhone.length >= 7 && a.phone && a.phone.replace(/[^0-9]/g, '').includes(cleanPhone))
+      );
+
+      if (alreadyExists) {
+        setFormError('Un compte existe déjà avec ce numéro ou cet email. Veuillez vous connecter.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const newUser = {
+        name: fullName.trim(),
+        phone: phone.trim(),
+        email: cleanEmail,
+        role: 'user',
+        passwordHash: btoa(password),
+        registeredAt: new Date().toISOString()
+      };
+
+      // Sauvegarder dans la base locale
+      existingAccounts.push(newUser);
       localStorage.setItem('sama_registered_accounts', JSON.stringify(existingAccounts));
 
       // Activer la session
@@ -133,6 +148,7 @@ export default function HomePage() {
       window.dispatchEvent(new Event('storage'));
     } catch (err) {
       console.error(err);
+      setFormError("Une erreur est survenue lors de l'inscription.");
     } finally {
       setIsSubmitting(false);
     }
@@ -153,17 +169,52 @@ export default function HomePage() {
 
     try {
       const existingAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
+      const cleanIdent = loginIdentifier.trim().toLowerCase();
+      const cleanDigits = loginIdentifier.replace(/[^0-9]/g, '');
+
+      // 1. Chercher dans les comptes enregistrés
       const found = existingAccounts.find(
         (a: any) =>
-          (a.email?.toLowerCase() === loginIdentifier.trim().toLowerCase() ||
-           a.phone?.replace(/[^0-9]/g, '') === loginIdentifier.replace(/[^0-9]/g, ''))
+          (a.email && a.email.toLowerCase() === cleanIdent) ||
+          (cleanDigits.length >= 7 && a.phone && a.phone.replace(/[^0-9]/g, '').includes(cleanDigits)) ||
+          (cleanDigits.length >= 7 && a.phone && cleanDigits.includes(a.phone.replace(/[^0-9]/g, '')))
       );
 
+      // 2. Chercher dans les artisans enregistrés localement
+      let foundPro = null;
+      const storedProStr = localStorage.getItem('samapro_current_user');
+      if (storedProStr) {
+        try {
+          const proObj = JSON.parse(storedProStr);
+          if (
+            (proObj.email && proObj.email.toLowerCase() === cleanIdent) ||
+            (cleanDigits.length >= 7 && proObj.phone && proObj.phone.replace(/[^0-9]/g, '').includes(cleanDigits)) ||
+            (cleanDigits.length >= 7 && proObj.phone && cleanDigits.includes(proObj.phone.replace(/[^0-9]/g, '')))
+          ) {
+            foundPro = proObj;
+          }
+        } catch (e) {}
+      }
+
+      // Si le compte n'existe pas du tout : REFUSER LA CONNEXION et demander de créer un compte
+      if (!found && !foundPro) {
+        setFormError("Aucun compte trouvé avec ces identifiants. Vous devez d'abord créer un compte.");
+        return;
+      }
+
+      // Si le compte existe avec un mot de passe hashé, vérifier la validité
+      if (found && found.passwordHash) {
+        if (btoa(loginPassword) !== found.passwordHash && loginPassword !== found.password) {
+          setFormError('Mot de passe incorrect. Veuillez vérifier votre saisie.');
+          return;
+        }
+      }
+
       const user = found || {
-        name: loginIdentifier.includes('@') ? loginIdentifier.split('@')[0] : 'Membre Sama',
-        phone: loginIdentifier.includes('@') ? '+221 77 000 00 00' : loginIdentifier.trim(),
-        email: loginIdentifier.includes('@') ? loginIdentifier.trim() : 'client@samaartisan.sn',
-        role: 'user',
+        name: foundPro?.name || foundPro?.businessName || 'Artisan Sama',
+        phone: foundPro?.phone || loginIdentifier,
+        email: foundPro?.email || 'artisan@samaartisan.sn',
+        role: 'pro',
         registeredAt: new Date().toISOString()
       };
 
@@ -172,6 +223,7 @@ export default function HomePage() {
       window.dispatchEvent(new Event('storage'));
     } catch (err) {
       console.error(err);
+      setFormError('Erreur de connexion. Veuillez réessayer.');
     }
   };
 
@@ -229,8 +281,28 @@ export default function HomePage() {
           </div>
 
           {formError && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-medium text-center">
-              {formError}
+            <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl font-medium space-y-2">
+              <div className="flex items-center gap-2 font-bold">
+                <ShieldCheck className="w-4 h-4 text-red-500 shrink-0" />
+                <span>{formError}</span>
+              </div>
+              {isLoginMode && formError.includes("créer un compte") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormError('');
+                    setIsLoginMode(false);
+                    if (loginIdentifier.includes('@')) {
+                      setEmail(loginIdentifier);
+                    } else if (loginIdentifier.replace(/[^0-9]/g, '').length >= 6) {
+                      setPhone(loginIdentifier);
+                    }
+                  }}
+                  className="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-all text-xs flex items-center justify-center gap-1 shadow-sm"
+                >
+                  <span>Créer mon compte maintenant &rarr;</span>
+                </button>
+              )}
             </div>
           )}
 

@@ -18,45 +18,6 @@ export default function Footer() {
     <footer className="bg-navy-950 text-slate-300 pt-16 pb-12 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Top Trust Banner */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-12 mb-12 border-b border-slate-800/80">
-          <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
-            <div className="p-3 rounded-xl bg-sama-500/10 text-sama-400">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="text-white font-bold text-base">Artisans 100% Vérifiés</h4>
-              <p className="text-xs text-slate-400 mt-1">
-                Contrôle strict des pièces d'identité (CNI), compétences et références réelles.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
-            <div className="p-3 rounded-xl bg-brand-500/10 text-brand-400">
-              <Smartphone className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="text-white font-bold text-base">Contact Direct & WhatsApp</h4>
-              <p className="text-xs text-slate-400 mt-1">
-                Échangez en direct avec le professionnel sans barrière ni intermédiaire bloquant.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
-            <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-400">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="text-white font-bold text-base">100% Gratuit & Sans Frais</h4>
-              <p className="text-xs text-slate-400 mt-1">
-                Mise en relation directe sans commission ni abonnement obligatoire.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Main Footer Links */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
           

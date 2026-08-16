@@ -1,460 +1,467 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   ShieldCheck, 
   Sparkles, 
   Wrench, 
   Zap, 
+  Wind,
+  Hammer,
+  Paintbrush,
+  Key,
+  Flame,
+  Layers,
   PhoneCall, 
   Star, 
   CheckCircle2, 
   Clock, 
   Smartphone, 
   MapPin, 
-  Award, 
-  TrendingUp, 
   ArrowRight,
   UserCheck,
   ChevronRight,
-  Coins,
-  MessageSquare
+  MessageSquare,
+  Search,
+  HeartHandshake,
+  TrendingUp,
+  Award,
+  ChevronDown,
+  User,
+  Phone,
+  Briefcase,
+  Lock
 } from 'lucide-react';
-import HeroSearch from '@/components/search/HeroSearch';
-import ProviderCard from '@/components/provider/ProviderCard';
-import { CATEGORIES, PROVIDERS, NEIGHBORHOODS, formatFcfa } from '@/lib/data';
+import { CATEGORIES, NEIGHBORHOODS, formatFcfa } from '@/lib/data';
 import { getProviders } from '@/lib/supabase/services';
 import { Provider } from '@/lib/types';
 
 export default function HomePage() {
-  const [providersList, setProvidersList] = useState<Provider[]>(PROVIDERS);
-  const [jobsPerMonth, setJobsPerMonth] = useState(4);
-  const [averageJobPrice, setAverageJobPrice] = useState(35000);
+  const [sessionUser, setSessionUser] = useState<any>(null);
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
 
-  React.useEffect(() => {
-    getProviders().then((pros) => {
-      if (pros && pros.length > 0) {
-        setProvidersList(pros);
+  // Registration gate form state
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [userRole, setUserRole] = useState<'client' | 'pro'>('client');
+  const [district, setDistrict] = useState('Almadies');
+  const [activeFaq, setActiveFaq] = useState<number | null>(0);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('sama_user_session');
+      const storedPro = localStorage.getItem('samapro_current_user');
+      if (stored) {
+        setSessionUser(JSON.parse(stored));
+      } else if (storedPro) {
+        setSessionUser(JSON.parse(storedPro));
       }
-    });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingSession(false);
+    }
   }, []);
 
-  const potentialRevenue = jobsPerMonth * averageJobPrice;
-  const subscriptionCost = 5000;
-  const netEarnings = potentialRevenue - subscriptionCost;
-  const roi = Math.round((netEarnings / subscriptionCost) * 100);
+  const handleRegisterEntry = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fullName.trim() || !phone.trim()) return;
 
-  return (
-    <div className="flex flex-col min-h-screen">
-      
-      {/* 1. HERO SECTION */}
-      <section className="relative pt-12 pb-20 md:pt-16 md:pb-28 overflow-hidden bg-gradient-to-b from-slate-900 via-navy-900 to-slate-900 text-white">
+    const newUser = {
+      name: fullName.trim(),
+      phone: phone.trim(),
+      role: userRole,
+      neighborhood: district,
+      registeredAt: new Date().toISOString()
+    };
+
+    try {
+      localStorage.setItem('sama_user_session', JSON.stringify(newUser));
+      setSessionUser(newUser);
+      window.dispatchEvent(new Event('storage'));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const faqs = [
+    {
+      q: "Comment trouver rapidement un artisan à Dakar ?",
+      a: "Sur Sama Artisan, choisissez simplement le métier (plombier, électricien, climaticien, etc.) et votre quartier. Vous avez un accès immédiat aux profils vérifiés, numéros directs et boutons WhatsApp."
+    },
+    {
+      q: "Est-ce gratuit pour les clients ?",
+      a: "Oui, à 100% ! Aucun frais, aucune commission sur les devis ou les travaux."
+    },
+    {
+      q: "Comment s'inscrire en tant qu'artisan professionnel ?",
+      a: "Cliquez sur 'Créer mon profil Artisan' ou 'Devenir artisan', complétez vos coordonnées professionnelles en 2 minutes et commencez à recevoir des demandes de chantiers sur WhatsApp."
+    },
+    {
+      q: "Comment sont vérifiés les artisans ?",
+      a: "Chaque professionnel doit fournir une pièce d'identité officielle sénégalaise (CNI/Passeport) et justifier de ses qualifications et chantiers antérieurs."
+    }
+  ];
+
+  if (isLoadingSession) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-sama-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs text-slate-400 font-semibold">Chargement de Sama Artisan...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // 🚪 1. GATED ENTRY: SHOW REGISTRATION MODAL/PORTAL IF NOT REGISTERED
+  if (!sessionUser) {
+    return (
+      <div className="min-h-[90vh] bg-gradient-to-b from-slate-950 via-navy-950 to-slate-900 flex items-center justify-center px-4 py-12 relative overflow-hidden">
         
-        {/* Background ambient glowing spheres */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-sama-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-brand-500/20 rounded-full blur-3xl pointer-events-none" />
+        {/* Glow ambient background */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-sama-600/20 rounded-full blur-[120px] pointer-events-none" />
+
+        <div className="w-full max-w-lg bg-white/95 backdrop-blur-xl rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/20 relative z-10 space-y-6">
+          
+          {/* Header */}
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sama-600 to-brand-600 flex items-center justify-center text-white mx-auto shadow-lg shadow-sama-600/30">
+              <Wrench className="w-7 h-7 stroke-[2.2]" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-navy-900 tracking-tight">
+              Bienvenue sur <span className="text-sama-600">Sama Artisan</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 max-w-sm mx-auto">
+              Inscrivez-vous en 30 secondes pour accéder à la plateforme des meilleurs artisans vérifiés au Sénégal.
+            </p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleRegisterEntry} className="space-y-4">
+            
+            {/* Role selector */}
+            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setUserRole('client')}
+                className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  userRole === 'client'
+                    ? 'bg-sama-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-navy-900'
+                }`}
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Je cherche un artisan</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUserRole('pro')}
+                className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  userRole === 'pro'
+                    ? 'bg-navy-900 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-navy-900'
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                <span>Je suis artisan</span>
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                Nom & Prénom <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Ex: Moussa Diop"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/50"
+                />
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                Numéro WhatsApp / Téléphone <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Ex: 77 123 45 67"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/50"
+                />
+                <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                Quartier / Zone à Dakar
+              </label>
+              <div className="relative">
+                <select
+                  value={district}
+                  onChange={(e) => setDistrict(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/50 appearance-none"
+                >
+                  {NEIGHBORHOODS.map((n) => (
+                    <option key={n.id} value={n.name}>{n.name}</option>
+                  ))}
+                </select>
+                <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-4 rounded-2xl font-black bg-sama-600 hover:bg-sama-700 text-white shadow-xl shadow-sama-600/30 flex items-center justify-center gap-2 transition-all active:scale-95 text-sm"
+            >
+              <span>Accéder à la plateforme</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+
+          </form>
+
+          {/* Micro trust indicators */}
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-around text-[11px] text-slate-500">
+            <span className="flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              100% Gratuit
+            </span>
+            <span className="flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              Artisans CNI Vérifiés
+            </span>
+            <span className="flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              Dakar & Régions
+            </span>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // 🚀 2. CLEAN LANDING PAGE (AFTER SIGNUP) WITH 2 DISTINCT CHOICES
+  return (
+    <div className="flex flex-col min-h-screen bg-slate-900 text-slate-100 selection:bg-sama-500 selection:text-white">
+      
+      {/* HERO SECTION */}
+      <section className="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden bg-gradient-to-b from-navy-950 via-slate-900 to-navy-900 border-b border-slate-800">
+        
+        {/* Background glow */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-sama-600/15 rounded-full blur-[120px] pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
-          {/* Top Pill Announcement */}
+          {/* Welcome User Pill */}
           <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-semibold text-slate-200 shadow-inner">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>N°1 de la mise en relation d'artisans vérifiés à Dakar</span>
-              <span className="text-sama-400 font-bold">★ 4.9/5</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs sm:text-sm font-semibold text-slate-200 shadow-xl">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Bienvenue, <strong>{sessionUser.name}</strong> ({sessionUser.neighborhood || 'Dakar'})</span>
             </div>
           </div>
 
-          {/* Main Headline */}
-          <div className="text-center max-w-3xl mx-auto mb-10 space-y-4">
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
-              Trouvez un professionnel <br />
-              <span className="bg-gradient-to-r from-sama-400 via-emerald-300 to-brand-400 bg-clip-text text-transparent">
-                fiable & vérifié
-              </span> près de chez vous.
+          {/* Main Title */}
+          <div className="text-center max-w-4xl mx-auto space-y-4">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.15]">
+              Que souhaitez-vous faire <br className="hidden sm:block" />
+              sur <span className="bg-gradient-to-r from-sama-400 via-emerald-300 to-amber-300 bg-clip-text text-transparent">Sama Artisan</span> ?
             </h1>
-            <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
-              Plomberie, climatisation, électricité, menuiserie, peinture ou mécanique. Contactez directement les meilleurs artisans de votre quartier en quelques secondes.
+            <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto">
+              Choisissez l'option qui vous correspond pour démarrer immédiatement :
             </p>
           </div>
 
-          {/* Hero Search Box */}
-          <HeroSearch />
+          {/* 🌟 THE 2 MAIN CLEAR CHOICES */}
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            
+            {/* OPTION 1: CLIENT / PARTICULIER */}
+            <div className="group relative p-8 rounded-3xl bg-gradient-to-br from-slate-800/90 to-navy-900/90 border-2 border-sama-500/40 hover:border-sama-500 shadow-2xl transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between space-y-6">
+              <div className="space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-sama-600/20 text-sama-400 flex items-center justify-center border border-sama-500/30 group-hover:scale-110 transition-transform">
+                  <Search className="w-8 h-8 stroke-[2.5]" />
+                </div>
+                <div>
+                  <span className="text-xs font-black uppercase tracking-wider text-sama-400">Pour les Particuliers & Entreprises</span>
+                  <h3 className="text-2xl font-black text-white mt-1">
+                    Je cherche un artisan
+                  </h3>
+                  <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+                    Trouvez un plombier, électricien, climaticien, menuisier ou maçon certifié près de chez vous à Dakar. Contact direct WhatsApp sans frais.
+                  </p>
+                </div>
 
-          {/* Key Trust Counters */}
-          <div className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center backdrop-blur-sm">
-              <div className="text-2xl sm:text-3xl font-black text-sama-400">200+</div>
-              <div className="text-xs text-slate-300 mt-1 font-medium">Artisans CNI Vérifiés</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center backdrop-blur-sm">
-              <div className="text-2xl sm:text-3xl font-black text-amber-400">&lt; 15 min</div>
-              <div className="text-xs text-slate-300 mt-1 font-medium">Délai moyen de réponse</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center backdrop-blur-sm">
-              <div className="text-2xl sm:text-3xl font-black text-emerald-400">98.4%</div>
-              <div className="text-xs text-slate-300 mt-1 font-medium">Clients Satisfaits</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center backdrop-blur-sm">
-              <div className="text-2xl sm:text-3xl font-black text-brand-400">0 FCFA</div>
-              <div className="text-xs text-slate-300 mt-1 font-medium">Gratuit pour les clients</div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* 2. CATEGORIES GRID */}
-      <section className="py-16 md:py-24 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-sama-600">Explorez nos services</span>
-              <h2 className="text-2xl sm:text-4xl font-black text-navy-900 mt-1">
-                Tous les corps de métier à Dakar
-              </h2>
-            </div>
-            <Link
-              href="/recherche"
-              className="inline-flex items-center gap-2 font-bold text-sama-700 hover:text-sama-800 text-sm"
-            >
-              <span>Voir les {CATEGORIES.length} métiers</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            {CATEGORIES.slice(0, 8).map((category) => (
-              <Link
-                key={category.id}
-                href={`/recherche?categorie=${category.slug}`}
-                className="group p-5 rounded-3xl bg-white border border-slate-200/80 hover:border-sama-400 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between"
-              >
-                <div className="space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sama-50 to-slate-100 text-sama-700 flex items-center justify-center group-hover:bg-sama-600 group-hover:text-white transition-colors shadow-sm">
-                    {category.slug === 'plomberie' && <Wrench className="w-6 h-6" />}
-                    {category.slug === 'electricite' && <Zap className="w-6 h-6" />}
-                    {category.slug === 'climatisation' && <Wind className="w-6 h-6" />}
-                    {category.slug === 'menuiserie' && <Hammer className="w-6 h-6" />}
-                    {category.slug === 'peinture' && <Paintbrush className="w-6 h-6" />}
-                    {category.slug === 'serrurerie' && <Key className="w-6 h-6" />}
-                    {category.slug === 'soudure' && <Flame className="w-6 h-6" />}
-                    {category.slug === 'maconnerie' && <Layers className="w-6 h-6" />}
+                <div className="space-y-2 pt-2 text-xs text-slate-300">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>200+ Artisans CNI Vérifiés</span>
                   </div>
-
-                  <div>
-                    <h3 className="font-bold text-navy-900 group-hover:text-sama-600 transition-colors text-base">
-                      {category.name}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                      {category.shortDesc}
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Réponse WhatsApp en moins de 15 min</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>100% Gratuit, 0 FCFA de commission</span>
                   </div>
                 </div>
+              </div>
+
+              <Link
+                href="/recherche"
+                className="w-full py-4 rounded-2xl font-black bg-sama-600 hover:bg-sama-500 text-white shadow-xl shadow-sama-600/30 flex items-center justify-center gap-3 transition-all active:scale-95 text-sm"
+              >
+                <Search className="w-4 h-4 stroke-[2.5]" />
+                <span>Chercher & Trouver un artisan</span>
+                <ArrowRight className="w-4 h-4" />
               </Link>
-            ))}
-          </div>
-
-        </div>
-      </section>
-
-      {/* 3. FEATURED & VERIFIED PROVIDERS */}
-      <section className="py-16 md:py-24 bg-white border-y border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold mb-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Sélection Recommandée & Identité Certifiée</span>
-              </div>
-              <h2 className="text-2xl sm:text-4xl font-black text-navy-900">
-                Les prestataires les mieux notés de la semaine
-              </h2>
             </div>
-            
-            <Link
-              href="/recherche"
-              className="px-5 py-2.5 rounded-xl font-bold bg-slate-900 hover:bg-slate-800 text-white text-xs flex items-center gap-2 shadow-sm shrink-0"
-            >
-              <span>Explorer l'annuaire complet</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
 
-          {providersList.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {providersList.slice(0, 6).map((provider) => (
-                <ProviderCard key={provider.id} provider={provider} />
-              ))}
-            </div>
-          ) : (
-            <div className="p-12 rounded-3xl bg-slate-50 border border-slate-200 text-center max-w-xl mx-auto space-y-4 shadow-sm">
-              <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
-                <Wrench className="w-8 h-8" />
+            {/* OPTION 2: ARTISAN / PROFESSIONNEL */}
+            <div className="group relative p-8 rounded-3xl bg-gradient-to-br from-slate-800/90 to-navy-900/90 border-2 border-emerald-500/40 hover:border-emerald-500 shadow-2xl transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between space-y-6">
+              <div className="space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 group-hover:scale-110 transition-transform">
+                  <Briefcase className="w-8 h-8 stroke-[2.2]" />
+                </div>
+                <div>
+                  <span className="text-xs font-black uppercase tracking-wider text-emerald-400">Pour les Professionnels du Métier</span>
+                  <h3 className="text-2xl font-black text-white mt-1">
+                    Je suis un artisan
+                  </h3>
+                  <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+                    Créez votre vitrine professionnelle, ajoutez vos photos de chantiers et recevez des demandes de clients directement sur votre WhatsApp.
+                  </p>
+                </div>
+
+                <div className="space-y-2 pt-2 text-xs text-slate-300">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Inscription rapide et gratuite</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Espace de gestion des demandes & portfolio</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Visibilité maximale sur tout Dakar</span>
+                  </div>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-navy-900">Aucun prestataire pour le moment</h3>
-              <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
-                Vous êtes un artisan qualifié à Dakar ou dans les régions du Sénégal ? Soyez le premier à inscrire votre entreprise gratuitement !
-              </p>
-              <div className="pt-2">
+
+              <div className="space-y-2">
                 <Link
                   href="/devenir-prestataire"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold bg-sama-600 hover:bg-sama-700 text-white shadow-md shadow-sama-600/20 transition-all hover:scale-105 active:scale-95"
+                  className="w-full py-4 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-3 transition-all active:scale-95 text-sm"
                 >
-                  <span>Inscrire mon entreprise gratuitement</span>
+                  <UserCheck className="w-4 h-4" />
+                  <span>Créer mon profil artisan</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
-              </div>
-            </div>
-          )}
 
-        </div>
-      </section>
-
-      {/* 4. HOW IT WORKS (CLIENT & ARTISAN) */}
-      <section className="py-16 md:py-24 bg-slate-900 text-white relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-sama-400">Simplicité & Rapidité</span>
-            <h2 className="text-2xl sm:text-4xl font-black text-white">
-              Comment fonctionne Sama Artisan ?
-            </h2>
-            <p className="text-sm text-slate-300">
-              Un processus en 3 étapes transparentes, pensé pour les réalités locales et la réactivité WhatsApp.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            
-            {/* Step 1 */}
-            <div className="p-8 rounded-3xl bg-slate-800/80 border border-slate-700 relative">
-              <div className="w-12 h-12 rounded-2xl bg-sama-500 text-white font-black text-xl flex items-center justify-center mb-6 shadow-lg shadow-sama-500/30">
-                1
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2">1. Recherchez & Comparez</h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Indiquez votre besoin (ex: fuite d'eau) et votre quartier à Dakar. Visualisez les artisans vérifiés, leurs photos de réalisations et les avis clients.
-              </p>
-            </div>
-
-            {/* Step 2 */}
-            <div className="p-8 rounded-3xl bg-slate-800/80 border border-slate-700 relative">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white font-black text-xl flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30">
-                2
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2">2. Échangez sur WhatsApp ou Appel</h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Envoyez les photos du problème en un clic. L'artisan vous donne une estimation de prix et fixe l'heure de son intervention chez vous.
-              </p>
-            </div>
-
-            {/* Step 3 */}
-            <div className="p-8 rounded-3xl bg-slate-800/80 border border-slate-700 relative">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white font-black text-xl flex items-center justify-center mb-6 shadow-lg shadow-amber-500/30">
-                3
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2">3. Travail Réalisé & Avis Partagé</h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Le professionnel effectue la prestation avec soin. Vous réglez directement l'artisan et laissez votre note pour guider la communauté.
-              </p>
-            </div>
-
-          </div>
-
-        </div>
-      </section>
-
-      {/* 5. ARTISAN REVENUE / ROI CALCULATOR */}
-      <section className="py-16 md:py-24 bg-gradient-to-br from-sama-900 via-slate-900 to-navy-950 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            
-            {/* Left pitch */}
-            <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-400/20 text-emerald-300 text-xs font-bold border border-emerald-400/30">
-                <Coins className="w-4 h-4" />
-                <span>100% Gratuit — Zéro Frais & Zéro Commission</span>
-              </div>
-              
-              <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
-                Vous êtes artisan ? <br />
-                Multipliez vos chantiers dès cette semaine.
-              </h2>
-              
-              <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
-                L'inscription et la réception de demandes clients sont <strong className="text-emerald-400">100% gratuites</strong>. Recevez des appels et messages de clients qualifiés directement sur votre WhatsApp. <strong>Zéro commission sur vos chantiers</strong>.
-              </p>
-
-              <div className="space-y-3 pt-2 text-sm text-slate-300">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <span>Votre mini-site professionnel avec vos plus belles réalisations</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <span>Badge "Identité Vérifiée" gratuit pour inspirer confiance aux clients</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <span>Contact direct sur votre numéro WhatsApp personnel</span>
-                </div>
-              </div>
-
-              <div className="pt-4">
                 <Link
-                  href="/inscription"
-                  className="px-8 py-4 rounded-2xl font-black bg-gradient-to-r from-sama-500 to-emerald-500 hover:from-sama-600 hover:to-emerald-600 text-white shadow-xl shadow-sama-500/30 active:scale-95 transition-all inline-flex items-center gap-2 text-base"
+                  href="/pro/dashboard"
+                  className="w-full py-2.5 rounded-xl font-bold bg-white/5 hover:bg-white/10 text-slate-300 text-xs flex items-center justify-center gap-2 transition-all"
                 >
-                  <Sparkles className="w-5 h-5" />
-                  <span>Créer mon Profil Artisan Gratuitement &rarr;</span>
+                  <span>Déjà inscrit ? Accéder à mon Espace Pro</span>
                 </Link>
               </div>
             </div>
 
-            {/* Right Interactive Simulator */}
-            <div className="p-8 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/15 space-y-6 shadow-2xl">
-              <h3 className="text-xl font-black text-white flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-sama-400" />
-                <span>Simulateur de Gains Mensuels</span>
-              </h3>
-
-              {/* Slider 1 */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-300">Chantiers estimés / mois obtenus via Sama Artisan</span>
-                  <span className="text-amber-400 font-extrabold text-sm">{jobsPerMonth} chantiers</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="15"
-                  value={jobsPerMonth}
-                  onChange={(e) => setJobsPerMonth(parseInt(e.target.value))}
-                  className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sama-400"
-                />
-              </div>
-
-              {/* Slider 2 */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs font-bold">
-                  <span className="text-slate-300">Prix moyen d'une de vos prestations</span>
-                  <span className="text-amber-400 font-extrabold text-sm">{formatFcfa(averageJobPrice)}</span>
-                </div>
-                <input
-                  type="range"
-                  min="10000"
-                  max="150000"
-                  step="5000"
-                  value={averageJobPrice}
-                  onChange={(e) => setAverageJobPrice(parseInt(e.target.value))}
-                  className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sama-400"
-                />
-              </div>
-
-              {/* Results Box */}
-              <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-700 text-center space-y-3">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Votre Chiffre d'Affaires Brut Estimé
-                </div>
-                <div className="text-3xl sm:text-4xl font-black text-emerald-400">
-                  +{formatFcfa(potentialRevenue)} <span className="text-xs text-slate-300">/ mois</span>
-                </div>
-                <div className="pt-2 border-t border-slate-800 flex justify-between text-xs text-slate-400">
-                  <span>Frais d'accès : <strong className="text-emerald-400 font-bold">0 FCFA (100% Gratuit)</strong></span>
-                  <span className="text-emerald-300 font-bold">Commission : 0%</span>
-                </div>
-              </div>
-
-            </div>
-
           </div>
 
         </div>
       </section>
 
-      {/* 6. NEIGHBORHOODS LOCAL FOOTPRINT */}
-      <section className="py-16 md:py-20 bg-white">
+      {/* 3 ÉTAPES COMMENT ÇA MARCHE */}
+      <section className="py-16 md:py-24 bg-slate-900 border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-xl mx-auto mb-10">
-            <span className="text-xs font-bold uppercase tracking-wider text-sama-600">Présents Partout</span>
-            <h2 className="text-2xl sm:text-3xl font-black text-navy-900 mt-1">
-              Des artisans disponibles dans tous les quartiers de Dakar
+          
+          <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-sama-400">Simplicité & Rapidité</span>
+            <h2 className="text-2xl sm:text-3xl font-black text-white">
+              Comment ça fonctionne ?
             </h2>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {NEIGHBORHOODS.map((n) => (
-              <Link
-                key={n.id}
-                href={`/recherche?quartier=${n.id}`}
-                className="p-3.5 rounded-2xl bg-slate-50 hover:bg-sama-50 border border-slate-200/80 hover:border-sama-300 text-center transition-all group"
-              >
-                <MapPin className="w-4 h-4 text-sama-600 mx-auto mb-1 group-hover:scale-110 transition-transform" />
-                <span className="text-xs font-bold text-navy-900 group-hover:text-sama-700 block">
-                  {n.name}
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium">
-                  {n.popularServices[0]}
-                </span>
-              </Link>
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="p-6 rounded-3xl bg-slate-800/60 border border-slate-700 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-sama-600/20 text-sama-400 flex items-center justify-center font-black text-lg">
+                1
+              </div>
+              <h3 className="text-lg font-bold text-white">Choisissez le métier</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Recherchez par profession et quartier (Almadies, Mermoz, Plateau, Ouakam...).
+              </p>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-slate-800/60 border border-slate-700 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center font-black text-lg">
+                2
+              </div>
+              <h3 className="text-lg font-bold text-white">Consultez les avis & photos</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Vérifiez les compétences, réalisations récentes et notes authentiques.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-slate-800/60 border border-slate-700 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-600/20 text-amber-400 flex items-center justify-center font-black text-lg">
+                3
+              </div>
+              <h3 className="text-lg font-bold text-white">Échangez sur WhatsApp</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Contact direct sans intermédiaire pour fixer votre rendez-vous d'intervention.
+              </p>
+            </div>
           </div>
+
         </div>
       </section>
 
-      {/* 7. FINAL CTA BANNER */}
-      <section className="py-16 bg-navy-900 text-white relative overflow-hidden">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6 relative z-10">
-          <h2 className="text-3xl sm:text-4xl font-black text-white">
-            Un problème de plomberie ou d'électricité maintenant ?
-          </h2>
-          <p className="text-slate-300 text-sm sm:text-base max-w-xl mx-auto">
-            Trouvez un artisan compétent à moins de 2 km en 30 secondes chrono.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-            <Link
-              href="/recherche?urgence=immediat"
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl font-black bg-amber-500 hover:bg-amber-600 text-white shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2 active:scale-95 transition-all text-base"
-            >
-              <PhoneCall className="w-5 h-5" />
-              <span>Dépannage d'urgence immédiat</span>
-            </Link>
-            <Link
-              href="/recherche"
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center justify-center gap-2 transition-all text-base"
-            >
-              <Wrench className="w-5 h-5" />
-              <span>Consulter l'annuaire des pros</span>
-            </Link>
+      {/* FAQ SECTION */}
+      <section className="py-16 md:py-24 bg-slate-950">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          <div className="text-center space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-sama-400">Aide & Questions</span>
+            <h2 className="text-2xl sm:text-3xl font-black text-white">
+              Questions Fréquentes
+            </h2>
+          </div>
+
+          <div className="space-y-3">
+            {faqs.map((faq, idx) => (
+              <div key={idx} className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+                <button
+                  onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
+                  className="w-full p-4 sm:p-5 text-left font-bold text-white flex items-center justify-between gap-4 hover:bg-slate-800/50 transition-colors text-sm sm:text-base"
+                >
+                  <span>{faq.q}</span>
+                  <ChevronDown className={`w-4 h-4 text-sama-400 shrink-0 transition-transform ${activeFaq === idx ? 'rotate-180' : ''}`} />
+                </button>
+                {activeFaq === idx && (
+                  <div className="p-4 sm:p-5 pt-0 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-slate-800 bg-slate-900/40">
+                    {faq.a}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
     </div>
   );
-}
-
-// Icon helper components for missing lucide imports
-function Hammer(props: any) {
-  return <Wrench {...props} />;
-}
-function Paintbrush(props: any) {
-  return <Sparkles {...props} />;
-}
-function Flame(props: any) {
-  return <Zap {...props} />;
-}
-function Layers(props: any) {
-  return <Award {...props} />;
-}
-function Wind(props: any) {
-  return <Sparkles {...props} />;
-}
-function Key(props: any) {
-  return <Wrench {...props} />;
 }

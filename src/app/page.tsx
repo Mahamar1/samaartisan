@@ -107,15 +107,24 @@ export default function HomePage() {
     try {
       const existingAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
       
-      // Vérifier si le compte existe déjà
-      const alreadyExists = existingAccounts.some(
-        (a: any) =>
-          (a.email && a.email.toLowerCase() === cleanEmail) ||
-          (cleanPhone.length >= 7 && a.phone && a.phone.replace(/[^0-9]/g, '').includes(cleanPhone))
+      // 1. Vérifier si l'adresse email existe déjà
+      const emailExists = existingAccounts.some(
+        (a: any) => a.email && a.email.toLowerCase() === cleanEmail
       );
+      if (emailExists) {
+        setFormError('Cette adresse email est déjà associée à un compte. Veuillez vous connecter avec vos identifiants.');
+        setIsSubmitting(false);
+        return;
+      }
 
-      if (alreadyExists) {
-        setFormError('Un compte existe déjà avec ce numéro ou cet email. Veuillez vous connecter.');
+      // 2. Vérifier si le numéro de téléphone existe déjà
+      const phoneExists = existingAccounts.some((a: any) => {
+        if (!a.phone || cleanPhone.length < 6) return false;
+        const aCleanPhone = a.phone.replace(/[^0-9]/g, '');
+        return aCleanPhone.includes(cleanPhone) || cleanPhone.includes(aCleanPhone);
+      });
+      if (phoneExists) {
+        setFormError('Ce numéro de téléphone est déjà associé à un compte. Veuillez vous connecter avec vos identifiants.');
         setIsSubmitting(false);
         return;
       }
@@ -301,6 +310,23 @@ export default function HomePage() {
                   className="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-all text-xs flex items-center justify-center gap-1 shadow-sm"
                 >
                   <span>Créer mon compte maintenant &rarr;</span>
+                </button>
+              )}
+              {!isLoginMode && formError.includes("déjà associé") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormError('');
+                    setIsLoginMode(true);
+                    if (email.trim()) {
+                      setLoginIdentifier(email.trim());
+                    } else if (phone.trim()) {
+                      setLoginIdentifier(phone.trim());
+                    }
+                  }}
+                  className="w-full py-2 bg-sama-600 hover:bg-sama-700 text-white rounded-xl font-bold transition-all text-xs flex items-center justify-center gap-1 shadow-sm"
+                >
+                  <span>Se connecter avec ce compte &rarr;</span>
                 </button>
               )}
             </div>

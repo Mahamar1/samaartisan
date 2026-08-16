@@ -38,6 +38,7 @@ export default function InscriptionPage() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registeredSuccess, setRegisteredSuccess] = useState<any>(null);
+  const [formError, setFormError] = useState('');
 
   // Handle region change: update region and reset district to the first available district
   const handleRegionChange = (newRegionId: string) => {
@@ -52,9 +53,34 @@ export default function InscriptionPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
     setIsSubmitting(true);
     
     try {
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+
+      // 1. Vérifier si l'adresse email existe déjà
+      const accounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
+      const emailExists = accounts.some((a: any) => a.email && a.email.toLowerCase() === cleanEmail);
+      if (emailExists) {
+        setFormError('Cette adresse email est déjà associée à un compte. Veuillez vous connecter ou utiliser une autre adresse.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Vérifier si le numéro de téléphone existe déjà
+      const phoneExists = accounts.some((a: any) => {
+        if (!a.phone || cleanPhone.length < 6) return false;
+        const aClean = a.phone.replace(/[^0-9]/g, '');
+        return aClean.includes(cleanPhone) || cleanPhone.includes(aClean);
+      });
+      if (phoneExists) {
+        setFormError('Ce numéro de téléphone est déjà associé à un compte. Veuillez vous connecter ou utiliser un autre numéro.');
+        setIsSubmitting(false);
+        return;
+      }
+
       const categoryObj = CATEGORIES.find((c) => c.slug === category);
       const regionObj = SENEGAL_REGIONS.find((r) => r.id === selectedRegionId);
       const districtObj = regionObj?.districts.find((d) => d.id === selectedDistrictId);
@@ -63,6 +89,7 @@ export default function InscriptionPage() {
       const newRegistration = {
         name: fullName.trim(),
         businessName: businessName.trim() || fullName.trim(),
+        email: cleanEmail,
         phone: phone.trim(),
         categorySlug: category,
         categoryName: categoryObj ? categoryObj.name : category,
@@ -77,11 +104,29 @@ export default function InscriptionPage() {
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('samapro_current_user', JSON.stringify(savedArtisan));
+        
+        // Enregistrer également dans sama_registered_accounts pour la connexion
+        accounts.push({
+          name: savedArtisan.name,
+          phone: savedArtisan.phone,
+          email: cleanEmail,
+          role: 'pro',
+          registeredAt: new Date().toISOString()
+        });
+        localStorage.setItem('sama_registered_accounts', JSON.stringify(accounts));
+        localStorage.setItem('sama_user_session', JSON.stringify({
+          name: savedArtisan.name,
+          phone: savedArtisan.phone,
+          email: cleanEmail,
+          role: 'pro'
+        }));
+        window.dispatchEvent(new Event('storage'));
       }
 
       setRegisteredSuccess(savedArtisan);
     } catch (err) {
       console.error('Error saving registration:', err);
+      setFormError("Une erreur est survenue lors de l'enregistrement. Veuillez réessayer.");
       setIsSubmitting(false);
     }
   };
@@ -151,6 +196,21 @@ export default function InscriptionPage() {
                 Rejoignez gratuitement le réseau Sama Artisan et recevez des demandes de chantiers partout au Sénégal.
               </p>
             </div>
+
+            {formError && (
+              <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl font-medium space-y-2">
+                <div className="flex items-center gap-2 font-bold">
+                  <CheckCircle2 className="w-4 h-4 text-red-500 shrink-0" />
+                  <span>{formError}</span>
+                </div>
+                <Link
+                  href="/connexion"
+                  className="w-full py-2 bg-sama-600 hover:bg-sama-700 text-white rounded-xl font-bold transition-all text-xs flex items-center justify-center gap-1 shadow-sm block text-center"
+                >
+                  <span>Se connecter &rarr;</span>
+                </Link>
+              </div>
+            )}
 
             <form onSubmit={handleRegister} className="space-y-4">
           

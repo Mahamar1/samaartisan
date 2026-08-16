@@ -111,7 +111,7 @@ export default function ContactPage() {
                   <div>
                     <h4 className="font-bold text-slate-800 text-sm">Téléphone / Standard</h4>
                     <p className="text-slate-500 mt-0.5">+221 78 750 52 18</p>
-                    <p className="text-[11px] text-slate-400">Du Lundi au Dimanche (8h - 21h)</p>
+                    <p className="text-[11px] text-slate-400">Du Lundi au Dimanche (8h - 18h)</p>
                   </div>
                 </div>
 
@@ -121,7 +121,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-800 text-sm">Courrier Électronique</h4>
-                    <p className="text-slate-500 mt-0.5">contact@samaartisan.sn</p>
+                    <p className="text-slate-500 mt-0.5">mmahamar32@gmail.com</p>
                     <p className="text-[11px] text-slate-400">Réponse sous 2 à 4 heures ouvrées</p>
                   </div>
                 </div>

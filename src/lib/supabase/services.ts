@@ -507,7 +507,38 @@ export async function loginUserAccount(identifier: string, password: string): Pr
       }
     }
 
-    // 2. Check Local Storage fallback
+    // 2. Check Static/Verified Providers Dataset (PROVIDERS)
+    if (!foundUser) {
+      const matchedStaticPro = PROVIDERS.find((p: any) => {
+        const pDigits = (p.phone || '').replace(/[^0-9]/g, '');
+        const pWa = (p.whatsapp || '').replace(/[^0-9]/g, '');
+        if (cleanDigits.length >= 7) {
+          return pDigits.includes(cleanDigits) || cleanDigits.includes(pDigits) || pWa.includes(cleanDigits);
+        }
+        return p.name.toLowerCase().includes(cleanIdent);
+      });
+
+      if (matchedStaticPro) {
+        foundUser = {
+          id: matchedStaticPro.id,
+          slug: matchedStaticPro.slug,
+          name: matchedStaticPro.name,
+          phone: matchedStaticPro.phone,
+          whatsapp: matchedStaticPro.whatsapp,
+          email: `${matchedStaticPro.slug}@samaartisan.sn`,
+          role: 'pro',
+          businessName: matchedStaticPro.businessName,
+          categorySlug: matchedStaticPro.categorySlug,
+          categoryName: matchedStaticPro.categoryName,
+          neighborhood: matchedStaticPro.neighborhood,
+          avatar: matchedStaticPro.avatar,
+          bio: matchedStaticPro.bio,
+          verificationLevel: matchedStaticPro.verificationLevel
+        };
+      }
+    }
+
+    // 3. Check Local Storage fallback
     if (!foundUser && typeof window !== 'undefined') {
       const localAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
       const localMatch = localAccounts.find((a: any) => {
@@ -532,27 +563,77 @@ export async function loginUserAccount(identifier: string, password: string): Pr
             const pDigits = (p.phone || '').replace(/[^0-9]/g, '');
             if (cleanDigits.length >= 7 && (pDigits.includes(cleanDigits) || cleanDigits.includes(pDigits))) {
               foundUser = {
+                id: p.id,
+                slug: p.slug,
                 name: p.name,
                 phone: p.phone,
                 email: p.email || 'pro@samaartisan.sn',
                 role: 'pro',
-                businessName: p.businessName || p.name
+                businessName: p.businessName || p.name,
+                categorySlug: p.categorySlug,
+                categoryName: p.categoryName,
+                neighborhood: p.neighborhood,
+                avatar: p.avatar,
+                bio: p.bio
               };
             }
           } catch (e) {}
         }
       }
+
+      // Check registrations list fallback
+      if (!foundUser) {
+        const regList = JSON.parse(localStorage.getItem('sama_artisan_registrations') || '[]');
+        const regMatch = regList.find((r: any) => {
+          const rDigits = (r.phone || '').replace(/[^0-9]/g, '');
+          return cleanDigits.length >= 7 && (rDigits.includes(cleanDigits) || cleanDigits.includes(rDigits));
+        });
+        if (regMatch) {
+          foundUser = {
+            id: regMatch.id || `pro-${Date.now()}`,
+            slug: (regMatch.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            name: regMatch.name,
+            phone: regMatch.phone,
+            email: regMatch.email || 'pro@samaartisan.sn',
+            role: 'pro',
+            businessName: regMatch.businessName || regMatch.name,
+            categorySlug: regMatch.categorySlug,
+            categoryName: regMatch.categoryName,
+            neighborhood: regMatch.neighborhood
+          };
+        }
+      }
     }
 
     if (!foundUser) {
-      return { success: false, error: "Aucun compte trouvé avec ce numéro ou email. Veuillez d'abord créer un compte." };
+      return { success: false, error: "Aucun compte trouvé avec ce numéro ou email. Veuillez vérifier vos identifiants ou créer un profil." };
     }
 
-    // 3. Activate session locally on device
+    // 4. Activate session locally on device
     if (typeof window !== 'undefined') {
       localStorage.setItem('sama_user_session', JSON.stringify(foundUser));
-      if (foundUser.role === 'pro') {
-        localStorage.setItem('samapro_current_user', JSON.stringify(foundUser));
+      
+      // If user is a pro, ensure complete pro session object
+      if (foundUser.role === 'pro' || foundUser.categorySlug || foundUser.categoryName !== 'Client Particulier') {
+        const proPayload = {
+          id: foundUser.id || `pro-${Date.now()}`,
+          slug: foundUser.slug || (foundUser.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          name: foundUser.name,
+          businessName: foundUser.businessName || foundUser.name,
+          phone: foundUser.phone,
+          whatsapp: (foundUser.whatsapp || foundUser.phone || '').replace(/[^0-9]/g, ''),
+          categorySlug: foundUser.categorySlug || 'plomberie',
+          categoryName: foundUser.categoryName || 'Artisanat',
+          neighborhood: foundUser.neighborhood || 'Dakar',
+          city: foundUser.city || 'Dakar',
+          avatar: foundUser.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
+          bio: foundUser.bio || `Artisan professionnel qualifié à Dakar.`,
+          verificationLevel: foundUser.verificationLevel || 'ID_VERIFIED',
+          averageRating: foundUser.averageRating || 5.0,
+          reviewCount: foundUser.reviewCount || 0,
+          portfolio: foundUser.portfolio || []
+        };
+        localStorage.setItem('samapro_current_user', JSON.stringify(proPayload));
       }
       
       const localAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');

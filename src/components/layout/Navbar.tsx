@@ -96,16 +96,15 @@ export default function Navbar() {
                   </span>
                 </div>
 
-                {/* Accès rapide Espace Pro si artisan */}
-                {isPro && (
-                  <Link
-                    href="/pro/dashboard"
-                    className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-navy-900 text-white hover:bg-navy-800 transition-colors shrink-0"
-                  >
-                    <Briefcase className="w-3.5 h-3.5" />
-                    <span>Espace Pro</span>
-                  </Link>
-                )}
+                {/* Accès rapide Espace Pro */}
+                <Link
+                  href="/pro/dashboard"
+                  className="flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-navy-900 text-white hover:bg-navy-800 transition-colors shrink-0 shadow-sm"
+                  title="Accéder à votre Espace Pro Artisan"
+                >
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span className="hidden xs:inline">Espace Pro</span>
+                </Link>
 
                 {/* Bouton Se Déconnecter pour Client ou Artisan */}
                 <button
@@ -118,9 +117,14 @@ export default function Navbar() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span className="hidden sm:inline">Plateforme Sécurisée</span>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/connexion"
+                  className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold bg-navy-900 hover:bg-navy-800 text-white transition-all shadow-sm active:scale-95"
+                >
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>Espace Pro</span>
+                </Link>
               </div>
             )}
           </div>

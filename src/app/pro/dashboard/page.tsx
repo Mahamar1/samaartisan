@@ -49,26 +49,66 @@ export default function ProviderDashboardPage() {
   const portfolioInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // 1. Charger UNIQUEMENT le profil de l'artisan actuellement connecté
+    // 1. Charger le profil de l'artisan actuellement connecté
     try {
       const storedUser = localStorage.getItem('samapro_current_user');
+      const sessionUserStr = localStorage.getItem('sama_user_session');
+
+      let parsed: any = null;
       if (storedUser) {
-        const parsed: Provider = JSON.parse(storedUser);
-        if (parsed && (parsed.name || parsed.phone)) {
-          // Garantir un slug valide
-          if (!parsed.slug) {
-            parsed.slug = (parsed.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        try { parsed = JSON.parse(storedUser); } catch(e) {}
+      }
+      
+      if (!parsed && sessionUserStr) {
+        try {
+          const sess = JSON.parse(sessionUserStr);
+          if (sess && (sess.name || sess.phone)) {
+            parsed = {
+              id: sess.id || `pro-${Date.now()}`,
+              slug: (sess.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              name: sess.name || 'Artisan',
+              businessName: sess.businessName || sess.name || 'Artisan Professionnel',
+              phone: sess.phone || '',
+              whatsapp: (sess.phone || '').replace(/[^0-9]/g, ''),
+              categorySlug: sess.categorySlug || 'plomberie',
+              categoryName: sess.categoryName || 'Artisanat & Services',
+              neighborhood: sess.neighborhood || 'Dakar',
+              city: 'Dakar',
+              avatar: sess.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
+              bio: sess.bio || `Artisan professionnel qualifié à Dakar.`,
+              verificationLevel: sess.verificationLevel || 'ID_VERIFIED',
+              averageRating: 5.0,
+              reviewCount: 0,
+              startingPrice: 15000,
+              responseTimeMinutes: 15,
+              isAvailable: true,
+              subscriptionTier: 'FREE',
+              completedJobsCount: 0,
+              joinedDate: new Date().toISOString(),
+              experienceYears: 4,
+              specialties: ['Intervention rapide', 'Travail soigné'],
+              services: [],
+              portfolio: [],
+              reviews: []
+            };
             localStorage.setItem('samapro_current_user', JSON.stringify(parsed));
           }
-          setCurrentProvider(parsed);
-          setName(parsed.name || '');
-          setBusinessName(parsed.businessName || '');
-          setPhone(parsed.phone || '');
-          setBio(parsed.bio || '');
-          setNeighborhood(parsed.neighborhood || 'Dakar');
-          setAvatar(parsed.avatar || '');
-          setPortfolio(parsed.portfolio || []);
+        } catch(e) {}
+      }
+
+      if (parsed && (parsed.name || parsed.phone)) {
+        if (!parsed.slug) {
+          parsed.slug = (parsed.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          localStorage.setItem('samapro_current_user', JSON.stringify(parsed));
         }
+        setCurrentProvider(parsed);
+        setName(parsed.name || '');
+        setBusinessName(parsed.businessName || '');
+        setPhone(parsed.phone || '');
+        setBio(parsed.bio || '');
+        setNeighborhood(parsed.neighborhood || 'Dakar');
+        setAvatar(parsed.avatar || '');
+        setPortfolio(parsed.portfolio || []);
       }
     } catch (e) {
       console.error('Error loading provider profile:', e);

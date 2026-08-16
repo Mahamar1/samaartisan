@@ -84,29 +84,63 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Navigation Droite : Statut de Connexion & Bouton Déconnexion */}
+          {/* Navigation Droite : Statut de Connexion & Boutons Adaptés selon le Rôle */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {sessionUser ? (
               <div className="flex items-center gap-1.5 sm:gap-2.5">
-                {/* Badge utilisateur connecté */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-full bg-slate-100 border border-slate-200 text-[11px] sm:text-xs font-bold text-slate-700 max-w-[100px] xs:max-w-[130px] sm:max-w-[180px]">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  <span className="truncate">
-                    {sessionUser.name || 'Utilisateur'}
-                  </span>
-                </div>
+                {isPro ? (
+                  <>
+                    {/* Badge Artisan Pro */}
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] sm:text-xs font-bold text-emerald-900 max-w-[100px] xs:max-w-[140px] sm:max-w-[180px]">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                      <span className="truncate">
+                        {sessionUser.businessName || sessionUser.name || 'Artisan Pro'}
+                      </span>
+                    </div>
 
-                {/* Accès rapide Espace Pro */}
-                <Link
-                  href="/pro/dashboard"
-                  className="flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-navy-900 text-white hover:bg-navy-800 transition-colors shrink-0 shadow-sm"
-                  title="Accéder à votre Espace Pro Artisan"
-                >
-                  <Briefcase className="w-3.5 h-3.5" />
-                  <span className="hidden xs:inline">Espace Pro</span>
-                </Link>
+                    {/* Accès rapide Espace Pro */}
+                    <Link
+                      href="/pro/dashboard"
+                      className="flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-navy-900 text-white hover:bg-navy-800 transition-colors shrink-0 shadow-sm"
+                      title="Accéder à votre Tableau de Bord Artisan"
+                    >
+                      <Briefcase className="w-3.5 h-3.5 text-sama-400" />
+                      <span className="hidden xs:inline">Tableau Pro</span>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    {/* Badge Client Particulier */}
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-full bg-blue-50 border border-blue-200 text-[11px] sm:text-xs font-bold text-blue-900 max-w-[100px] xs:max-w-[140px] sm:max-w-[180px]">
+                      <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      <span className="truncate">
+                        {sessionUser.name || 'Client'}
+                      </span>
+                    </div>
 
-                {/* Bouton Se Déconnecter pour Client ou Artisan */}
+                    {/* Accès Espace Client Particulier */}
+                    <Link
+                      href="/mon-compte"
+                      className="flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-sama-600 text-white hover:bg-sama-700 transition-colors shrink-0 shadow-sm"
+                      title="Accéder à vos demandes et artisans favoris"
+                    >
+                      <User className="w-3.5 h-3.5" />
+                      <span className="hidden xs:inline">Espace Client</span>
+                    </Link>
+
+                    {/* Option Devenir Artisan pour les clients */}
+                    <Link
+                      href="/devenir-prestataire"
+                      className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors shrink-0"
+                      title="Vous êtes artisan ? Créez votre vitrine"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Devenir Artisan</span>
+                    </Link>
+                  </>
+                )}
+
+                {/* Bouton Se Déconnecter */}
                 <button
                   onClick={handleLogout}
                   className="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-bold bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/60 transition-all flex items-center gap-1.5 active:scale-95 shadow-sm shrink-0"
@@ -120,10 +154,17 @@ export default function Navbar() {
               <div className="flex items-center gap-2">
                 <Link
                   href="/connexion"
+                  className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition-all"
+                >
+                  Connexion
+                </Link>
+
+                <Link
+                  href="/devenir-prestataire"
                   className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold bg-navy-900 hover:bg-navy-800 text-white transition-all shadow-sm active:scale-95"
                 >
-                  <Briefcase className="w-3.5 h-3.5" />
-                  <span>Espace Pro</span>
+                  <Briefcase className="w-3.5 h-3.5 text-sama-400" />
+                  <span>Espace Artisan</span>
                 </Link>
               </div>
             )}

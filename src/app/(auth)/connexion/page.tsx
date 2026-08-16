@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Wrench, Lock, Phone, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Wrench, Lock, Phone, ArrowRight, ShieldCheck, AlertCircle, User } from 'lucide-react';
 import { loginUserAccount } from '@/lib/supabase/services';
 
 export default function ConnexionPage() {
@@ -29,7 +29,7 @@ export default function ConnexionPage() {
       if (res.user?.role === 'pro') {
         router.push('/pro/dashboard');
       } else {
-        router.push('/');
+        router.push('/mon-compte');
       }
     } catch (err) {
       console.error(err);
@@ -46,9 +46,9 @@ export default function ConnexionPage() {
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sama-600 to-emerald-500 flex items-center justify-center text-white mx-auto shadow-md">
             <Wrench className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-black text-navy-950">Espace Pro Sama Artisan</h1>
+          <h1 className="text-2xl font-black text-navy-950">Connexion à votre Compte</h1>
           <p className="text-xs text-slate-500">
-            Connectez-vous pour gérer vos demandes clients et votre vitrine.
+            Accédez à votre Espace Client ou à votre Tableau de Bord Artisan.
           </p>
         </div>
 
@@ -62,13 +62,13 @@ export default function ConnexionPage() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-              Numéro de Téléphone Professionnel
+              Numéro de Téléphone ou Email
             </label>
             <div className="relative">
               <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
-                type="tel"
-                placeholder="Ex: 77 645 89 12"
+                type="text"
+                placeholder="Ex: 77 645 89 12 ou email@domaine.com"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 required
@@ -96,18 +96,19 @@ export default function ConnexionPage() {
 
           <button
             type="submit"
-            className="w-full py-3.5 bg-gradient-to-r from-sama-600 to-emerald-600 hover:from-sama-700 hover:to-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 active:scale-95"
+            disabled={isLoading}
+            className="w-full py-3.5 bg-gradient-to-r from-sama-600 to-emerald-600 hover:from-sama-700 hover:to-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
           >
-            <span>Se connecter à mon Espace Pro</span>
+            <span>{isLoading ? 'Connexion en cours...' : 'Se connecter à mon Compte'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
         <div className="text-center pt-4 border-t border-slate-100 text-xs text-slate-600 space-y-2">
           <p>
-            Vous êtes artisan mais pas encore inscrit ?{' '}
+            Vous n'avez pas encore de compte ?{' '}
             <Link href="/inscription" className="font-bold text-sama-600 hover:underline">
-              Créer mon profil gratuitement
+              Créer un compte gratuitement
             </Link>
           </p>
         </div>

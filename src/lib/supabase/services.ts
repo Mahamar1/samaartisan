@@ -473,11 +473,12 @@ export interface UserAccountData {
   phone: string;
   email?: string;
   password?: string;
-  role?: 'user' | 'pro' | 'admin';
+  role?: 'user' | 'pro' | 'client' | 'admin';
   businessName?: string;
   categorySlug?: string;
   categoryName?: string;
   neighborhood?: string;
+  regionId?: string;
 }
 
 export async function registerUserAccount(userData: UserAccountData): Promise<{ success: boolean; user?: any; error?: string }> {
@@ -750,8 +751,8 @@ export async function loginUserAccount(identifier: string, password: string): Pr
     if (typeof window !== 'undefined') {
       localStorage.setItem('sama_user_session', JSON.stringify(foundUser));
       
-      // If user is a pro, ensure complete pro session object
-      if (foundUser.role === 'pro' || foundUser.categorySlug || foundUser.categoryName !== 'Client Particulier') {
+      // If user is a pro, activate pro session object
+      if (foundUser.role === 'pro') {
         const proPayload = {
           id: foundUser.id || `pro-${Date.now()}`,
           slug: foundUser.slug || (foundUser.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
@@ -771,6 +772,9 @@ export async function loginUserAccount(identifier: string, password: string): Pr
           portfolio: foundUser.portfolio || []
         };
         localStorage.setItem('samapro_current_user', JSON.stringify(proPayload));
+      } else {
+        // Client account: explicitly clean any previous pro session
+        localStorage.removeItem('samapro_current_user');
       }
       
       const localAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');

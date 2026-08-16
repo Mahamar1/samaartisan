@@ -50,6 +50,9 @@ export default function ProviderDashboardPage() {
   const avatarInputRef = React.useRef<HTMLInputElement>(null);
   const portfolioInputRef = React.useRef<HTMLInputElement>(null);
 
+  const [isClientUser, setIsClientUser] = useState<boolean>(false);
+  const [clientName, setClientName] = useState<string>('');
+
   useEffect(() => {
     // 1. Charger le profil de l'artisan actuellement connecté
     try {
@@ -61,13 +64,22 @@ export default function ProviderDashboardPage() {
         try { parsed = JSON.parse(storedUser); } catch(e) {}
       }
       
-      if (!parsed && sessionUserStr) {
+      // Si une session utilisateur existe mais qu'il s'agit d'un client
+      if (sessionUserStr) {
         try {
           const sess = JSON.parse(sessionUserStr);
-          if (sess && (sess.name || sess.phone)) {
+          if (sess && sess.role === 'client') {
+            setIsClientUser(true);
+            setClientName(sess.name || 'Client');
+            setIsLoading(false);
+            return;
+          }
+          
+          // Si l'utilisateur a le rôle pro et pas encore de storedUser
+          if (!parsed && sess && sess.role === 'pro') {
             parsed = {
               id: sess.id || `pro-${Date.now()}`,
-              slug: (sess.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              slug: sess.slug || (sess.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
               name: sess.name || 'Artisan',
               businessName: sess.businessName || sess.name || 'Artisan Professionnel',
               phone: sess.phone || '',
@@ -266,6 +278,47 @@ export default function ProviderDashboardPage() {
     return (
       <div className="min-h-[70vh] flex items-center justify-center bg-slate-50">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sama-600"></div>
+      </div>
+    );
+  }
+
+  // SI L'UTILISATEUR EST UN CLIENT : Écran explicatif et redirection vers l'espace client
+  if (isClientUser) {
+    return (
+      <div className="min-h-[75vh] flex items-center justify-center px-4 py-12 bg-slate-50">
+        <div className="w-full max-w-lg bg-white rounded-3xl p-8 border border-slate-200 shadow-xl text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white mx-auto shadow-lg">
+            <ShieldCheck className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold">
+              <span>Compte Client Particulier ({clientName})</span>
+            </div>
+            <h1 className="text-2xl font-black text-navy-950">Espace Réservé aux Artisans</h1>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-md mx-auto">
+              Vous êtes actuellement connecté avec un profil <strong>Client</strong>. Le Tableau de Bord Pro est réservé aux artisans prestataires pour gérer leur vitrine, leurs tarifs et leurs devis reçus.
+            </p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <Link
+              href="/mon-compte"
+              className="w-full py-3.5 bg-sama-600 hover:bg-sama-700 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 active:scale-95"
+            >
+              <span>Accéder à mon Espace Client (Demandes & Favoris)</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
+            <Link
+              href="/devenir-prestataire"
+              className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>Vous êtes artisan ? Créer ma vitrine pro gratuitement</span>
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }

@@ -31,9 +31,12 @@ import {
   User, 
   Phone, 
   Mail,
-  Briefcase, 
   Lock,
-  LogIn
+  Eye,
+  EyeOff,
+  Briefcase, 
+  LogIn,
+  Check
 } from 'lucide-react';
 import { CATEGORIES, SENEGAL_REGIONS } from '@/lib/data';
 import { logServiceRequest } from '@/lib/supabase/services';
@@ -42,14 +45,22 @@ export default function HomePage() {
   const [sessionUser, setSessionUser] = useState<any>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
-  // Formulaire d'inscription préalable
+  // Formulaire d'inscription obligatoire
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeFaq, setActiveFaq] = useState<number | null>(0);
+
+  // Mode Connexion existante
   const [isLoginMode, setIsLoginMode] = useState(false);
   const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+
+  const [activeFaq, setActiveFaq] = useState<number | null>(0);
 
   useEffect(() => {
     try {
@@ -69,28 +80,53 @@ export default function HomePage() {
 
   const handleRegisterEntry = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !phone.trim() || !email.trim()) return;
+    setFormError('');
+
+    if (!fullName.trim()) {
+      setFormError('Veuillez renseigner votre nom et prénom.');
+      return;
+    }
+    if (!phone.trim()) {
+      setFormError('Veuillez renseigner votre numéro de téléphone.');
+      return;
+    }
+    if (!email.trim() || !email.includes('@')) {
+      setFormError('Veuillez renseigner une adresse email valide.');
+      return;
+    }
+    if (!password || password.length < 6) {
+      setFormError('Le mot de passe doit contenir au moins 6 caractères.');
+      return;
+    }
 
     setIsSubmitting(true);
 
     const newUser = {
       name: fullName.trim(),
       phone: phone.trim(),
-      email: email.trim(),
-      role: 'client',
+      email: email.trim().toLowerCase(),
+      role: 'user',
       registeredAt: new Date().toISOString()
     };
 
     try {
-      // Enregistrement de la session dans le navigateur
+      // Sauvegarder dans la base locale
+      const existingAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
+      existingAccounts.push({
+        ...newUser,
+        passwordHash: btoa(password)
+      });
+      localStorage.setItem('sama_registered_accounts', JSON.stringify(existingAccounts));
+
+      // Activer la session
       localStorage.setItem('sama_user_session', JSON.stringify(newUser));
       setSessionUser(newUser);
 
-      // Notification / Logging léger
+      // Log anonyme dans Supabase
       logServiceRequest({
         clientName: newUser.name,
         clientPhone: newUser.phone,
-        serviceType: 'Inscription Visiteur',
+        serviceType: 'Création Compte Utilisateur',
         channel: 'FORM'
       }).catch(() => {});
 
@@ -104,19 +140,39 @@ export default function HomePage() {
 
   const handleQuickLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginIdentifier.trim()) return;
+    setFormError('');
 
-    const user = {
-      name: loginIdentifier.includes('@') ? loginIdentifier.split('@')[0] : 'Membre Sama',
-      phone: loginIdentifier.includes('@') ? '+221 77 000 00 00' : loginIdentifier.trim(),
-      email: loginIdentifier.includes('@') ? loginIdentifier.trim() : 'contact@samaartisan.sn',
-      role: 'client',
-      registeredAt: new Date().toISOString()
-    };
+    if (!loginIdentifier.trim()) {
+      setFormError('Veuillez entrer votre numéro de téléphone ou email.');
+      return;
+    }
+    if (!loginPassword) {
+      setFormError('Veuillez entrer votre mot de passe.');
+      return;
+    }
 
-    localStorage.setItem('sama_user_session', JSON.stringify(user));
-    setSessionUser(user);
-    window.dispatchEvent(new Event('storage'));
+    try {
+      const existingAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
+      const found = existingAccounts.find(
+        (a: any) =>
+          (a.email?.toLowerCase() === loginIdentifier.trim().toLowerCase() ||
+           a.phone?.replace(/[^0-9]/g, '') === loginIdentifier.replace(/[^0-9]/g, ''))
+      );
+
+      const user = found || {
+        name: loginIdentifier.includes('@') ? loginIdentifier.split('@')[0] : 'Membre Sama',
+        phone: loginIdentifier.includes('@') ? '+221 77 000 00 00' : loginIdentifier.trim(),
+        email: loginIdentifier.includes('@') ? loginIdentifier.trim() : 'client@samaartisan.sn',
+        role: 'user',
+        registeredAt: new Date().toISOString()
+      };
+
+      localStorage.setItem('sama_user_session', JSON.stringify(user));
+      setSessionUser(user);
+      window.dispatchEvent(new Event('storage'));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const faqs = [
@@ -134,7 +190,7 @@ export default function HomePage() {
     },
     {
       q: "Quelles sont les garanties de qualité ?",
-      a: "Chaque artisan dispose d'une vitrine avec avis réels de clients, photos de réalisations et coordonnées vérifiées."
+      a: "Chaque artisan dispose d'une vitrine avec avis réels de clients, photos de réalisations et coordonnées directes."
     }
   ];
 
@@ -149,12 +205,12 @@ export default function HomePage() {
     );
   }
 
-  // 🚪 1. PORTAIL D'INSCRIPTION OBLIGATOIRE (AVANT D'ACCÉDER AU LANDING PAGE)
+  // 🚪 1. PORTAIL D'INSCRIPTION OBLIGATOIRE : TOUT NOUVEAU VISITEUR DOIT CRÉER SON COMPTE EN PREMIER
   if (!sessionUser) {
     return (
       <div className="min-h-[92vh] bg-gradient-to-b from-slate-950 via-navy-950 to-slate-900 flex items-center justify-center px-4 py-12 relative overflow-hidden">
         
-        {/* Glow ambient de fond */}
+        {/* Halo ambiant */}
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-sama-600/20 rounded-full blur-[140px] pointer-events-none" />
 
         <div className="w-full max-w-lg bg-white/95 backdrop-blur-2xl rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/20 relative z-10 space-y-6">
@@ -168,12 +224,18 @@ export default function HomePage() {
               Bienvenue sur <span className="text-sama-600">Sama Artisan</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 max-w-sm mx-auto">
-              Créez votre compte en 30 secondes pour accéder à la plateforme et découvrir tous nos services.
+              Créez votre compte en 30 secondes pour accéder à la plateforme et trouver ou devenir un artisan.
             </p>
           </div>
 
+          {formError && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-medium text-center">
+              {formError}
+            </div>
+          )}
+
           {!isLoginMode ? (
-            /* Formulaire d'inscription obligatoire avec Nom, Téléphone, Email */
+            /* Formulaire d'inscription : Nom/Prénom, Téléphone, Email, Mot de passe */
             <form onSubmit={handleRegisterEntry} className="space-y-4">
               
               {/* 1. Nom & Prénom */}
@@ -230,7 +292,34 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Bouton de validation pour accéder au Landing Page */}
+              {/* 4. Mot de passe */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Mot de Passe <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Au moins 6 caractères"
+                    className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/70"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    title={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Bouton de validation pour accéder à la Landing Page */}
               <button
                 type="submit"
                 disabled={isSubmitting}
@@ -240,11 +329,14 @@ export default function HomePage() {
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </button>
 
-              {/* Lien basculer vers Connexion */}
+              {/* Basculer vers le mode connexion */}
               <div className="text-center pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsLoginMode(true)}
+                  onClick={() => {
+                    setFormError('');
+                    setIsLoginMode(true);
+                  }}
                   className="text-xs font-bold text-slate-600 hover:text-sama-600 transition-colors"
                 >
                   Vous avez déjà un compte ? <span className="text-sama-600 underline">Se connecter</span>
@@ -253,11 +345,11 @@ export default function HomePage() {
 
             </form>
           ) : (
-            /* Mode Connexion Rapide */
+            /* Mode Connexion pour les utilisateurs existants */
             <form onSubmit={handleQuickLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Numéro de Téléphone ou Email
+                  Téléphone ou Email
                 </label>
                 <div className="relative">
                   <LogIn className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -272,18 +364,45 @@ export default function HomePage() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Mot de Passe
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type={showLoginPassword ? "text" : "password"}
+                    required
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="Votre mot de passe"
+                    className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/70"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 focus:outline-none"
+                  >
+                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
               <button
                 type="submit"
                 className="w-full py-4 rounded-2xl font-black bg-navy-900 hover:bg-navy-950 text-white shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95 text-sm"
               >
-                <span>Connexion instantanée</span>
+                <span>Se connecter</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
               <div className="text-center pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsLoginMode(false)}
+                  onClick={() => {
+                    setFormError('');
+                    setIsLoginMode(false);
+                  }}
                   className="text-xs font-bold text-sama-600 hover:underline"
                 >
                   &larr; Créer un nouveau compte
@@ -313,7 +432,7 @@ export default function HomePage() {
     );
   }
 
-  // 🚀 2. LANDING PAGE ACCESSIBLE APRÈS LA CRÉATION DU COMPTE (AVEC LES 2 CHOIX CLAIRS)
+  // 🚀 2. LANDING PAGE ACCESSIBLE IMMÉDIATEMENT APRÈS CRÉATION DU COMPTE (AVEC LES 2 CHOIX CLAIRS)
   return (
     <div className="flex flex-col min-h-screen bg-slate-900 text-slate-100 selection:bg-sama-500 selection:text-white">
       

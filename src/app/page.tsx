@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   ShieldCheck, 
@@ -19,41 +19,37 @@ import {
   Clock, 
   Smartphone, 
   MapPin, 
-  ArrowRight,
-  UserCheck,
-  ChevronRight,
-  MessageSquare,
-  Search,
-  HeartHandshake,
-  TrendingUp,
-  Award,
-  ChevronDown,
-  User,
-  Phone,
-  Briefcase,
-  Lock
+  ArrowRight, 
+  UserCheck, 
+  ChevronRight, 
+  MessageSquare, 
+  Search, 
+  HeartHandshake, 
+  TrendingUp, 
+  Award, 
+  ChevronDown, 
+  User, 
+  Phone, 
+  Mail,
+  Briefcase, 
+  Lock,
+  LogIn
 } from 'lucide-react';
-import { CATEGORIES, SENEGAL_REGIONS, formatFcfa } from '@/lib/data';
-import { getProviders } from '@/lib/supabase/services';
-import { Provider } from '@/lib/types';
+import { CATEGORIES, SENEGAL_REGIONS } from '@/lib/data';
+import { logServiceRequest } from '@/lib/supabase/services';
 
 export default function HomePage() {
   const [sessionUser, setSessionUser] = useState<any>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
-  // Registration gate form state
+  // Formulaire d'inscription préalable
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [userRole, setUserRole] = useState<'client' | 'pro'>('client');
-  const [selectedRegion, setSelectedRegion] = useState('dakar');
-  const [district, setDistrict] = useState('almadies');
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
-
-  // Dynamic districts based on region in signup modal
-  const availableDistricts = useMemo(() => {
-    const reg = SENEGAL_REGIONS.find((r) => r.id === selectedRegion);
-    return reg ? reg.districts : [];
-  }, [selectedRegion]);
+  const [isLoginMode, setIsLoginMode] = useState(false);
+  const [loginIdentifier, setLoginIdentifier] = useState('');
 
   useEffect(() => {
     try {
@@ -73,51 +69,78 @@ export default function HomePage() {
 
   const handleRegisterEntry = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !phone.trim()) return;
+    if (!fullName.trim() || !phone.trim() || !email.trim()) return;
 
-    const regObj = SENEGAL_REGIONS.find(r => r.id === selectedRegion);
-    const distObj = availableDistricts.find(d => d.id === district) || availableDistricts[0];
+    setIsSubmitting(true);
 
     const newUser = {
       name: fullName.trim(),
       phone: phone.trim(),
-      role: userRole,
-      region: regObj?.name || 'Dakar',
-      neighborhood: distObj?.name || 'Almadies',
+      email: email.trim(),
+      role: 'client',
       registeredAt: new Date().toISOString()
     };
 
     try {
+      // Enregistrement de la session dans le navigateur
       localStorage.setItem('sama_user_session', JSON.stringify(newUser));
       setSessionUser(newUser);
+
+      // Notification / Logging léger
+      logServiceRequest({
+        clientName: newUser.name,
+        clientPhone: newUser.phone,
+        serviceType: 'Inscription Visiteur',
+        channel: 'FORM'
+      }).catch(() => {});
+
       window.dispatchEvent(new Event('storage'));
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleQuickLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginIdentifier.trim()) return;
+
+    const user = {
+      name: loginIdentifier.includes('@') ? loginIdentifier.split('@')[0] : 'Membre Sama',
+      phone: loginIdentifier.includes('@') ? '+221 77 000 00 00' : loginIdentifier.trim(),
+      email: loginIdentifier.includes('@') ? loginIdentifier.trim() : 'contact@samaartisan.sn',
+      role: 'client',
+      registeredAt: new Date().toISOString()
+    };
+
+    localStorage.setItem('sama_user_session', JSON.stringify(user));
+    setSessionUser(user);
+    window.dispatchEvent(new Event('storage'));
   };
 
   const faqs = [
     {
       q: "Comment trouver rapidement un artisan au Sénégal ?",
-      a: "Sur Sama Artisan, choisissez simplement le métier (plombier, électricien, climaticien, menuisier, maçon, etc.), votre région et votre quartier. Vous avez un accès direct aux profils, numéros directs et boutons WhatsApp."
+      a: "Sur Sama Artisan, choisissez simplement le métier (plombier, électricien, climaticien, menuisier, maçon, etc.), votre région et votre quartier. Vous avez un accès direct aux profils certifiés, coordonnées directes et numéros WhatsApp."
     },
     {
       q: "Est-ce gratuit pour les clients ?",
-      a: "Oui, à 100% ! Aucun frais, aucune commission sur les devis ou les travaux."
+      a: "Oui, à 100% ! Aucun frais, aucune commission sur les devis ou les travaux réalisés."
     },
     {
       q: "Comment s'inscrire en tant qu'artisan professionnel ?",
-      a: "Cliquez sur 'Créer mon profil Artisan' ou 'Devenir artisan', complétez vos coordonnées professionnelles en 2 minutes et commencez à recevoir des demandes de chantiers sur WhatsApp."
+      a: "Cliquez sur 'Créer mon profil Artisan' ou 'Devenir artisan', complétez vos coordonnées professionnelles en 2 minutes et commencez à recevoir des demandes de chantiers directement sur WhatsApp."
     },
     {
       q: "Quelles sont les garanties de qualité ?",
-      a: "Chaque professionnel est évalué par les retours réels des clients et justifie de ses compétences, chantiers réalisés et coordonnées directes."
+      a: "Chaque artisan dispose d'une vitrine avec avis réels de clients, photos de réalisations et coordonnées vérifiées."
     }
   ];
 
   if (isLoadingSession) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-3 border-sama-500 border-t-transparent rounded-full animate-spin" />
           <span className="text-xs text-slate-400 font-semibold">Chargement de Sama Artisan...</span>
@@ -126,152 +149,151 @@ export default function HomePage() {
     );
   }
 
-  // 🚪 1. GATED ENTRY: SHOW REGISTRATION MODAL/PORTAL IF NOT REGISTERED
+  // 🚪 1. PORTAIL D'INSCRIPTION OBLIGATOIRE (AVANT D'ACCÉDER AU LANDING PAGE)
   if (!sessionUser) {
     return (
-      <div className="min-h-[90vh] bg-gradient-to-b from-slate-950 via-navy-950 to-slate-900 flex items-center justify-center px-4 py-12 relative overflow-hidden">
+      <div className="min-h-[92vh] bg-gradient-to-b from-slate-950 via-navy-950 to-slate-900 flex items-center justify-center px-4 py-12 relative overflow-hidden">
         
-        {/* Glow ambient background */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-sama-600/20 rounded-full blur-[120px] pointer-events-none" />
+        {/* Glow ambient de fond */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-sama-600/20 rounded-full blur-[140px] pointer-events-none" />
 
-        <div className="w-full max-w-lg bg-white/95 backdrop-blur-xl rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/20 relative z-10 space-y-6">
+        <div className="w-full max-w-lg bg-white/95 backdrop-blur-2xl rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/20 relative z-10 space-y-6">
           
-          {/* Header */}
+          {/* En-tête */}
           <div className="text-center space-y-2">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sama-600 to-brand-600 flex items-center justify-center text-white mx-auto shadow-lg shadow-sama-600/30">
-              <Wrench className="w-7 h-7 stroke-[2.2]" />
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sama-600 via-sama-500 to-brand-600 flex items-center justify-center text-white mx-auto shadow-xl shadow-sama-600/30">
+              <Wrench className="w-8 h-8 stroke-[2.2]" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-navy-900 tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-navy-950 tracking-tight">
               Bienvenue sur <span className="text-sama-600">Sama Artisan</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 max-w-sm mx-auto">
-              Inscrivez-vous en 30 secondes pour accéder à la plateforme des meilleurs artisans au Sénégal.
+              Créez votre compte en 30 secondes pour accéder à la plateforme et découvrir tous nos services.
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleRegisterEntry} className="space-y-4">
-            
-            {/* Role selector */}
-            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
-              <button
-                type="button"
-                onClick={() => setUserRole('client')}
-                className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                  userRole === 'client'
-                    ? 'bg-sama-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-navy-900'
-                }`}
-              >
-                <Search className="w-3.5 h-3.5" />
-                <span>Je cherche un artisan</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setUserRole('pro')}
-                className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                  userRole === 'pro'
-                    ? 'bg-navy-900 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-navy-900'
-                }`}
-              >
-                <Briefcase className="w-3.5 h-3.5" />
-                <span>Je suis artisan</span>
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Nom & Prénom <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Ex: Moussa Diop"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/50"
-                />
-                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Numéro WhatsApp / Téléphone <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Ex: 77 123 45 67"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/50"
-                />
-                <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-              </div>
-            </div>
-
-            {/* Cascading Region & Quartier */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {!isLoginMode ? (
+            /* Formulaire d'inscription obligatoire avec Nom, Téléphone, Email */
+            <form onSubmit={handleRegisterEntry} className="space-y-4">
+              
+              {/* 1. Nom & Prénom */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Région
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Nom et Prénom <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <select
-                    value={selectedRegion}
-                    onChange={(e) => {
-                      setSelectedRegion(e.target.value);
-                      const reg = SENEGAL_REGIONS.find(r => r.id === e.target.value);
-                      if (reg && reg.districts.length > 0) {
-                        setDistrict(reg.districts[0].id);
-                      }
-                    }}
-                    className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/50 appearance-none"
-                  >
-                    {SENEGAL_REGIONS.map((r) => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                  </select>
-                  <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Ex: Moussa Diop"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/70"
+                  />
                 </div>
               </div>
 
+              {/* 2. Numéro de téléphone */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Quartiers
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Numéro de Téléphone (WhatsApp) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <select
-                    value={district}
-                    onChange={(e) => setDistrict(e.target.value)}
-                    className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/50 appearance-none"
-                  >
-                    {availableDistricts.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
-                  <MapPin className="w-4 h-4 text-emerald-600 absolute left-3 top-3.5" />
+                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Ex: +221 77 123 45 67"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/70"
+                  />
                 </div>
               </div>
-            </div>
 
-            <button
-              type="submit"
-              className="w-full py-4 rounded-2xl font-black bg-sama-600 hover:bg-sama-700 text-white shadow-xl shadow-sama-600/30 flex items-center justify-center gap-2 transition-all active:scale-95 text-sm"
-            >
-              <span>Accéder à la plateforme</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+              {/* 3. Adresse Email */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Adresse Email <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Ex: moussa.diop@gmail.com"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/70"
+                  />
+                </div>
+              </div>
 
-          </form>
+              {/* Bouton de validation pour accéder au Landing Page */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-4 rounded-2xl font-black bg-gradient-to-r from-sama-600 to-brand-600 hover:from-sama-700 hover:to-brand-700 text-white shadow-xl shadow-sama-600/30 flex items-center justify-center gap-2 transition-all active:scale-95 text-sm"
+              >
+                <span>Créer mon compte & Accéder au site</span>
+                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+              </button>
 
-          {/* Micro trust indicators */}
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-around text-[11px] text-slate-500">
+              {/* Lien basculer vers Connexion */}
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsLoginMode(true)}
+                  className="text-xs font-bold text-slate-600 hover:text-sama-600 transition-colors"
+                >
+                  Vous avez déjà un compte ? <span className="text-sama-600 underline">Se connecter</span>
+                </button>
+              </div>
+
+            </form>
+          ) : (
+            /* Mode Connexion Rapide */
+            <form onSubmit={handleQuickLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Numéro de Téléphone ou Email
+                </label>
+                <div className="relative">
+                  <LogIn className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="text"
+                    required
+                    value={loginIdentifier}
+                    onChange={(e) => setLoginIdentifier(e.target.value)}
+                    placeholder="Ex: 77 123 45 67 ou email@gmail.com"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none bg-slate-50/70"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-4 rounded-2xl font-black bg-navy-900 hover:bg-navy-950 text-white shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95 text-sm"
+              >
+                <span>Connexion instantanée</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsLoginMode(false)}
+                  className="text-xs font-bold text-sama-600 hover:underline"
+                >
+                  &larr; Créer un nouveau compte
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Badges de confiance */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-around text-[11px] text-slate-500 font-semibold">
             <span className="flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
               100% Gratuit
@@ -282,7 +304,7 @@ export default function HomePage() {
             </span>
             <span className="flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              Toutes Régions du Sénégal
+              Toutes les Régions
             </span>
           </div>
 
@@ -291,27 +313,27 @@ export default function HomePage() {
     );
   }
 
-  // 🚀 2. CLEAN LANDING PAGE (AFTER SIGNUP) WITH 2 DISTINCT CHOICES
+  // 🚀 2. LANDING PAGE ACCESSIBLE APRÈS LA CRÉATION DU COMPTE (AVEC LES 2 CHOIX CLAIRS)
   return (
     <div className="flex flex-col min-h-screen bg-slate-900 text-slate-100 selection:bg-sama-500 selection:text-white">
       
-      {/* HERO SECTION */}
+      {/* HERO SECTION DE LA LANDING PAGE */}
       <section className="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden bg-gradient-to-b from-navy-950 via-slate-900 to-navy-900 border-b border-slate-800">
         
-        {/* Background glow */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-sama-600/15 rounded-full blur-[120px] pointer-events-none" />
+        {/* Halo lumineux */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-sama-600/15 rounded-full blur-[130px] pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
-          {/* Welcome User Pill */}
+          {/* Badge de bienvenue avec le nom du compte */}
           <div className="flex justify-center mb-6">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs sm:text-sm font-semibold text-slate-200 shadow-xl">
               <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Bienvenue, <strong>{sessionUser.name}</strong> ({sessionUser.neighborhood || 'Sénégal'})</span>
+              <span>Compte actif : <strong>{sessionUser.name}</strong></span>
             </div>
           </div>
 
-          {/* Main Title */}
+          {/* Titre Principal */}
           <div className="text-center max-w-4xl mx-auto space-y-4">
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.15]">
               Que souhaitez-vous faire <br className="hidden sm:block" />
@@ -322,33 +344,33 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* 🌟 THE 2 MAIN CLEAR CHOICES */}
+          {/* 🌟 LES 2 CHOIX MAJEURS */}
           <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             
-            {/* OPTION 1: CLIENT / PARTICULIER */}
+            {/* CHOIX 1 : CHERCHER UN ARTISAN (POUR LES CLIENTS) */}
             <div className="group relative p-8 rounded-3xl bg-gradient-to-br from-slate-800/90 to-navy-900/90 border-2 border-sama-500/40 hover:border-sama-500 shadow-2xl transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between space-y-6">
               <div className="space-y-4">
                 <div className="w-16 h-16 rounded-2xl bg-sama-600/20 text-sama-400 flex items-center justify-center border border-sama-500/30 group-hover:scale-110 transition-transform">
                   <Search className="w-8 h-8 stroke-[2.5]" />
                 </div>
                 <div>
-                  <span className="text-xs font-black uppercase tracking-wider text-sama-400">Pour les Particuliers & Entreprises</span>
+                  <span className="text-xs font-black uppercase tracking-wider text-sama-400">Pour Particuliers & Entreprises</span>
                   <h3 className="text-2xl font-black text-white mt-1">
                     Je cherche un artisan
                   </h3>
                   <p className="text-sm text-slate-300 mt-2 leading-relaxed">
-                    Trouvez un plombier, électricien, climaticien, menuisier ou maçon certifié près de chez vous. Contact direct WhatsApp sans intermédiaire ni frais.
+                    Trouvez un plombier, électricien, climaticien, menuisier ou maçon certifié près de chez vous. Contact direct WhatsApp sans frais ni intermédiaire.
                   </p>
                 </div>
 
                 <div className="space-y-2 pt-2 text-xs text-slate-300">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>200+ Artisans Qualifiés & Évalués</span>
+                    <span>Tous les corps de métiers & services</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Réponse WhatsApp en moins de 15 min</span>
+                    <span>Recherche par région et quartier</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -367,41 +389,41 @@ export default function HomePage() {
               </Link>
             </div>
 
-            {/* OPTION 2: ARTISAN / PROFESSIONNEL */}
+            {/* CHOIX 2 : CRÉER / DEVENIR UN ARTISAN (POUR LES PROFESSIONNELS) */}
             <div className="group relative p-8 rounded-3xl bg-gradient-to-br from-slate-800/90 to-navy-900/90 border-2 border-emerald-500/40 hover:border-emerald-500 shadow-2xl transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between space-y-6">
               <div className="space-y-4">
                 <div className="w-16 h-16 rounded-2xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 group-hover:scale-110 transition-transform">
                   <Briefcase className="w-8 h-8 stroke-[2.2]" />
                 </div>
                 <div>
-                  <span className="text-xs font-black uppercase tracking-wider text-emerald-400">Pour les Professionnels du Métier</span>
+                  <span className="text-xs font-black uppercase tracking-wider text-emerald-400">Pour les Professionnels & Artisans</span>
                   <h3 className="text-2xl font-black text-white mt-1">
-                    Je suis un artisan
+                    Créer mon profil / Devenir artisan
                   </h3>
                   <p className="text-sm text-slate-300 mt-2 leading-relaxed">
-                    Créez votre vitrine professionnelle, ajoutez vos photos de chantiers et recevez des demandes de clients directement sur votre WhatsApp.
+                    Créez votre vitrine professionnelle, ajoutez vos réalisations et commencez à recevoir des demandes de clients directement sur votre WhatsApp.
                   </p>
                 </div>
 
                 <div className="space-y-2 pt-2 text-xs text-slate-300">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Inscription rapide et gratuite</span>
+                    <span>Inscription gratuite en 2 minutes</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Espace de gestion des demandes & portfolio</span>
+                    <span>Tableau de bord de gestion des chantiers</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Visibilité maximale dans toutes les régions</span>
+                    <span>Visibilité dans toutes les régions du Sénégal</span>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Link
-                  href="/devenir-prestataire"
+                  href="/inscription"
                   className="w-full py-4 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-3 transition-all active:scale-95 text-sm"
                 >
                   <UserCheck className="w-4 h-4" />
@@ -413,7 +435,7 @@ export default function HomePage() {
                   href="/pro/dashboard"
                   className="w-full py-2.5 rounded-xl font-bold bg-white/5 hover:bg-white/10 text-slate-300 text-xs flex items-center justify-center gap-2 transition-all"
                 >
-                  <span>Déjà inscrit ? Accéder à mon Espace Pro</span>
+                  <span>Déjà inscrit comme pro ? Ouvrir mon Espace Pro</span>
                 </Link>
               </div>
             </div>
@@ -423,14 +445,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 3 ÉTAPES COMMENT ÇA MARCHE */}
+      {/* SECTION COMMENT ÇA MARCHE */}
       <section className="py-16 md:py-24 bg-slate-900 border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
             <span className="text-xs font-bold uppercase tracking-wider text-sama-400">Simplicité & Rapidité</span>
             <h2 className="text-2xl sm:text-3xl font-black text-white">
-              Comment ça fonctionne ?
+              Comment fonctionne Sama Artisan ?
             </h2>
           </div>
 
@@ -441,7 +463,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-lg font-bold text-white">Choisissez le métier</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Recherchez par profession, région et quartier.
+                Recherchez par profession, région et quartier parmi toutes les catégories.
               </p>
             </div>
 
@@ -449,9 +471,9 @@ export default function HomePage() {
               <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center font-black text-lg">
                 2
               </div>
-              <h3 className="text-lg font-bold text-white">Consultez les avis & photos</h3>
+              <h3 className="text-lg font-bold text-white">Consultez les avis & tarifs</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Vérifiez les compétences, réalisations récentes et notes authentiques.
+                Vérifiez les compétences, photos de chantiers récents et avis clients vérifiés.
               </p>
             </div>
 
@@ -461,7 +483,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-lg font-bold text-white">Échangez sur WhatsApp</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Contact direct sans intermédiaire pour fixer votre rendez-vous d'intervention.
+                Contact direct sans intermédiaire pour fixer votre intervention.
               </p>
             </div>
           </div>
@@ -469,7 +491,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FAQ SECTION */}
+      {/* SECTION FAQ */}
       <section className="py-16 md:py-24 bg-slate-950">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="text-center space-y-2">

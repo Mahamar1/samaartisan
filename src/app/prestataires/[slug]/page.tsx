@@ -31,10 +31,9 @@ export default function ProviderProfilePage() {
   const params = useParams();
   const slug = params?.slug as string;
   
-  const initialProvider = PROVIDERS.find((p) => p.slug === slug || p.id === slug) || PROVIDERS[0];
-  
-  const [provider, setProvider] = useState<Provider>(initialProvider);
-  const [reviews, setReviews] = useState<Review[]>(initialProvider.reviews);
+  const [provider, setProvider] = useState<Provider | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
@@ -42,29 +41,45 @@ export default function ProviderProfilePage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [copiedToast, setCopiedToast] = useState(false);
 
-  // Fetch live artisan details from Supabase
+  // Fetch live artisan details from Supabase or local session
   useEffect(() => {
-    if (slug) {
-      getProviderBySlug(slug).then((livePro) => {
-        if (livePro) {
-          setProvider(livePro);
-          if (livePro.reviews && livePro.reviews.length > 0) {
-            setReviews(livePro.reviews);
-          }
+    if (!slug) return;
+
+    // 1. Check if logged in user matches this slug
+    try {
+      const stored = localStorage.getItem('samapro_current_user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.slug === slug || parsed.id === slug) {
+          setProvider(parsed);
+          setReviews(parsed.reviews || []);
+          setLoading(false);
         }
-      });
-    }
+      }
+    } catch (e) {}
+
+    // 2. Fetch from Supabase
+    getProviderBySlug(slug).then((livePro) => {
+      if (livePro) {
+        setProvider(livePro);
+        setReviews(livePro.reviews || []);
+      }
+      setLoading(false);
+    }).catch(() => {
+      setLoading(false);
+    });
   }, [slug]);
 
   useEffect(() => {
-    // Check if favorite in localStorage
+    if (!provider) return;
     try {
       const favs = JSON.parse(localStorage.getItem('samapro_favorites') || '[]');
       setIsFavorite(favs.includes(provider.id));
     } catch (e) {}
-  }, [provider.id]);
+  }, [provider?.id]);
 
   const toggleFavorite = () => {
+    if (!provider) return;
     try {
       const favs = JSON.parse(localStorage.getItem('samapro_favorites') || '[]');
       let updated;
@@ -80,6 +95,7 @@ export default function ProviderProfilePage() {
   };
 
   const handleShare = () => {
+    if (!provider) return;
     if (navigator.share) {
       navigator.share({
         title: `${provider.businessName} sur Sama Artisan`,
@@ -94,6 +110,7 @@ export default function ProviderProfilePage() {
   };
 
   const handleReviewAdded = (newReview: Review) => {
+    if (!provider) return;
     const updated = [newReview, ...reviews];
     setReviews(updated);
     
@@ -109,11 +126,57 @@ export default function ProviderProfilePage() {
   };
 
   const handleWhatsApp = () => {
+    if (!provider) return;
     const defaultMsg = encodeURIComponent(
       `Bonjour ${provider.name}, je vous contacte via Sama Artisan après avoir vu votre profil pro (${provider.categoryName}). Êtes-vous disponible pour une prestation ?`
     );
     window.open(`https://wa.me/${provider.whatsapp}?text=${defaultMsg}`, '_blank');
   };
+
+  if (loading) {
+    return (
+      <div className="bg-slate-50 min-h-screen flex items-center justify-center py-20 px-4">
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="w-12 h-12 rounded-2xl bg-sama-600/20 text-sama-600 flex items-center justify-center mx-auto animate-pulse">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <p className="text-sm font-bold text-slate-700">Chargement du profil artisan...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!provider) {
+    return (
+      <div className="bg-slate-50 min-h-screen flex items-center justify-center py-20 px-4">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 shadow-xl text-center space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+            <Briefcase className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-black text-navy-950">Profil d'Artisan Introuvable</h2>
+            <p className="text-xs text-slate-500">
+              Ce profil est peut-être en cours de mise à jour ou n'a pas encore été publié.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
+            <Link
+              href="/recherche"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-sama-600 hover:bg-sama-700 text-white shadow-md transition-all text-center"
+            >
+              Parcourir les artisans
+            </Link>
+            <Link
+              href="/"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all text-center"
+            >
+              Retour à l'accueil
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-slate-50 min-h-screen pb-16">

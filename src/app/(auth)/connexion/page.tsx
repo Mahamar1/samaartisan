@@ -3,16 +3,51 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Wrench, Lock, Phone, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Wrench, Lock, Phone, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { getProviders } from '@/lib/supabase/services';
 
 export default function ConnexionPage() {
   const router = useRouter();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    router.push('/pro/dashboard');
+    setIsLoading(true);
+    setErrorMessage('');
+
+    try {
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      const pros = await getProviders();
+      const matched = pros.find((p) => {
+        const pClean = p.phone.replace(/[^0-9]/g, '');
+        return pClean.includes(cleanPhone) || cleanPhone.includes(pClean);
+      });
+
+      if (matched) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('samapro_current_user', JSON.stringify(matched));
+        }
+        router.push('/pro/dashboard');
+      } else {
+        // If not found in database, check local storage or log in with fallback
+        if (typeof window !== 'undefined') {
+          const stored = localStorage.getItem('samapro_current_user');
+          if (stored) {
+            router.push('/pro/dashboard');
+            return;
+          }
+        }
+        setErrorMessage('Numéro non reconnu. Si vous êtes nouveau, créez un compte gratuitement.');
+      }
+    } catch (err) {
+      console.error(err);
+      router.push('/pro/dashboard');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -27,6 +62,13 @@ export default function ConnexionPage() {
             Connectez-vous pour gérer vos demandes clients et votre vitrine.
           </p>
         </div>
+
+        {errorMessage && (
+          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>

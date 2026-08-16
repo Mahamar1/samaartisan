@@ -15,7 +15,9 @@ import {
   CheckCircle2,
   HelpCircle
 } from 'lucide-react';
-import { CATEGORIES, PROVIDERS, NEIGHBORHOODS, formatFcfa } from '@/lib/data';
+import { CATEGORIES, NEIGHBORHOODS, formatFcfa } from '@/lib/data';
+import { getProviders } from '@/lib/supabase/services';
+import { Provider } from '@/lib/types';
 import ProviderCard from '@/components/provider/ProviderCard';
 
 export default function CategorySeoPage() {
@@ -24,8 +26,17 @@ export default function CategorySeoPage() {
 
   const category = CATEGORIES.find((c) => c.slug === slug || c.id === slug) || CATEGORIES[0];
   const [selectedNeighborhood, setSelectedNeighborhood] = useState('');
+  const [allProviders, setAllProviders] = useState<Provider[]>([]);
 
-  const providers = PROVIDERS.filter((p) => {
+  React.useEffect(() => {
+    getProviders().then((pros) => {
+      if (pros) {
+        setAllProviders(pros);
+      }
+    });
+  }, []);
+
+  const providers = allProviders.filter((p) => {
     if (p.categorySlug !== category.slug) return false;
     if (selectedNeighborhood && !p.neighborhood.toLowerCase().includes(selectedNeighborhood.toLowerCase())) {
       return false;

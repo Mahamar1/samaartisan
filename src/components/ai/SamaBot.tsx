@@ -3,7 +3,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, MessageSquare, X, Send, Bot, User, Wrench, MapPin, Zap, Wind, Key } from 'lucide-react';
 import Link from 'next/link';
-import { PROVIDERS, CATEGORIES } from '@/lib/data';
+import { CATEGORIES } from '@/lib/data';
+import { getProviders } from '@/lib/supabase/services';
+import { Provider } from '@/lib/types';
 
 interface ChatMessage {
   id: string;
@@ -22,6 +24,7 @@ interface ChatMessage {
 
 export function SamaBot() {
   const [isOpen, setIsOpen] = useState(false);
+  const [providersList, setProvidersList] = useState<Provider[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
@@ -32,6 +35,14 @@ export function SamaBot() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    getProviders().then((pros) => {
+      if (pros && pros.length > 0) {
+        setProvidersList(pros);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -57,53 +68,31 @@ export function SamaBot() {
       let suggestion = undefined;
 
       const lower = userText.toLowerCase();
+      let matchedPro: Provider | undefined = undefined;
+
       if (lower.includes('fuite') || lower.includes('plombier') || lower.includes('eau') || lower.includes('évier') || lower.includes('chauffe')) {
-        const p = PROVIDERS.find((prov) => prov.categorySlug === 'plomberie') || PROVIDERS[0];
-        botResponse = 'Voici notre maître artisan plombier certifié le plus réactif sur votre secteur :';
-        suggestion = {
-          id: p.id,
-          slug: p.slug,
-          name: p.name + ' (' + p.businessName + ')',
-          category: p.categoryName,
-          neighborhood: p.neighborhood + ', Dakar',
-          rating: p.averageRating,
-          phone: p.phone,
-        };
+        matchedPro = providersList.find((prov) => prov.categorySlug === 'plomberie') || providersList[0];
+        botResponse = matchedPro ? 'Voici notre maître artisan plombier certifié le plus réactif sur votre secteur :' : 'Vous pouvez trouver un plombier vérifié disponible immédiatement dans notre annuaire :';
       } else if (lower.includes('courant') || lower.includes('elec') || lower.includes('disjoncteur') || lower.includes('panne') || lower.includes('solaire')) {
-        const p = PROVIDERS.find((prov) => prov.categorySlug === 'electricite') || PROVIDERS[1];
-        botResponse = 'Voici l\'ingénieur électricien recommandé pour un dépannage rapide :';
-        suggestion = {
-          id: p.id,
-          slug: p.slug,
-          name: p.name + ' (' + p.businessName + ')',
-          category: p.categoryName,
-          neighborhood: p.neighborhood + ', Dakar',
-          rating: p.averageRating,
-          phone: p.phone,
-        };
+        matchedPro = providersList.find((prov) => prov.categorySlug === 'electricite') || providersList[0];
+        botResponse = matchedPro ? 'Voici l\'ingénieur électricien recommandé pour un dépannage rapide :' : 'Consultez les électriciens certifiés disponibles à Dakar :';
       } else if (lower.includes('clim') || lower.includes('gaz') || lower.includes('split') || lower.includes('froid')) {
-        const p = PROVIDERS.find((prov) => prov.categorySlug === 'climatisation') || PROVIDERS[2];
-        botResponse = 'Voici notre technicien frigoriste certifié pour l\'entretien et la recharge de votre clim :';
-        suggestion = {
-          id: p.id,
-          slug: p.slug,
-          name: p.name + ' (' + p.businessName + ')',
-          category: p.categoryName,
-          neighborhood: p.neighborhood + ', Dakar',
-          rating: p.averageRating,
-          phone: p.phone,
-        };
+        matchedPro = providersList.find((prov) => prov.categorySlug === 'climatisation') || providersList[0];
+        botResponse = matchedPro ? 'Voici notre technicien frigoriste certifié pour l\'entretien et la recharge de votre clim :' : 'Découvrez nos techniciens en climatisation disponibles :';
       } else if (lower.includes('serrure') || lower.includes('porte') || lower.includes('clé') || lower.includes('claqu')) {
-        const p = PROVIDERS.find((prov) => prov.categorySlug === 'serrurerie') || PROVIDERS[4];
-        botResponse = 'Voici notre serrurier d\'urgence disponible 24/7 pour ouverture sans dégât :';
+        matchedPro = providersList.find((prov) => prov.categorySlug === 'serrurerie') || providersList[0];
+        botResponse = matchedPro ? 'Voici notre serrurier d\'urgence disponible pour une intervention sans dégât :' : 'Découvrez nos serruriers disponibles 24/7 :';
+      }
+
+      if (matchedPro) {
         suggestion = {
-          id: p.id,
-          slug: p.slug,
-          name: p.name + ' (' + p.businessName + ')',
-          category: p.categoryName,
-          neighborhood: p.neighborhood + ', Dakar',
-          rating: p.averageRating,
-          phone: p.phone,
+          id: matchedPro.id,
+          slug: matchedPro.slug,
+          name: matchedPro.name + ' (' + matchedPro.businessName + ')',
+          category: matchedPro.categoryName,
+          neighborhood: matchedPro.neighborhood + ', Dakar',
+          rating: matchedPro.averageRating,
+          phone: matchedPro.phone,
         };
       }
 

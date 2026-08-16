@@ -21,6 +21,16 @@ export default function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  React.useEffect(() => {
+    try {
+      const stored = localStorage.getItem('samapro_current_user');
+      if (stored) {
+        setCurrentUser(JSON.parse(stored));
+      }
+    } catch (e) {}
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-50 glass-nav transition-all duration-200">
@@ -96,14 +106,34 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
-            <Link
-              href="/pro/dashboard"
-              className="px-3.5 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:text-navy-900 hover:bg-slate-50 transition-colors flex items-center gap-2"
-            >
-              <UserCheck className="w-4 h-4 text-brand-600" />
-              <span>Espace Artisan</span>
-            </Link>
+          <nav className="hidden md:flex items-center gap-2">
+            {currentUser ? (
+              <div className="flex items-center gap-2">
+                {currentUser.slug && (
+                  <Link
+                    href={`/prestataires/${currentUser.slug}`}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors flex items-center gap-1.5"
+                  >
+                    <span>Voir mon profil</span>
+                  </Link>
+                )}
+                <Link
+                  href="/pro/dashboard"
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-2"
+                >
+                  <UserCheck className="w-4 h-4 text-emerald-600" />
+                  <span>Espace Pro ({currentUser.name?.split(' ')[0] || 'Artisan'})</span>
+                </Link>
+              </div>
+            ) : (
+              <Link
+                href="/pro/dashboard"
+                className="px-3.5 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:text-navy-900 hover:bg-slate-50 transition-colors flex items-center gap-2"
+              >
+                <UserCheck className="w-4 h-4 text-brand-600" />
+                <span>Espace Artisan</span>
+              </Link>
+            )}
           </nav>
 
           {/* Action CTAs */}
@@ -116,13 +146,15 @@ export default function Navbar() {
               <span>Trouver un artisan</span>
             </Link>
 
-            <Link
-              href="/devenir-prestataire"
-              className="px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center gap-2"
-            >
-              <Briefcase className="w-4 h-4 text-sama-400" />
-              <span>Devenir artisan</span>
-            </Link>
+            {!currentUser && (
+              <Link
+                href="/devenir-prestataire"
+                className="px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center gap-2"
+              >
+                <Briefcase className="w-4 h-4 text-sama-400" />
+                <span>Devenir artisan</span>
+              </Link>
+            )}
           </div>
 
           {/* Mobile menu trigger */}
@@ -132,7 +164,7 @@ export default function Navbar() {
               className="px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1 shadow-sm whitespace-nowrap active:scale-95 transition-all"
             >
               <Search className="w-3.5 h-3.5" />
-              <span>Trouver un artisan</span>
+              <span>Trouver</span>
             </Link>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -150,25 +182,37 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-b border-slate-200 px-4 pt-3 pb-6 space-y-3 animate-in fade-in slide-in-from-top-4 shadow-xl">
           <div className="space-y-1">
+            {currentUser?.slug && (
+              <Link
+                href={`/prestataires/${currentUser.slug}`}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-800 font-semibold hover:bg-slate-50 transition-colors"
+              >
+                <Briefcase className="w-5 h-5 text-sama-600" />
+                <span>Voir mon profil public ({currentUser.name})</span>
+              </Link>
+            )}
             <Link
               href="/pro/dashboard"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-800 font-semibold hover:bg-slate-50 transition-colors"
             >
               <UserCheck className="w-5 h-5 text-emerald-600" />
-              <span>Espace Pro Artisan</span>
+              <span>Tableau de bord Pro</span>
             </Link>
           </div>
 
           <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
-            <Link
-              href="/devenir-prestataire"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full py-3 rounded-xl text-center text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all"
-            >
-              <Briefcase className="w-4 h-4 text-sama-400" />
-              <span>Devenir artisan</span>
-            </Link>
+            {!currentUser && (
+              <Link
+                href="/devenir-prestataire"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-3 rounded-xl text-center text-sm font-bold bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all"
+              >
+                <Briefcase className="w-4 h-4 text-sama-400" />
+                <span>Devenir artisan</span>
+              </Link>
+            )}
           </div>
         </div>
       )}

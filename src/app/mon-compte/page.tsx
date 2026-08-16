@@ -14,7 +14,8 @@ import {
   ArrowRight,
   Phone
 } from 'lucide-react';
-import { PROVIDERS, formatFcfa } from '@/lib/data';
+import { formatFcfa } from '@/lib/data';
+import { getProviders } from '@/lib/supabase/services';
 import { Provider, ServiceRequest } from '@/lib/types';
 import ProviderCard from '@/components/provider/ProviderCard';
 
@@ -29,8 +30,14 @@ export default function MonComptePage() {
       setRequests(storedReqs);
 
       const favIds = JSON.parse(localStorage.getItem('samaartisan_favorites') || localStorage.getItem('samapro_favorites') || '[]');
-      const matched = PROVIDERS.filter((p) => favIds.includes(p.id));
-      setFavorites(matched.length > 0 ? matched : [PROVIDERS[0], PROVIDERS[1]]);
+      if (favIds.length > 0) {
+        getProviders().then((pros) => {
+          if (pros) {
+            const matched = pros.filter((p) => favIds.includes(p.id));
+            setFavorites(matched);
+          }
+        });
+      }
     } catch (e) {}
   }, []);
 

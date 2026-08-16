@@ -88,13 +88,13 @@ export default function ContactPage() {
               </div>
 
               <a
-                href="https://wa.me/221770000000?text=Bonjour%20l'équipe%20Sama%20Artisan,%20j'ai%20une%20question%20concernant%20vos%20services"
+                href="https://wa.me/221787505218?text=Bonjour%20l'équipe%20Sama%20Artisan,%20j'ai%20une%20question%20concernant%20vos%20services"
                 target="_blank"
                 rel="noreferrer"
                 className="w-full py-3.5 bg-white hover:bg-slate-100 text-emerald-800 font-black rounded-2xl text-xs shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 text-center"
               >
                 <MessageCircle className="w-4 h-4 text-emerald-600" />
-                <span>Ouvrir WhatsApp (+221 77 000 00 00)</span>
+                <span>Ouvrir WhatsApp (+221 78 750 52 18)</span>
               </a>
             </div>
 
@@ -110,7 +110,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-800 text-sm">Téléphone / Standard</h4>
-                    <p className="text-slate-500 mt-0.5">+221 77 645 89 12 / 33 824 00 00</p>
+                    <p className="text-slate-500 mt-0.5">+221 78 750 52 18</p>
                     <p className="text-[11px] text-slate-400">Du Lundi au Dimanche (8h - 21h)</p>
                   </div>
                 </div>
@@ -132,7 +132,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-800 text-sm">Siège & Bureaux</h4>
-                    <p className="text-slate-500 mt-0.5">Route des Almadies, Immeuble Horizon</p>
+                    <p className="text-slate-500 mt-0.5">Grand Dakar, en face de la police</p>
                     <p className="text-[11px] text-slate-400">Dakar, Sénégal</p>
                   </div>
                 </div>
@@ -377,7 +377,7 @@ export default function ContactPage() {
                 <span>Comment obtenir de l'aide pour s'inscrire ?</span>
               </h4>
               <p className="text-slate-600 leading-relaxed">
-                Vous pouvez contacter notre support via WhatsApp au <strong>+221 77 000 00 00</strong>. Un conseiller vous assistera pas à pas pour créer votre fiche et ajouter vos photos.
+                Vous pouvez contacter notre support via WhatsApp au <strong>+221 78 750 52 18</strong>. Un conseiller vous assistera pas à pas pour créer votre fiche et ajouter vos photos.
               </p>
             </div>
 

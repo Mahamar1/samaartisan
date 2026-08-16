@@ -37,11 +37,11 @@ export default function Footer() {
             <div className="pt-2 flex flex-col gap-2 text-xs text-slate-400">
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-sama-400" />
-                <span>Siège : Almadies Zone 2, Dakar, Sénégal</span>
+                <span>Siège : Grand Dakar, en face de la police, Dakar, Sénégal</span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-sama-400" />
-                <span>Assistance & Urgence : +221 77 000 00 00</span>
+                <span>Assistance & Urgence : +221 78 750 52 18</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-sama-400" />
@@ -93,12 +93,12 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="https://wa.me/221770000000"
+                  href="https://wa.me/221787505218"
                   target="_blank"
                   rel="noreferrer"
                   className="text-emerald-400 font-semibold hover:underline flex items-center gap-1"
                 >
-                  <span>WhatsApp Support</span>
+                  <span>WhatsApp Support (+221 78 750 52 18)</span>
                 </a>
               </li>
             </ul>

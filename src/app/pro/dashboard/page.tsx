@@ -59,20 +59,30 @@ const DEFAULT_PRO_FALLBACK: Provider = {
 export default function ProviderDashboardPage() {
   const [currentProvider, setCurrentProvider] = useState<Provider>(DEFAULT_PRO_FALLBACK);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
-  const [activeTab, setActiveTab] = useState<'requests' | 'analytics' | 'subscription' | 'profile'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'profile'>('requests');
+  const [businessName, setBusinessName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [bio, setBio] = useState('');
+  const [savedToast, setSavedToast] = useState(false);
 
   useEffect(() => {
-    // 1. Load current logged in artisan profile from localStorage
+    // 1. Load current logged in artisan profile from localStorage or Supabase
     try {
       const storedUser = localStorage.getItem('samapro_current_user');
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
         setCurrentProvider(parsed);
+        setBusinessName(parsed.businessName || '');
+        setPhone(parsed.phone || '');
+        setBio(parsed.bio || '');
       } else {
         // Fetch from Supabase
         getProviders().then((pros) => {
           if (pros && pros.length > 0) {
             setCurrentProvider(pros[0]);
+            setBusinessName(pros[0].businessName || '');
+            setPhone(pros[0].phone || '');
+            setBio(pros[0].bio || '');
           }
         });
       }
@@ -119,27 +129,50 @@ export default function ProviderDashboardPage() {
     }
   };
 
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updated = {
+      ...currentProvider,
+      businessName,
+      phone,
+      bio,
+    };
+    setCurrentProvider(updated);
+    try {
+      localStorage.setItem('samapro_current_user', JSON.stringify(updated));
+      setSavedToast(true);
+      setTimeout(() => setSavedToast(false), 3000);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <div className="bg-slate-50 min-h-screen pb-16">
       
+      {/* Toast Saved */}
+      {savedToast && (
+        <div className="fixed top-20 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl font-bold text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <CheckCircle2 className="w-4 h-4" />
+          <span>Profil mis à jour avec succès !</span>
+        </div>
+      )}
+
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-navy-950 via-slate-900 to-navy-900 text-white py-8">
+      <div className="bg-gradient-to-r from-navy-950 via-slate-900 to-navy-900 text-white py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-sama-500 shadow-md">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-sama-500 shadow-xl shrink-0">
                 <img src={currentProvider.avatar} alt={currentProvider.name} className="w-full h-full object-cover" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold text-white">{currentProvider.businessName}</h1>
-                  <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-emerald-500 text-white rounded-full">
-                    Abonnement Pro Actif
-                  </span>
-                </div>
-                <p className="text-xs text-slate-300">
-                  {currentProvider.name} • {currentProvider.neighborhood}, Dakar • Noté 4.95/5
+              <div className="space-y-1">
+                <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight">
+                  Mon Espace Artisan : <span className="text-sama-400">{currentProvider.name || currentProvider.businessName}</span>
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-300">
+                  {currentProvider.businessName} • {currentProvider.categoryName} • {currentProvider.neighborhood}, Dakar
                 </p>
               </div>
             </div>
@@ -148,15 +181,11 @@ export default function ProviderDashboardPage() {
               <Link
                 href={`/prestataires/${currentProvider.slug}`}
                 target="_blank"
-                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white flex items-center gap-1.5 transition-colors"
+                className="px-5 py-3 rounded-2xl text-xs font-bold bg-sama-600 hover:bg-sama-700 text-white flex items-center gap-2 shadow-lg shadow-sama-600/30 transition-all active:scale-95"
               >
                 <ExternalLink className="w-4 h-4" />
                 <span>Voir mon profil public</span>
               </Link>
-              <div className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Accès Illimité Gratuit</span>
-              </div>
             </div>
 
           </div>
@@ -164,90 +193,33 @@ export default function ProviderDashboardPage() {
       </div>
 
       {/* Main Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4">
-        
-        {/* KPI Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          
-          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/80">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Vues du Profil</span>
-              <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
-                <Eye className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="text-2xl font-black text-navy-900 mt-2">1,248</div>
-            <p className="text-[11px] text-emerald-600 font-bold mt-1">+18% cette semaine</p>
-          </div>
-
-          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/80">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Contacts WhatsApp</span>
-              <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-                <MessageSquare className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="text-2xl font-black text-navy-900 mt-2">47</div>
-            <p className="text-[11px] text-emerald-600 font-bold mt-1">~12 discussions / semaine</p>
-          </div>
-
-          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/80">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Demandes Reçues</span>
-              <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
-                <Clock className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="text-2xl font-black text-navy-900 mt-2">{requests.length}</div>
-            <p className="text-[11px] text-slate-500 mt-1">Taux de réponse : 96%</p>
-          </div>
-
-          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200/80">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Statut Compte</span>
-              <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="text-lg font-black text-emerald-600 mt-2">100% Gratuit</div>
-            <p className="text-[11px] text-slate-500 mt-1">Accès Illimité Partenaire</p>
-          </div>
-
-        </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-slate-200 pb-3 mb-6">
+        <div className="flex items-center gap-3 border-b border-slate-200 pb-3 mb-6">
           <button
             onClick={() => setActiveTab('requests')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
               activeTab === 'requests'
-                ? 'bg-sama-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-white'
+                ? 'bg-sama-600 text-white shadow-md shadow-sama-600/20'
+                : 'text-slate-600 hover:bg-white hover:text-navy-900'
             }`}
           >
-            Demandes Clients ({requests.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('subscription')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-              activeTab === 'subscription'
-                ? 'bg-sama-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-white'
-            }`}
-          >
-            Statut & Avantages Gratuits
+            <span>Demandes des clients</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === 'requests' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600 font-bold'}`}>
+              {requests.length}
+            </span>
           </button>
 
           <button
             onClick={() => setActiveTab('profile')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
               activeTab === 'profile'
-                ? 'bg-sama-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-white'
+                ? 'bg-sama-600 text-white shadow-md shadow-sama-600/20'
+                : 'text-slate-600 hover:bg-white hover:text-navy-900'
             }`}
           >
-            Édition Profil & Portfolio
+            Éditer profil & portfolio
           </button>
         </div>
 
@@ -255,7 +227,7 @@ export default function ProviderDashboardPage() {
         {activeTab === 'requests' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-navy-900">Demandes de prestations entrantes</h3>
+              <h3 className="text-lg font-bold text-navy-900">Demandes des clients</h3>
               <span className="text-xs text-slate-500">Contactez directement les clients sur WhatsApp</span>
             </div>
 
@@ -295,10 +267,10 @@ export default function ProviderDashboardPage() {
                   {/* Actions */}
                   <div className="flex items-center gap-2 shrink-0">
                     <a
-                      href={`https://wa.me/221${req.customerPhone.replace(/\s+/g, '')}?text=${encodeURIComponent(`Bonjour ${req.customerName}, je suis Moussa Diop de Sama Artisan suite à votre demande. Je suis disponible !`)}`}
+                      href={`https://wa.me/221${req.customerPhone.replace(/\s+/g, '')}?text=${encodeURIComponent(`Bonjour ${req.customerName}, je suis ${currentProvider.name} de Sama Artisan suite à votre demande. Je suis disponible !`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-4 py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white text-xs flex items-center gap-1.5 shadow-sm"
+                      className="px-4 py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
                     >
                       <MessageSquare className="w-4 h-4" />
                       <span>Répondre sur WhatsApp</span>
@@ -307,7 +279,7 @@ export default function ProviderDashboardPage() {
                     {req.status === 'PENDING' ? (
                       <button
                         onClick={() => handleUpdateStatus(req.id, 'ACCEPTED')}
-                        className="px-3.5 py-2.5 rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs"
+                        className="px-3.5 py-2.5 rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs transition-all"
                       >
                         Accepter
                       </button>
@@ -323,88 +295,66 @@ export default function ProviderDashboardPage() {
           </div>
         )}
 
-        {/* TAB 2: FREE STATUS & PERKS */}
-        {activeTab === 'subscription' && (
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 space-y-6 max-w-3xl">
-            <div className="flex items-center justify-between pb-6 border-b border-slate-100">
-              <div>
-                <h3 className="text-xl font-bold text-navy-900">Statut de votre Compte</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Offre spéciale de lancement pour tous les artisans</p>
-              </div>
-              <span className="px-3 py-1 text-xs font-black uppercase bg-emerald-100 text-emerald-800 rounded-full">
-                Accès Illimité • 0 FCFA
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Frais mensuels</span>
-                <p className="font-bold text-emerald-600 text-sm">0 FCFA (Gratuit à vie)</p>
-              </div>
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Commission par chantier</span>
-                <p className="font-bold text-emerald-600 text-sm">0% (Vous gardez 100%)</p>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-2">
-              <p className="font-bold">✓ Vos avantages actifs en tant qu'Artisan Partenaire :</p>
-              <ul className="list-disc list-inside space-y-1 text-emerald-800">
-                <li>Réception directe des messages WhatsApp des clients de Dakar</li>
-                <li>Affichage prioritaire de vos photos de chantiers</li>
-                <li>Badge "Artisan Vérifié" visible par les particuliers</li>
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 3: PROFILE & PORTFOLIO */}
+        {/* TAB 2: PROFILE & PORTFOLIO */}
         {activeTab === 'profile' && (
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 space-y-6 max-w-3xl">
-            <h3 className="text-xl font-bold text-navy-900">Mettre à jour votre vitrine</h3>
+            <h3 className="text-xl font-bold text-navy-900">Éditer votre profil et vitrine</h3>
             
-            <div className="space-y-4">
+            <form onSubmit={handleSaveProfile} className="space-y-5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Nom Commercial</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Nom Commercial / Atelier</label>
                 <input
                   type="text"
-                  defaultValue={currentProvider.businessName}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold"
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Numéro WhatsApp Réception</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Numéro de Téléphone & WhatsApp</label>
                 <input
                   type="text"
-                  defaultValue={currentProvider.phone}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-sama-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Galerie Photos (15 max)</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {currentProvider.portfolio.map((p) => (
-                    <div key={p.id} className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 border">
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Présentation / Description</label>
+                <textarea
+                  rows={3}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-sama-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Portfolio & Photos de chantiers</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {currentProvider.portfolio && currentProvider.portfolio.map((p) => (
+                    <div key={p.id} className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm">
                       <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover" />
                     </div>
                   ))}
-                  <div className="border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center p-4 text-slate-400 hover:text-sama-600 hover:border-sama-400 cursor-pointer">
+                  <div className="border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center p-4 text-slate-400 hover:text-sama-600 hover:border-sama-400 cursor-pointer transition-colors">
                     <Plus className="w-6 h-6" />
-                    <span className="text-[10px] font-bold mt-1">Ajouter photo</span>
+                    <span className="text-[10px] font-bold mt-1">Ajouter une photo</span>
                   </div>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => alert('Modifications enregistrées avec succès sur votre profil Sama Artisan.')}
-                className="px-6 py-3 rounded-xl font-bold bg-sama-600 text-white text-xs"
-              >
-                Sauvegarder les modifications
-              </button>
-            </div>
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  className="px-6 py-3 rounded-xl font-bold bg-sama-600 hover:bg-sama-700 text-white text-xs shadow-md transition-all active:scale-95"
+                >
+                  Sauvegarder les modifications
+                </button>
+              </div>
+            </form>
           </div>
         )}
 

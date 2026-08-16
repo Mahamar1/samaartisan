@@ -122,7 +122,7 @@ export default function Navbar() {
                   className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-2"
                 >
                   <UserCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Espace Pro ({currentUser.name?.split(' ')[0] || 'Artisan'})</span>
+                  <span>Mon Espace Artisan ({currentUser.name?.split(' ')[0] || 'Artisan'})</span>
                 </Link>
               </div>
             ) : (
@@ -131,7 +131,7 @@ export default function Navbar() {
                 className="px-3.5 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:text-navy-900 hover:bg-slate-50 transition-colors flex items-center gap-2"
               >
                 <UserCheck className="w-4 h-4 text-brand-600" />
-                <span>Espace Artisan</span>
+                <span>Mon Espace Artisan</span>
               </Link>
             )}
           </nav>
@@ -198,7 +198,7 @@ export default function Navbar() {
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-800 font-semibold hover:bg-slate-50 transition-colors"
             >
               <UserCheck className="w-5 h-5 text-emerald-600" />
-              <span>Tableau de bord Pro</span>
+              <span>Mon Espace Artisan</span>
             </Link>
           </div>
 

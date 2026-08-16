@@ -109,16 +109,18 @@ export async function POST(request: Request) {
 
     // 7. Envoi direct d'email à mmahamar32@gmail.com via FormSubmit
     try {
-      await fetch('https://formsubmit.co/ajax/mmahamar32@gmail.com', {
+      const emailRes = await fetch('https://formsubmit.co/ajax/mmahamar32@gmail.com', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Origin': 'https://samaartisan.vercel.app',
-          'Referer': 'https://samaartisan.vercel.app/contact'
+          'Referer': 'https://samaartisan.vercel.app/contact',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         },
         body: JSON.stringify({
           _subject: `[Sama Artisan] Nouveau message de ${cleanFullName} (${profileLabel})`,
+          _captcha: 'false',
           'Nom Complet': cleanFullName,
           'Profil': profileLabel,
           'Téléphone': cleanPhone,
@@ -129,6 +131,10 @@ export async function POST(request: Request) {
           _replyto: cleanEmail || undefined
         })
       });
+      const emailResult = await emailRes.json().catch(() => null);
+      if (emailResult) {
+        console.log('[EMAIL DISPATCH]', emailResult);
+      }
     } catch (mailErr) {
       console.error('Email dispatch notice:', mailErr);
     }

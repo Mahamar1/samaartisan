@@ -195,34 +195,16 @@ export default function Navbar() {
                 </button>
               </div>
             ) : (
-              /* Vue Déconnectée : Adaptée dynamiquement selon le rôle du compte */
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              /* Vue Déconnectée : Seulement le bouton Connexion */
+              <div className="flex items-center">
                 <Link
-                  href={`/connexion${lastRole === 'client' ? '?role=client' : '?role=pro'}`}
-                  className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold text-slate-700 hover:bg-slate-100 transition-all shrink-0"
+                  href="/connexion"
+                  className="flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold bg-navy-900 hover:bg-navy-800 text-white shadow-sm hover:shadow transition-all active:scale-95 shrink-0"
+                  title="Se connecter (Espace Client ou Espace Artisan)"
                 >
-                  Connexion
+                  <LogIn className="w-3.5 h-3.5 text-sama-400 stroke-[2.5]" />
+                  <span>Connexion</span>
                 </Link>
-
-                {lastRole === 'client' ? (
-                  <Link
-                    href="/mon-compte"
-                    className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold bg-sama-600 hover:bg-sama-700 text-white transition-all shadow-sm active:scale-95 shrink-0"
-                    title="Accéder à mon Espace Client"
-                  >
-                    <User className="w-3.5 h-3.5 shrink-0" />
-                    <span className="whitespace-nowrap">Espace Client</span>
-                  </Link>
-                ) : (
-                  <Link
-                    href="/pro/dashboard"
-                    className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold bg-navy-900 hover:bg-navy-800 text-white transition-all shadow-sm active:scale-95 shrink-0"
-                    title="Accéder à mon Espace Artisan"
-                  >
-                    <Briefcase className="w-3.5 h-3.5 text-sama-400 shrink-0" />
-                    <span className="whitespace-nowrap">Espace Artisan</span>
-                  </Link>
-                )}
               </div>
             )}
           </div>

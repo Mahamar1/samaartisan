@@ -810,56 +810,9 @@ export interface ContactMessage {
   reply_notes?: string;
 }
 
-export const DEFAULT_CONTACT_MESSAGES: ContactMessage[] = [
-  {
-    id: 'msg-1',
-    full_name: 'Moussa Diagne',
-    phone: '+221 77 555 44 33',
-    email: 'moussa.diagne@gmail.com',
-    subject: 'Urgence : Fuite d\'eau sous évier à Mermoz',
-    message: 'Bonjour, j\'ai une fuite d\'eau importante sous mon évier de cuisine. J\'ai besoin d\'un bon plombier disponible dès aujourd\'hui vers 14h.',
-    user_type: 'Particulier',
-    status: 'NEW',
-    created_at: new Date(Date.now() - 35 * 60 * 1000).toISOString()
-  },
-  {
-    id: 'msg-2',
-    full_name: 'Aminata Ndiaye',
-    phone: '+221 78 432 11 00',
-    email: 'aminata.ndiaye@outlook.com',
-    subject: 'Devis pour rénovation électrique complète',
-    message: 'Bonjour l\'équipe Sama Artisan, nous venons d\'emménager dans un appartement aux Almadies et souhaitons refaire tout le tableau électrique et les prises.',
-    user_type: 'Particulier',
-    status: 'NEW',
-    created_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString()
-  },
-  {
-    id: 'msg-3',
-    full_name: 'Babacar Cissé',
-    phone: '+221 76 890 12 34',
-    email: 'cisse.menuiserie@gmail.com',
-    subject: 'Demande de vérification de profil artisan (Badge CNI)',
-    message: 'Bonjour M. l\'Administrateur, j\'ai soumis mes documents CNI hier pour mon profil Menuiserie Cissé & Fils. Pourriez-vous valider mon badge vérifié ? Merci d\'avance.',
-    user_type: 'Artisan Pro',
-    status: 'READ',
-    created_at: new Date(Date.now() - 18 * 3600 * 1000).toISOString()
-  },
-  {
-    id: 'msg-4',
-    full_name: 'Société IMMO DAKAR SARL (M. Sylla)',
-    phone: '+221 70 888 99 00',
-    email: 'contact@immo-dakar.sn',
-    subject: 'Partenariat gestion parc immobilier (Climatisation & Peinture)',
-    message: 'Bonjour Mohamed, nous gérons un parc de 45 appartements sur Dakar et cherchons des artisans fiables et certifiés pour des contrats de maintenance récurrents.',
-    user_type: 'Entreprise',
-    status: 'REPLIED',
-    created_at: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
-    replied_at: new Date(Date.now() - 20 * 3600 * 1000).toISOString(),
-    reply_notes: 'Appel téléphonique passé, proposition de contrat cadre envoyée par email.'
-  }
-];
+export const DEFAULT_CONTACT_MESSAGES: ContactMessage[] = [];
 
-// Fetch all contact messages
+// Fetch all contact messages (100% Real from Supabase & actual submissions)
 export async function getContactMessages(): Promise<ContactMessage[]> {
   let dbMessages: ContactMessage[] = [];
 
@@ -890,13 +843,15 @@ export async function getContactMessages(): Promise<ContactMessage[]> {
     }
   }
 
-  // Local storage cache & default merge
+  // Local storage real messages
   let localMessages: ContactMessage[] = [];
   if (typeof window !== 'undefined') {
     try {
       const stored = localStorage.getItem('sama_contact_messages_cache');
       if (stored) {
-        localMessages = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Filter out any previous fake mock IDs
+        localMessages = parsed.filter((m: any) => !m.id?.startsWith('msg-'));
       }
     } catch {}
   }
@@ -905,13 +860,6 @@ export async function getContactMessages(): Promise<ContactMessage[]> {
   for (const lm of localMessages) {
     if (!combined.some(c => c.id === lm.id)) {
       combined.push(lm);
-    }
-  }
-
-  // Include default samples if none exist
-  for (const def of DEFAULT_CONTACT_MESSAGES) {
-    if (!combined.some(c => c.id === def.id || (c.phone === def.phone && c.subject === def.subject))) {
-      combined.push(def);
     }
   }
 

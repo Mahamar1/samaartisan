@@ -46,7 +46,7 @@ import {
   MessageSquare,
   FileText
 } from 'lucide-react';
-import { PROVIDERS, MOCK_ADMIN_METRICS, CATEGORIES, SENEGAL_REGIONS, formatFcfa } from '@/lib/data';
+import { PROVIDERS, CATEGORIES, SENEGAL_REGIONS, formatFcfa } from '@/lib/data';
 import { 
   getProviders, 
   updateProvider, 
@@ -87,14 +87,7 @@ export interface AppUser {
   status: 'ACTIVE' | 'SUSPENDED';
 }
 
-const DEFAULT_CLIENTS: AppUser[] = [
-  { id: 'usr-1', name: 'Aïssatou Sow', phone: '+221 77 654 32 10', email: 'aissatou.sow@gmail.com', role: 'client', neighborhood: 'Mermoz', city: 'Dakar', registeredAt: '10 Août 2026', status: 'ACTIVE' },
-  { id: 'usr-2', name: 'Ibrahima Fall', phone: '+221 78 123 45 67', email: 'ibrahima.fall@yahoo.fr', role: 'client', neighborhood: 'Almadies', city: 'Dakar', registeredAt: '12 Août 2026', status: 'ACTIVE' },
-  { id: 'usr-3', name: 'Fatou Diop', phone: '+221 76 987 65 43', email: 'fatou.diop@hotmail.com', role: 'client', neighborhood: 'Sacré-Cœur', city: 'Dakar', registeredAt: '14 Août 2026', status: 'ACTIVE' },
-  { id: 'usr-4', name: 'Ousmane Ba', phone: '+221 70 345 67 89', email: 'ousmane.ba@gmail.com', role: 'client', neighborhood: 'Plateau', city: 'Dakar', registeredAt: '15 Août 2026', status: 'ACTIVE' },
-  { id: 'usr-5', name: 'Mariama Sarr', phone: '+221 78 750 52 18', email: 'mariama.sarr@gmail.com', role: 'client', neighborhood: 'Grand Dakar', city: 'Dakar', registeredAt: '16 Août 2026', status: 'ACTIVE' },
-  { id: 'usr-6', name: 'Cheikh Ndiaye', phone: '+221 77 444 88 99', email: 'c.ndiaye@orange.sn', role: 'client', neighborhood: 'Ouakam', city: 'Dakar', registeredAt: '16 Août 2026', status: 'ACTIVE' }
-];
+const DEFAULT_CLIENTS: AppUser[] = [];
 
 export default function AdminDashboardPage() {
   // Authentication State
@@ -245,38 +238,33 @@ export default function AdminDashboardPage() {
     }
     setPendingList(localPending);
 
-    // Load Clients & Registered Accounts
+    // Load Clients & Registered Accounts (100% Real)
     const storedAccounts = localStorage.getItem('sama_registered_accounts');
     if (storedAccounts) {
       try {
         const parsed = JSON.parse(storedAccounts);
-        const mapped: AppUser[] = parsed.map((a: any, idx: number) => ({
-          id: a.id || `acc-${idx}-${Date.now()}`,
-          name: a.name || 'Utilisateur',
-          phone: a.phone || '',
-          email: a.email || '',
-          role: a.role || 'client',
-          neighborhood: a.neighborhood || 'Dakar',
-          city: 'Dakar',
-          categoryName: a.categoryName,
-          businessName: a.businessName,
-          registeredAt: a.registeredAt ? (a.registeredAt.includes('T') ? new Date(a.registeredAt).toLocaleDateString('fr-FR') : a.registeredAt) : 'Récemment',
-          status: 'ACTIVE'
-        }));
-        
-        const merged = [...mapped];
-        DEFAULT_CLIENTS.forEach((d) => {
-          if (!merged.some((m) => (m.phone && d.phone && m.phone.replace(/[^0-9]/g, '') === d.phone.replace(/[^0-9]/g, '')) || (m.email && d.email && m.email.toLowerCase() === d.email.toLowerCase()))) {
-            merged.push(d);
-          }
-        });
-        setClientsList(merged);
+        const mapped: AppUser[] = parsed
+          .filter((a: any) => !a.id?.startsWith('usr-'))
+          .map((a: any, idx: number) => ({
+            id: a.id || `acc-${idx}-${Date.now()}`,
+            name: a.name || 'Utilisateur',
+            phone: a.phone || '',
+            email: a.email || '',
+            role: a.role || 'client',
+            neighborhood: a.neighborhood || 'Dakar',
+            city: 'Dakar',
+            categoryName: a.categoryName,
+            businessName: a.businessName,
+            registeredAt: a.registeredAt ? (a.registeredAt.includes('T') ? new Date(a.registeredAt).toLocaleDateString('fr-FR') : a.registeredAt) : 'Récemment',
+            status: 'ACTIVE'
+          }));
+        setClientsList(mapped);
+        localStorage.setItem('sama_registered_accounts', JSON.stringify(mapped));
       } catch {
-        setClientsList(DEFAULT_CLIENTS);
+        setClientsList([]);
       }
     } else {
-      setClientsList(DEFAULT_CLIENTS);
-      localStorage.setItem('sama_registered_accounts', JSON.stringify(DEFAULT_CLIENTS));
+      setClientsList([]);
     }
   }, []);
 
@@ -1136,70 +1124,176 @@ export default function AdminDashboardPage() {
         {/* ---------------------------------------------------- */}
         {activeTab === 'overview' && (
           <div className="space-y-6 animate-in fade-in">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Contact channels */}
-              <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                  <Smartphone className="w-4 h-4 text-emerald-400" />
-                  <span>Canaux de Mise en Relation Clients</span>
-                </h3>
-                
-                <div className="space-y-4 text-xs">
-                  <div>
-                    <div className="flex justify-between font-bold mb-1">
-                      <span className="text-emerald-400">Direct WhatsApp</span>
-                      <span className="text-white">78% (998 contacts)</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
-                      <div className="w-[78%] h-full bg-emerald-500 rounded-full" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between font-bold mb-1">
-                      <span className="text-sama-400">Appels Téléphoniques</span>
-                      <span className="text-white">22% (282 appels)</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
-                      <div className="w-[22%] h-full bg-sama-500 rounded-full" />
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-400 leading-relaxed">
-                    💡 Tous les contacts s'effectuent sans commission directement entre clients et artisans répertoriés.
-                  </div>
+            {/* Quick Status Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>Artisans Prestataires</span>
+                  <Wrench className="w-4 h-4 text-emerald-400" />
                 </div>
+                <div className="text-2xl font-black text-white mt-2">
+                  {providersList.length}
+                </div>
+                <p className="text-[11px] text-emerald-400 font-bold mt-1">
+                  {verifiedCount} vérifiés CNI • {providersList.length - verifiedCount} standard
+                </p>
               </div>
 
-              {/* Top Professions */}
-              <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-4 lg:col-span-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-sama-400" />
-                  <span>Top Métiers les plus recherchés au Sénégal</span>
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800">
-                    <span className="text-xs text-slate-400">Plomberie</span>
-                    <div className="text-xl font-black text-white mt-1">42%</div>
-                    <span className="text-[10px] text-emerald-400">538 demandes</span>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800">
-                    <span className="text-xs text-slate-400">Électricité</span>
-                    <div className="text-xl font-black text-white mt-1">28%</div>
-                    <span className="text-[10px] text-emerald-400">358 demandes</span>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800">
-                    <span className="text-xs text-slate-400">Climatisation</span>
-                    <div className="text-xl font-black text-white mt-1">18%</div>
-                    <span className="text-[10px] text-emerald-400">230 demandes</span>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800">
-                    <span className="text-xs text-slate-400">Serrurerie</span>
-                    <div className="text-xl font-black text-white mt-1">12%</div>
-                    <span className="text-[10px] text-emerald-400">154 demandes</span>
-                  </div>
+              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>Comptes Utilisateurs</span>
+                  <Users className="w-4 h-4 text-blue-400" />
                 </div>
+                <div className="text-2xl font-black text-white mt-2">
+                  {totalUsersCount}
+                </div>
+                <p className="text-[11px] text-blue-400 font-bold mt-1">
+                  {clientsCount} clients • {prosCount} pros
+                </p>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>E-mails & Demandes</span>
+                  <Inbox className="w-4 h-4 text-sama-400" />
+                </div>
+                <div className="text-2xl font-black text-white mt-2">
+                  {messagesList.length}
+                </div>
+                <p className="text-[11px] text-sama-400 font-bold mt-1">
+                  {unreadMessagesCount} non lus • {repliedMessagesCount} traités
+                </p>
+              </div>
+
+              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>Vérifications CNI</span>
+                  <ShieldCheck className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="text-2xl font-black text-amber-300 mt-2">
+                  {pendingList.length}
+                </div>
+                <p className="text-[11px] text-amber-400 font-bold mt-1">
+                  {pendingList.length === 0 ? '✓ Dossiers à jour' : 'Dossiers en attente'}
+                </p>
+              </div>
+            </div>
+
+            {/* Real Breakdown & Recent Feed Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Left Column: Real Category Distribution */}
+              <div className="lg:col-span-5 p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                    <Wrench className="w-4 h-4 text-sama-400" />
+                    <span>Répartition Réelle par Métier</span>
+                  </h3>
+                  <span className="text-[11px] font-bold text-slate-400">
+                    {providersList.length} pros
+                  </span>
+                </div>
+
+                {providersList.length === 0 ? (
+                  <div className="text-center py-10 text-slate-500 space-y-2">
+                    <p className="text-xs font-medium">Aucun artisan pour le moment.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 pt-1">
+                    {CATEGORIES.map((cat) => {
+                      const count = providersList.filter((p) => p.categorySlug === cat.slug).length;
+                      const pct = Math.round((count / (providersList.length || 1)) * 100);
+                      if (count === 0) return null;
+                      return (
+                        <div key={cat.id} className="space-y-1">
+                          <div className="flex justify-between text-xs font-bold">
+                            <span className="text-slate-200">{cat.name}</span>
+                            <span className="text-sama-400">{count} pros ({pct}%)</span>
+                          </div>
+                          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-sama-500 to-emerald-500 rounded-full" 
+                              style={{ width: `${Math.max(pct, 5)}%` }} 
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: Latest Real Inbound Messages */}
+              <div className="lg:col-span-7 p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                    <Inbox className="w-4 h-4 text-sama-400" />
+                    <span>Derniers E-mails & Demandes Reçus</span>
+                  </h3>
+                  <button 
+                    onClick={() => setActiveTab('inbox')}
+                    className="text-[11px] font-bold text-sama-400 hover:text-sama-300 flex items-center gap-1"
+                  >
+                    <span>Voir tout ({messagesList.length})</span>
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+
+                {messagesList.length === 0 ? (
+                  <div className="text-center py-12 bg-slate-950/50 rounded-2xl border border-slate-800/80 space-y-2">
+                    <Inbox className="w-8 h-8 text-slate-600 mx-auto" />
+                    <p className="text-xs font-bold text-slate-300">Aucun e-mail reçu pour le moment</p>
+                    <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                      Dès qu'un client ou artisan envoie un message sur la page Contact, il apparaîtra ici instantanément.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {messagesList.slice(0, 4).map((msg) => (
+                      <div 
+                        key={msg.id}
+                        onClick={() => { setActiveTab('inbox'); handleOpenMessageDetail(msg); }}
+                        className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-sama-500/40 cursor-pointer transition-all flex items-center justify-between gap-3 group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-sama-500/20 text-sama-300 font-black text-xs flex items-center justify-center shrink-0">
+                            {msg.full_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-white group-hover:text-sama-300 transition-colors truncate">
+                                {msg.full_name}
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
+                                {msg.user_type}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                              {msg.subject}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {msg.status === 'NEW' ? (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                              Nouveau
+                            </span>
+                          ) : msg.status === 'REPLIED' ? (
+                            <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold">
+                              Répondu
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 text-[10px] font-bold">
+                              Lu
+                            </span>
+                          )}
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
             </div>

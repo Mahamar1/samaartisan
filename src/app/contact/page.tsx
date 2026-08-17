@@ -147,7 +147,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-800 text-sm">Courrier Électronique</h4>
-                    <p className="text-slate-500 mt-0.5">mmahamar32@gmail.com</p>
+                    <p className="text-slate-500 mt-0.5">contact@samaartisan.sn</p>
                     <p className="text-[11px] text-slate-400">Réponse sous 2 à 4 heures ouvrées</p>
                   </div>
                 </div>
@@ -185,7 +185,7 @@ export default function ContactPage() {
                   <div className="space-y-2">
                     <h3 className="text-2xl font-black text-navy-950">Message bien transmis !</h3>
                     <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-                      Merci <strong>{fullName}</strong>. Votre demande a été enregistrée et transmise par email à l'adresse <strong>mmahamar32@gmail.com</strong>. Nous vous recontacterons au <strong>{phone}</strong> dans les plus brefs délais.
+                      Merci <strong>{fullName}</strong>. Votre demande a été enregistrée et transmise par email à l'adresse <strong>contact@samaartisan.sn</strong>. Nous vous recontacterons au <strong>{phone}</strong> dans les plus brefs délais.
                     </p>
                   </div>
 
@@ -202,7 +202,7 @@ export default function ContactPage() {
                     </a>
 
                     <a
-                      href={`mailto:mmahamar32@gmail.com?subject=${encodeURIComponent(`[Sama Artisan] Contact de ${fullName}`)}&body=${encodeURIComponent(`Nom: ${fullName}\nTéléphone: ${phone}\nEmail: ${email}\n\nMessage:\n${message}`)}`}
+                      href={`mailto:contact@samaartisan.sn?subject=${encodeURIComponent(`[Sama Artisan] Contact de ${fullName}`)}&body=${encodeURIComponent(`Nom: ${fullName}\nTéléphone: ${phone}\nEmail: ${email}\n\nMessage:\n${message}`)}`}
                       className="w-full sm:w-auto px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 active:scale-95"
                     >
                       <Mail className="w-4 h-4" />

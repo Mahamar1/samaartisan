@@ -107,9 +107,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // 7. Envoi direct d'email à mmahamar32@gmail.com via FormSubmit
+    // 7. Envoi direct d'email à contact@samaartisan.sn via FormSubmit
     try {
-      const emailRes = await fetch('https://formsubmit.co/ajax/mmahamar32@gmail.com', {
+      const emailRes = await fetch('https://formsubmit.co/ajax/contact@samaartisan.sn', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

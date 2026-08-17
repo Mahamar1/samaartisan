@@ -6,10 +6,11 @@ import { usePathname, useRouter } from 'next/navigation';
 import { 
   Wrench, 
   LogOut, 
-  User,
-  Sparkles,
-  ShieldCheck,
-  Briefcase
+  User, 
+  Sparkles, 
+  ShieldCheck, 
+  Briefcase,
+  LogIn
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -17,20 +18,32 @@ export default function Navbar() {
   const router = useRouter();
   const [sessionUser, setSessionUser] = useState<any>(null);
   const [isPro, setIsPro] = useState(false);
+  const [lastRole, setLastRole] = useState<'client' | 'pro' | null>(null);
 
   const checkUserSession = () => {
     try {
       const storedAuth = localStorage.getItem('sama_user_session');
       const storedPro = localStorage.getItem('samapro_current_user');
+      const storedLastRole = localStorage.getItem('sama_last_user_role') as 'client' | 'pro' | null;
+
       if (storedPro) {
         setSessionUser(JSON.parse(storedPro));
         setIsPro(true);
+        setLastRole('pro');
       } else if (storedAuth) {
-        setSessionUser(JSON.parse(storedAuth));
-        setIsPro(false);
+        const parsed = JSON.parse(storedAuth);
+        setSessionUser(parsed);
+        const userIsPro = parsed.role === 'pro';
+        setIsPro(userIsPro);
+        setLastRole(userIsPro ? 'pro' : 'client');
       } else {
         setSessionUser(null);
         setIsPro(false);
+        if (storedLastRole === 'client' || storedLastRole === 'pro') {
+          setLastRole(storedLastRole);
+        } else {
+          setLastRole('pro');
+        }
       }
     } catch (e) {
       setSessionUser(null);
@@ -46,10 +59,13 @@ export default function Navbar() {
 
   const handleLogout = () => {
     try {
+      const previousRole: 'client' | 'pro' = isPro ? 'pro' : 'client';
+      localStorage.setItem('sama_last_user_role', previousRole);
       localStorage.removeItem('sama_user_session');
       localStorage.removeItem('samapro_current_user');
       setSessionUser(null);
       setIsPro(false);
+      setLastRole(previousRole);
       window.dispatchEvent(new Event('storage'));
       window.location.href = '/';
     } catch (e) {
@@ -179,21 +195,34 @@ export default function Navbar() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              /* Vue Déconnectée : Adaptée dynamiquement selon le rôle du compte */
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <Link
-                  href="/connexion"
-                  className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition-all"
+                  href={`/connexion${lastRole === 'client' ? '?role=client' : '?role=pro'}`}
+                  className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold text-slate-700 hover:bg-slate-100 transition-all shrink-0"
                 >
                   Connexion
                 </Link>
 
-                <Link
-                  href="/devenir-prestataire"
-                  className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold bg-navy-900 hover:bg-navy-800 text-white transition-all shadow-sm active:scale-95"
-                >
-                  <Briefcase className="w-3.5 h-3.5 text-sama-400" />
-                  <span>Espace Artisan</span>
-                </Link>
+                {lastRole === 'client' ? (
+                  <Link
+                    href="/mon-compte"
+                    className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold bg-sama-600 hover:bg-sama-700 text-white transition-all shadow-sm active:scale-95 shrink-0"
+                    title="Accéder à mon Espace Client"
+                  >
+                    <User className="w-3.5 h-3.5 shrink-0" />
+                    <span className="whitespace-nowrap">Espace Client</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/pro/dashboard"
+                    className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold bg-navy-900 hover:bg-navy-800 text-white transition-all shadow-sm active:scale-95 shrink-0"
+                    title="Accéder à mon Espace Artisan"
+                  >
+                    <Briefcase className="w-3.5 h-3.5 text-sama-400 shrink-0" />
+                    <span className="whitespace-nowrap">Espace Artisan</span>
+                  </Link>
+                )}
               </div>
             )}
           </div>
@@ -203,3 +232,4 @@ export default function Navbar() {
     </header>
   );
 }
+

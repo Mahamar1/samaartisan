@@ -550,6 +550,7 @@ export async function registerUserAccount(userData: UserAccountData): Promise<{ 
       filtered.push(newUser);
       localStorage.setItem('sama_registered_accounts', JSON.stringify(filtered));
       localStorage.setItem('sama_user_session', JSON.stringify(newUser));
+      localStorage.setItem('sama_last_user_role', role);
 
       if (role === 'pro') {
         localStorage.setItem('samapro_current_user', JSON.stringify(newUser));
@@ -772,9 +773,11 @@ export async function loginUserAccount(identifier: string, password: string): Pr
           portfolio: foundUser.portfolio || []
         };
         localStorage.setItem('samapro_current_user', JSON.stringify(proPayload));
+        localStorage.setItem('sama_last_user_role', 'pro');
       } else {
         // Client account: explicitly clean any previous pro session
         localStorage.removeItem('samapro_current_user');
+        localStorage.setItem('sama_last_user_role', 'client');
       }
       
       const localAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');

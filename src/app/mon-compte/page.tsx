@@ -60,6 +60,7 @@ export default function MonComptePage() {
   }, []);
 
   const handleLogout = () => {
+    localStorage.setItem('sama_last_user_role', 'client');
     localStorage.removeItem('sama_user_session');
     localStorage.removeItem('samapro_current_user');
     window.dispatchEvent(new Event('storage'));

@@ -133,6 +133,7 @@ function InscriptionContent() {
           neighborhood: newRegistration.neighborhood
         });
 
+        localStorage.setItem('sama_last_user_role', 'pro');
         setRegisteredSuccess({ ...savedArtisan, role: 'pro' });
       } else {
         // Enregistrement CLIENT PARTICULIER
@@ -153,6 +154,7 @@ function InscriptionContent() {
           return;
         }
 
+        localStorage.setItem('sama_last_user_role', 'client');
         setRegisteredSuccess({ ...clientAccount, role: 'client' });
       }
     } catch (err) {
@@ -247,7 +249,11 @@ function InscriptionContent() {
               <div className="flex p-1 bg-slate-100 rounded-2xl max-w-sm mx-auto border border-slate-200">
                 <button
                   type="button"
-                  onClick={() => { setActiveRole('pro'); setFormError(''); }}
+                  onClick={() => { 
+                    setActiveRole('pro'); 
+                    setFormError(''); 
+                    localStorage.setItem('sama_last_user_role', 'pro');
+                  }}
                   className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     activeRole === 'pro'
                       ? 'bg-white text-navy-900 shadow-sm border border-slate-200/60'
@@ -260,7 +266,11 @@ function InscriptionContent() {
 
                 <button
                   type="button"
-                  onClick={() => { setActiveRole('client'); setFormError(''); }}
+                  onClick={() => { 
+                    setActiveRole('client'); 
+                    setFormError(''); 
+                    localStorage.setItem('sama_last_user_role', 'client');
+                  }}
                   className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     activeRole === 'client'
                       ? 'bg-white text-navy-900 shadow-sm border border-slate-200/60'

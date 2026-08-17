@@ -53,6 +53,7 @@ import {
   deleteProvider, 
   deleteUserAccount,
   registerArtisan,
+  registerUserAccount,
   getContactMessages,
   updateContactMessageStatus,
   deleteContactMessage,

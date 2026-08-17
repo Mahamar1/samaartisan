@@ -107,9 +107,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // 7. Envoi direct d'email à contact@samaartisan.sn via FormSubmit
+    // 7. Envoi direct d'email à mmahamar32@gmail.com via FormSubmit
     try {
-      const emailRes = await fetch('https://formsubmit.co/ajax/contact@samaartisan.sn', {
+      const emailRes = await fetch('https://formsubmit.co/ajax/mmahamar32@gmail.com', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,21 +119,21 @@ export async function POST(request: Request) {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         },
         body: JSON.stringify({
-          _subject: `[Sama Artisan] Nouveau message de ${cleanFullName} (${profileLabel})`,
+          _subject: `🔔 [Sama Artisan] Nouveau message de ${cleanFullName} (${profileLabel})`,
           _captcha: 'false',
-          'Nom Complet': cleanFullName,
+          'Expediteur': cleanFullName,
           'Profil': profileLabel,
-          'Téléphone': cleanPhone,
-          'Email': cleanEmail || 'Non renseigné',
+          'Telephone': cleanPhone,
+          'Email_Client': cleanEmail || 'Non renseigne',
           'Objet': readableSubject,
           'Message': cleanMessage,
           _template: 'table',
-          _replyto: cleanEmail || undefined
+          _replyto: cleanEmail || 'mmahamar32@gmail.com'
         })
       });
       const emailResult = await emailRes.json().catch(() => null);
       if (emailResult) {
-        console.log('[EMAIL DISPATCH]', emailResult);
+        console.log('[EMAIL DISPATCH SUCCESS]', emailResult);
       }
     } catch (mailErr) {
       console.error('Email dispatch notice:', mailErr);

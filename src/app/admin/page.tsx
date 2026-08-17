@@ -430,56 +430,39 @@ export default function AdminDashboardPage() {
 
   // 1. APPROVE / VALIDATE PENDING ARTISAN (Supabase Insert/Approve)
   const handleApprovePending = async (artisan: PendingArtisan) => {
-    const newProvider: Provider = {
-      id: `p-${Date.now()}`,
-      slug: artisan.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      name: artisan.name,
-      businessName: artisan.businessName || artisan.name,
-      avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
-      phone: artisan.phone,
-      whatsapp: artisan.phone.replace(/[^0-9]/g, ''),
-      categorySlug: 'plomberie',
-      categoryName: artisan.trade,
-      headline: `Artisan professionnel spécialisé en ${artisan.trade}`,
-      city: 'Dakar',
-      neighborhood: artisan.neighborhood,
-      latitude: 14.7167,
-      longitude: -17.4677,
-      interventionRadiusKm: 15,
-      averageRating: 5.0,
-      reviewCount: 1,
-      startingPrice: 15000,
-      responseTimeMinutes: 10,
-      isAvailable: true,
-      verificationLevel: 'ID_VERIFIED',
-      subscriptionTier: 'FREE',
-      completedJobsCount: 12,
-      joinedDate: new Date().toISOString(),
-      isSponsored: false,
-      experienceYears: 5,
-      bio: `Artisan certifié et validé par l'administration Sama Artisan.`,
-      specialties: ['Dépannage d\'urgence', 'Installation', 'Rénovation'],
-      services: [],
-      portfolio: [],
-      reviews: []
-    };
+    const catObj = CATEGORIES.find((c) => c.name.toLowerCase().includes(artisan.trade.toLowerCase()) || c.slug === 'plomberie');
+    const categorySlug = catObj ? catObj.slug : 'plomberie';
 
-    // Save to Supabase Cloud
+    // 1. Save to Supabase Cloud
     await registerArtisan({
       name: artisan.name,
-      businessName: artisan.businessName,
+      businessName: artisan.businessName || artisan.name,
       phone: artisan.phone,
-      categorySlug: 'plomberie',
-      categoryName: artisan.trade,
+      categorySlug,
+      categoryName: artisan.trade || 'Artisan Qualifié',
       regionId: 'dakar',
-      neighborhood: artisan.neighborhood,
-      cniNumber: artisan.cniNumber
+      neighborhood: artisan.neighborhood || 'Dakar',
+      cniNumber: artisan.cniNumber || '1752199000000'
     });
 
-    const updated = [newProvider, ...providersList];
-    updateProviders(updated);
+    // 2. Also register user account in Supabase
+    await registerUserAccount({
+      name: artisan.name,
+      phone: artisan.phone,
+      email: `${artisan.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@samaartisan.sn`,
+      role: 'pro',
+      businessName: artisan.businessName || artisan.name,
+      categorySlug,
+      categoryName: artisan.trade || 'Artisan Qualifié',
+      neighborhood: artisan.neighborhood || 'Dakar'
+    });
 
-    const updatedPending = pendingList.filter((p) => p.id !== artisan.id);
+    // 3. Update status in Supabase if exists
+    if (artisan.id) {
+      await updateProvider(artisan.id, { verificationLevel: 'ID_VERIFIED', isAvailable: true });
+    }
+
+    const updatedPending = pendingList.filter((p) => p.id !== artisan.id && p.phone !== artisan.phone);
     setPendingList(updatedPending);
 
     try {
@@ -488,7 +471,8 @@ export default function AdminDashboardPage() {
       localStorage.setItem('sama_artisan_registrations', JSON.stringify(filtered));
     } catch {}
 
-    showToast(`✅ Profil de ${artisan.name} validé dans Supabase et publié sur la plateforme !`);
+    showToast(`✅ Profil de ${artisan.name} validé dans Supabase Cloud et publié sur la plateforme !`);
+    await loadAllAdminData(false);
   };
 
   // 2. REJECT / DELETE PENDING ARTISAN
@@ -507,6 +491,7 @@ export default function AdminDashboardPage() {
       } catch {}
 
       showToast(`🗑️ Demande de ${name} supprimée définitivement.`);
+      await loadAllAdminData(false);
     }
   };
 
@@ -526,6 +511,7 @@ export default function AdminDashboardPage() {
     });
     updateProviders(updated);
     showToast('Badge de vérification mis à jour dans Supabase.');
+    await loadAllAdminData(false);
   };
 
   // 4. SUSPEND / REACTIVATE PROVIDER IN SUPABASE
@@ -544,6 +530,7 @@ export default function AdminDashboardPage() {
     });
     updateProviders(updated);
     showToast('Statut de disponibilité mis à jour dans Supabase.');
+    await loadAllAdminData(false);
   };
 
   // 5. DELETE PROVIDER FROM SUPABASE & PLATFORM
@@ -568,66 +555,48 @@ export default function AdminDashboardPage() {
       updateClients(updatedClients);
 
       showToast(`🗑️ Profil de ${providerName} supprimé définitivement du site et de Supabase.`);
+      await loadAllAdminData(false);
     }
   };
 
   // 6. ADD MANUAL ARTISAN TO SUPABASE
   const handleAddArtisan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newArtisanName.trim()) return;
+    if (!newArtisanName.trim() || !newArtisanPhone.trim()) return;
 
     const catObj = CATEGORIES.find((c) => c.slug === newArtisanCategory);
+    const catName = catObj ? catObj.name : 'Artisan Qualifié';
 
-    const newProvider: Provider = {
-      id: `manual-${Date.now()}`,
-      slug: newArtisanName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      name: newArtisanName,
-      businessName: newArtisanBusiness || newArtisanName,
-      avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
-      phone: newArtisanPhone,
-      whatsapp: newArtisanPhone.replace(/[^0-9]/g, ''),
-      categorySlug: newArtisanCategory,
-      categoryName: catObj ? catObj.name : 'Artisan',
-      headline: `Artisan qualifié en ${catObj ? catObj.name : 'prestation'}`,
-      city: 'Dakar',
-      neighborhood: newArtisanNeighborhood,
-      latitude: 14.7167,
-      longitude: -17.4677,
-      interventionRadiusKm: 15,
-      averageRating: 5.0,
-      reviewCount: 0,
-      startingPrice: 15000,
-      responseTimeMinutes: 15,
-      isAvailable: true,
-      verificationLevel: 'ID_VERIFIED',
-      subscriptionTier: 'FREE',
-      completedJobsCount: 0,
-      joinedDate: new Date().toISOString(),
-      isSponsored: false,
-      experienceYears: 4,
-      bio: `Artisan ajouté et vérifié par l'administration.`,
-      specialties: ['Intervention rapide', 'Travail soigné'],
-      services: [],
-      portfolio: [],
-      reviews: []
-    };
-
-    // Save to Supabase
+    // 1. Save to Supabase Cloud providers table
     await registerArtisan({
-      name: newArtisanName,
-      businessName: newArtisanBusiness,
-      phone: newArtisanPhone,
+      name: newArtisanName.trim(),
+      businessName: newArtisanBusiness.trim() || newArtisanName.trim(),
+      phone: newArtisanPhone.trim(),
       categorySlug: newArtisanCategory,
-      categoryName: catObj ? catObj.name : 'Artisan',
+      categoryName: catName,
       regionId: 'dakar',
-      neighborhood: newArtisanNeighborhood
+      neighborhood: newArtisanNeighborhood.trim() || 'Dakar'
     });
 
-    updateProviders([newProvider, ...providersList]);
+    // 2. Also register user account credentials in Supabase Cloud
+    await registerUserAccount({
+      name: newArtisanName.trim(),
+      phone: newArtisanPhone.trim(),
+      email: `${newArtisanName.toLowerCase().replace(/[^a-z0-9]/g, '')}@samaartisan.sn`,
+      role: 'pro',
+      businessName: newArtisanBusiness.trim() || newArtisanName.trim(),
+      categorySlug: newArtisanCategory,
+      categoryName: catName,
+      neighborhood: newArtisanNeighborhood.trim() || 'Dakar'
+    });
+
     setIsAddModalOpen(false);
     setNewArtisanName('');
     setNewArtisanBusiness('');
-    showToast(`✅ Artisan "${newArtisanName}" enregistré dans Supabase et publié !`);
+    setNewArtisanPhone('+221 77 ');
+    setNewArtisanNeighborhood('');
+    showToast(`✅ Artisan "${newArtisanName}" enregistré dans Supabase Cloud et publié !`);
+    await loadAllAdminData(false);
   };
 
   // 7. DELETE USER ACCOUNT FROM SUPABASE & PLATFORM
@@ -653,33 +622,49 @@ export default function AdminDashboardPage() {
       updateProviders(updatedProviders);
 
       showToast(`🗑️ Compte de ${userName} supprimé définitivement du site et de Supabase.`);
+      await loadAllAdminData(false);
     }
   };
 
-  // 8. ADD MANUAL USER (Client or Pro)
-  const handleAddManualUser = (e: React.FormEvent) => {
+  // 8. ADD MANUAL USER (Client or Pro) TO SUPABASE CLOUD
+  const handleAddManualUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserPhone.trim()) return;
 
-    const newUser: AppUser = {
-      id: `usr-${Date.now()}`,
+    const isPro = newUserRole === 'pro';
+    const cleanEmail = newUserEmail.trim() || `${newUserName.toLowerCase().replace(/[^a-z0-9]/g, '')}@gmail.com`;
+
+    // 1. Save user credentials directly into Supabase Cloud
+    await registerUserAccount({
       name: newUserName.trim(),
       phone: newUserPhone.trim(),
-      email: newUserEmail.trim() || `${newUserName.toLowerCase().replace(/[^a-z0-9]/g, '')}@gmail.com`,
+      email: cleanEmail,
       role: newUserRole,
       neighborhood: newUserNeighborhood.trim() || 'Dakar',
-      city: 'Dakar',
-      registeredAt: new Date().toLocaleDateString('fr-FR'),
-      status: 'ACTIVE'
-    };
+      categorySlug: isPro ? 'plomberie' : undefined,
+      categoryName: isPro ? 'Artisan Qualifié' : 'Client Particulier'
+    });
 
-    const updated = [newUser, ...clientsList];
-    updateClients(updated);
+    // 2. If added as Pro, also register in providers catalog
+    if (isPro) {
+      await registerArtisan({
+        name: newUserName.trim(),
+        businessName: newUserName.trim(),
+        phone: newUserPhone.trim(),
+        categorySlug: 'plomberie',
+        categoryName: 'Artisan Qualifié',
+        regionId: 'dakar',
+        neighborhood: newUserNeighborhood.trim() || 'Dakar'
+      });
+    }
+
     setIsAddUserModalOpen(false);
     setNewUserName('');
     setNewUserPhone('+221 77 ');
     setNewUserEmail('');
-    showToast(`✅ Utilisateur "${newUserName}" enregistré avec succès !`);
+    setNewUserNeighborhood('');
+    showToast(`✅ Utilisateur "${newUserName}" enregistré dans Supabase Cloud !`);
+    await loadAllAdminData(false);
   };
 
   // Filtered Providers calculation

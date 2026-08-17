@@ -802,7 +802,7 @@ export async function registerUserAccount(userData: UserAccountData): Promise<{ 
               business_name: userData.businessName || cleanName,
               phone: userData.phone.trim(),
               whatsapp: cleanPhone || '221770000000',
-              category_slug: isPro ? (userData.categorySlug || 'plomberie') : 'client',
+              category_slug: isPro ? (userData.categorySlug || 'plomberie') : 'plomberie',
               category_name: isPro ? (userData.categoryName || 'Artisan Qualifié') : 'Client Particulier',
               neighborhood: userData.neighborhood || 'Dakar',
               verification_level: 'ID_VERIFIED',

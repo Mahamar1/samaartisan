@@ -29,11 +29,19 @@ export default function CategorySeoPage() {
   const [allProviders, setAllProviders] = useState<Provider[]>([]);
 
   React.useEffect(() => {
-    getProviders().then((pros) => {
-      if (pros) {
-        setAllProviders(pros);
-      }
-    });
+    const loadPros = () => {
+      getProviders().then((pros) => {
+        setAllProviders(pros || []);
+      });
+    };
+
+    loadPros();
+    window.addEventListener('storage', loadPros);
+    window.addEventListener('sama_data_updated', loadPros);
+    return () => {
+      window.removeEventListener('storage', loadPros);
+      window.removeEventListener('sama_data_updated', loadPros);
+    };
   }, []);
 
   const providers = allProviders.filter((p) => {

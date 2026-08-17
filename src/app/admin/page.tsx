@@ -51,6 +51,7 @@ import {
   getProviders, 
   updateProvider, 
   deleteProvider, 
+  deleteUserAccount,
   registerArtisan,
   getContactMessages,
   updateContactMessageStatus,
@@ -508,18 +509,21 @@ export default function AdminDashboardPage() {
   };
 
   // 2. REJECT / DELETE PENDING ARTISAN
-  const handleRejectPending = (id: string, name: string) => {
-    if (confirm(`Confirmez-vous le rejet et la suppression de la demande de ${name} ?`)) {
-      const updated = pendingList.filter((p) => p.id !== id);
+  const handleRejectPending = async (id: string, name: string, phone?: string) => {
+    if (confirm(`Confirmez-vous le rejet et la suppression définitive de la demande de "${name}" ?`)) {
+      await deleteProvider(id, { phone, name });
+      await deleteUserAccount(id, { phone, name });
+
+      const updated = pendingList.filter((p) => p.id !== id && (!phone || p.phone !== phone));
       setPendingList(updated);
 
       try {
         const stored = JSON.parse(localStorage.getItem('sama_artisan_registrations') || '[]');
-        const filtered = stored.filter((s: any) => s.id !== id);
+        const filtered = stored.filter((s: any) => s.id !== id && (!phone || s.phone !== phone));
         localStorage.setItem('sama_artisan_registrations', JSON.stringify(filtered));
       } catch {}
 
-      showToast(`Demande de ${name} supprimée.`);
+      showToast(`🗑️ Demande de ${name} supprimée définitivement.`);
     }
   };
 
@@ -559,14 +563,28 @@ export default function AdminDashboardPage() {
     showToast('Statut de disponibilité mis à jour dans Supabase.');
   };
 
-  // 5. DELETE PROVIDER FROM SUPABASE
-  const handleDeleteProvider = async (providerId: string, providerName: string) => {
-    if (confirm(`⚠️ Êtes-vous sûr de vouloir SUPPRIMER DÉFINITIVEMENT "${providerName}" de la base de données Supabase ?`)) {
-      await deleteProvider(providerId);
+  // 5. DELETE PROVIDER FROM SUPABASE & PLATFORM
+  const handleDeleteProvider = async (providerId: string, providerName: string, phone?: string, slug?: string) => {
+    if (confirm(`⚠️ Êtes-vous sûr de vouloir SUPPRIMER DÉFINITIVEMENT "${providerName}" du site et de la base de données ?`)) {
+      await deleteProvider(providerId, { phone, slug, name: providerName });
 
-      const updated = providersList.filter((p) => p.id !== providerId);
+      const updated = providersList.filter((p) => {
+        if (p.id === providerId) return false;
+        if (slug && p.slug === slug) return false;
+        if (phone && p.phone === phone) return false;
+        return true;
+      });
       updateProviders(updated);
-      showToast(`🗑️ Profil de ${providerName} supprimé de Supabase.`);
+
+      // Also remove from clientsList if exists
+      const updatedClients = clientsList.filter((c) => {
+        if (c.id === providerId) return false;
+        if (phone && c.phone === phone) return false;
+        return true;
+      });
+      updateClients(updatedClients);
+
+      showToast(`🗑️ Profil de ${providerName} supprimé définitivement du site et de Supabase.`);
     }
   };
 
@@ -629,12 +647,29 @@ export default function AdminDashboardPage() {
     showToast(`✅ Artisan "${newArtisanName}" enregistré dans Supabase et publié !`);
   };
 
-  // 7. DELETE USER ACCOUNT
-  const handleDeleteUser = (userId: string, userName: string) => {
-    if (confirm(`Confirmez-vous la suppression du compte utilisateur de "${userName}" ?`)) {
-      const updated = clientsList.filter((u) => u.id !== userId);
+  // 7. DELETE USER ACCOUNT FROM SUPABASE & PLATFORM
+  const handleDeleteUser = async (userId: string, userName: string, phone?: string, email?: string, role?: 'client' | 'pro') => {
+    if (confirm(`⚠️ Confirmez-vous la SUPPRESSION DÉFINITIVE du compte de "${userName}" du site et de Supabase ?`)) {
+      await deleteUserAccount(userId, { phone, email, name: userName, role });
+      await deleteProvider(userId, { phone, name: userName, role });
+
+      const updated = clientsList.filter((u) => {
+        if (u.id === userId) return false;
+        if (phone && u.phone === phone) return false;
+        if (email && u.email === email) return false;
+        return true;
+      });
       updateClients(updated);
-      showToast(`🗑️ Compte de ${userName} supprimé avec succès.`);
+
+      // If pro, also filter from providers list
+      const updatedProviders = providersList.filter((p) => {
+        if (p.id === userId) return false;
+        if (phone && p.phone === phone) return false;
+        return true;
+      });
+      updateProviders(updatedProviders);
+
+      showToast(`🗑️ Compte de ${userName} supprimé définitivement du site et de Supabase.`);
     }
   };
 
@@ -1852,9 +1887,9 @@ export default function AdminDashboardPage() {
                             </a>
 
                             <button
-                              onClick={() => handleDeleteUser(u.id, u.name)}
+                              onClick={() => handleDeleteUser(u.id, u.name, u.phone, u.email, u.role)}
                               className="p-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors"
-                              title="Supprimer ce compte utilisateur"
+                              title="Supprimer définitivement ce compte utilisateur"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1954,9 +1989,9 @@ export default function AdminDashboardPage() {
                       </button>
 
                       <button
-                        onClick={() => handleRejectPending(item.id, item.name)}
+                        onClick={() => handleRejectPending(item.id, item.name, item.phone)}
                         className="px-3 py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 font-bold text-xs flex items-center gap-1 active:scale-95 transition-all"
-                        title="Rejeter et supprimer la demande"
+                        title="Rejeter et supprimer définitivement la demande"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Rejeter / Supprimer</span>
@@ -2134,7 +2169,7 @@ export default function AdminDashboardPage() {
 
                           {/* Delete */}
                           <button
-                            onClick={() => handleDeleteProvider(p.id, p.name)}
+                            onClick={() => handleDeleteProvider(p.id, p.name, p.phone, p.slug)}
                             className="p-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors"
                             title="Supprimer définitivement ce profil"
                           >

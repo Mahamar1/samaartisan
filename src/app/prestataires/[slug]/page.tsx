@@ -22,7 +22,7 @@ import {
   Plus
 } from 'lucide-react';
 import { PROVIDERS, formatFcfa } from '@/lib/data';
-import { getProviderBySlug } from '@/lib/supabase/services';
+import { getProviderBySlug, isBlacklistedOrDeleted } from '@/lib/supabase/services';
 import { Review, Provider } from '@/lib/types';
 import RequestModal from '@/components/requests/RequestModal';
 import ReviewModal from '@/components/reviews/ReviewModal';
@@ -128,31 +128,40 @@ export default function ProviderProfilePage() {
   useEffect(() => {
     const decodedSlug = decodeURIComponent(slug || '').toLowerCase().trim();
 
+    // 0. If deleted or blacklisted, stop immediately
+    if (isBlacklistedOrDeleted({ slug: decodedSlug, id: decodedSlug, phone: decodedSlug })) {
+      setProvider(null);
+      setLoading(false);
+      return;
+    }
+
     // 1. Instant check in local pro session
     try {
       const stored = localStorage.getItem('samapro_current_user') || localStorage.getItem('sama_user_session');
       if (stored) {
         const parsed = JSON.parse(stored);
-        const pSlug = (parsed.slug || '').toLowerCase();
-        const pNameSlug = (parsed.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        const pPhone = (parsed.phone || '').replace(/[^0-9]/g, '');
-        const targetPhone = decodedSlug.replace(/[^0-9]/g, '');
+        if (!isBlacklistedOrDeleted(parsed)) {
+          const pSlug = (parsed.slug || '').toLowerCase();
+          const pNameSlug = (parsed.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          const pPhone = (parsed.phone || '').replace(/[^0-9]/g, '');
+          const targetPhone = decodedSlug.replace(/[^0-9]/g, '');
 
-        if (
-          !decodedSlug ||
-          pSlug === decodedSlug || 
-          parsed.id === decodedSlug || 
-          pNameSlug === decodedSlug ||
-          (targetPhone.length >= 8 && pPhone.includes(targetPhone)) ||
-          decodedSlug === 'mon-profil' ||
-          decodedSlug === 'me'
-        ) {
-          const norm = normalizeProvider(parsed);
-          setProvider(norm);
-          setReviews(norm.reviews || []);
-          setIsOwnProfile(true);
-          setLoading(false);
-          return;
+          if (
+            !decodedSlug ||
+            pSlug === decodedSlug || 
+            parsed.id === decodedSlug || 
+            pNameSlug === decodedSlug ||
+            (targetPhone.length >= 8 && pPhone.includes(targetPhone)) ||
+            decodedSlug === 'mon-profil' ||
+            decodedSlug === 'me'
+          ) {
+            const norm = normalizeProvider(parsed);
+            setProvider(norm);
+            setReviews(norm.reviews || []);
+            setIsOwnProfile(true);
+            setLoading(false);
+            return;
+          }
         }
       }
     } catch (e) {}
@@ -161,6 +170,7 @@ export default function ProviderProfilePage() {
     try {
       const accounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
       const matched = accounts.find((a: any) => {
+        if (isBlacklistedOrDeleted(a)) return false;
         const aSlug = (a.slug || '').toLowerCase();
         const aNameSlug = (a.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
         const aPhone = (a.phone || '').replace(/[^0-9]/g, '');
@@ -179,6 +189,7 @@ export default function ProviderProfilePage() {
 
     // 3. Check in static dataset
     const staticMatch = (PROVIDERS || []).find((p) => {
+      if (isBlacklistedOrDeleted(p)) return false;
       const pSlug = (p.slug || '').toLowerCase();
       const pNameSlug = (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
@@ -218,7 +229,7 @@ export default function ProviderProfilePage() {
             const stored = localStorage.getItem('samapro_current_user') || localStorage.getItem('sama_user_session');
             if (stored) {
               const parsed = JSON.parse(stored);
-              if (parsed && (parsed.name || parsed.phone)) {
+              if (parsed && (parsed.name || parsed.phone) && !isBlacklistedOrDeleted(parsed)) {
                 const norm = normalizeProvider(parsed);
                 setProvider(norm);
                 setReviews(norm.reviews || []);

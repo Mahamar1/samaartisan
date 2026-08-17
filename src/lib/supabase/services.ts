@@ -38,6 +38,42 @@ function mapDbProviderToApp(item: any): Provider {
   };
 }
 
+// Helper to check if an artisan or account was deleted by admin
+export function isBlacklistedOrDeleted(item: { id?: string; slug?: string; phone?: string; whatsapp?: string; email?: string }): boolean {
+  if (!item) return false;
+  if (typeof window === 'undefined') return false;
+
+  try {
+    const deletedPros: string[] = JSON.parse(localStorage.getItem('sama_deleted_providers') || '[]');
+    const deletedAccs: string[] = JSON.parse(localStorage.getItem('sama_deleted_accounts') || '[]');
+    const allDeleted = [...deletedPros, ...deletedAccs];
+
+    if (allDeleted.length === 0) return false;
+
+    const pPhone = (item.phone || '').replace(/[^0-9]/g, '');
+    const pWhatsApp = (item.whatsapp || '').replace(/[^0-9]/g, '');
+    const pSlug = (item.slug || '').toLowerCase().trim();
+    const pId = (item.id || '').toString().toLowerCase().trim();
+    const pEmail = (item.email || '').toLowerCase().trim();
+
+    for (const d of allDeleted) {
+      if (!d) continue;
+      const dStr = d.toString().toLowerCase().trim();
+      if (pId && dStr === pId) return true;
+      if (pSlug && dStr === pSlug) return true;
+      if (pEmail && dStr === pEmail) return true;
+
+      const dDigits = dStr.replace(/[^0-9]/g, '');
+      if (dDigits.length >= 7) {
+        if (pPhone && (pPhone.includes(dDigits) || dDigits.includes(pPhone))) return true;
+        if (pWhatsApp && (pWhatsApp.includes(dDigits) || dDigits.includes(pWhatsApp))) return true;
+      }
+    }
+  } catch {}
+
+  return false;
+}
+
 // 1. FETCH ALL PROVIDERS (Supabase Live with Fallback & Real Sync)
 export async function getProviders(): Promise<Provider[]> {
   let dbPros: Provider[] = [];
@@ -61,6 +97,12 @@ export async function getProviders(): Promise<Provider[]> {
           if (catName.includes('client') || catSlug.includes('client')) return false;
           if (pSlug.startsWith('usr-')) return false;
           if (pName.includes('compte client') || bName.includes('compte client')) return false;
+
+          // Exclude if deleted
+          if (isBlacklistedOrDeleted({ id: item.id, slug: item.slug, phone: item.phone, whatsapp: item.whatsapp })) {
+            return false;
+          }
+
           return true;
         });
         dbPros = actualArtisans.map(mapDbProviderToApp);
@@ -94,10 +136,9 @@ export async function getProviders(): Promise<Provider[]> {
             role === 'user' || 
             role === 'client';
 
-          if (!isClient) {
+          if (!isClient && !isBlacklistedOrDeleted(parsed)) {
             localPros.push(parsed);
-          } else {
-            // Clean up accidental client data stored in pro slot
+          } else if (isBlacklistedOrDeleted(parsed)) {
             localStorage.removeItem('samapro_current_user');
           }
         }
@@ -110,7 +151,7 @@ export async function getProviders(): Promise<Provider[]> {
           for (const item of parsedAdmin) {
             const catName = (item.categoryName || item.category_name || '').toLowerCase();
             const pName = (item.name || '').toLowerCase();
-            if (!catName.includes('client') && !pName.includes('compte client')) {
+            if (!catName.includes('client') && !pName.includes('compte client') && !isBlacklistedOrDeleted(item)) {
               localPros.push(item);
             }
           }
@@ -123,20 +164,22 @@ export async function getProviders(): Promise<Provider[]> {
   const combined: Provider[] = [...dbPros];
 
   for (const lp of localPros) {
-    if (lp && !combined.some(c => (lp.phone && c.phone === lp.phone) || (lp.id && c.id === lp.id))) {
+    if (lp && !isBlacklistedOrDeleted(lp) && !combined.some(c => (lp.phone && c.phone === lp.phone) || (lp.id && c.id === lp.id))) {
       combined.push(lp);
     }
   }
 
   for (const bp of (PROVIDERS || [])) {
-    if (bp && !combined.some(c => (bp.phone && c.phone === bp.phone) || (bp.id && c.id === bp.id))) {
+    if (bp && !isBlacklistedOrDeleted(bp) && !combined.some(c => (bp.phone && c.phone === bp.phone) || (bp.id && c.id === bp.id))) {
       combined.push(bp);
     }
   }
 
-  // Final absolute guarantee: ONLY real artisans, NEVER client accounts
+  // Final absolute guarantee: ONLY real artisans, NEVER client accounts, NEVER deleted accounts
   const strictlyPros = combined.filter((p: any) => {
     if (!p) return false;
+    if (isBlacklistedOrDeleted(p)) return false;
+
     const catName = (p.categoryName || p.category_name || '').toLowerCase();
     const catSlug = (p.categorySlug || p.category_slug || '').toLowerCase();
     const pSlug = (p.slug || '').toLowerCase();
@@ -159,12 +202,22 @@ export async function getProviderBySlug(slug: string): Promise<Provider | null> 
   if (!slug || slug === 'undefined' || slug === 'null') return null;
   const decodedSlug = decodeURIComponent(slug).toLowerCase().trim();
 
+  // 0. Check if blacklisted / deleted
+  if (isBlacklistedOrDeleted({ slug: decodedSlug, id: decodedSlug, phone: decodedSlug })) {
+    return null;
+  }
+
   // 1. Check in local storage first for instant response
   if (typeof window !== 'undefined') {
     try {
       const storedPro = localStorage.getItem('samapro_current_user');
       if (storedPro) {
         const parsed = JSON.parse(storedPro);
+        if (isBlacklistedOrDeleted(parsed)) {
+          localStorage.removeItem('samapro_current_user');
+          return null;
+        }
+
         const pSlug = (parsed.slug || '').toLowerCase();
         const pNameSlug = (parsed.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
         const pPhone = (parsed.phone || '').replace(/[^0-9]/g, '');
@@ -184,6 +237,7 @@ export async function getProviderBySlug(slug: string): Promise<Provider | null> 
 
       const accounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
       const matchedAcc = accounts.find((a: any) => {
+        if (isBlacklistedOrDeleted(a)) return false;
         const aSlug = (a.slug || '').toLowerCase();
         const aNameSlug = (a.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
         const aPhone = (a.phone || '').replace(/[^0-9]/g, '');
@@ -242,7 +296,11 @@ export async function getProviderBySlug(slug: string): Promise<Provider | null> 
       const { data, error } = await query.maybeSingle();
 
       if (!error && data) {
-        return mapDbProviderToApp(data);
+        const mapped = mapDbProviderToApp(data);
+        if (!isBlacklistedOrDeleted(mapped)) {
+          return mapped;
+        }
+        return null;
       }
     } catch (err) {
       console.warn('Supabase single fetch failed:', err);
@@ -253,6 +311,7 @@ export async function getProviderBySlug(slug: string): Promise<Provider | null> 
   const all = await getProviders();
   return all.find((p) => {
     if (!p) return false;
+    if (isBlacklistedOrDeleted(p)) return false;
     const pSlug = (p.slug || '').toLowerCase();
     const pNameSlug = (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
@@ -413,26 +472,216 @@ export async function updateProvider(id: string, updates: Partial<Provider>) {
   return { success: true, fallback: true };
 }
 
-// 5. DELETE PROVIDER (Supabase Live Delete)
-export async function deleteProvider(id: string) {
+// 5. DELETE PROVIDER (Supabase Live Delete & Instant Cross-Platform Purge)
+export interface DeleteOptions {
+  phone?: string;
+  slug?: string;
+  name?: string;
+  role?: 'client' | 'pro';
+}
+
+export async function deleteProvider(id: string, options?: DeleteOptions): Promise<{ success: boolean }> {
+  const cleanPhone = (options?.phone || '').replace(/[^0-9]/g, '');
+  const cleanSlug = options?.slug ? options.slug.toLowerCase().trim() : '';
+
+  // 1. Supabase Cloud Live Deletion
   if (isSupabaseConfigured()) {
     try {
-      const { error } = await supabase
-        .from('providers')
-        .delete()
-        .eq('id', id);
+      // Delete by ID if valid
+      if (id && !id.startsWith('p-') && !id.startsWith('manual-') && !id.startsWith('usr-') && !id.startsWith('pro-') && !id.startsWith('reg-')) {
+        await supabase.from('providers').delete().eq('id', id);
+      }
+      
+      // Delete by slug
+      if (cleanSlug) {
+        await supabase.from('providers').delete().eq('slug', cleanSlug);
+      }
+      if (id) {
+        await supabase.from('providers').delete().eq('slug', id);
+      }
 
-      if (error) {
-        console.error('Supabase delete error:', error);
-      } else {
-        return { success: true };
+      // Delete by phone & whatsapp
+      if (cleanPhone && cleanPhone.length >= 7) {
+        await supabase.from('providers').delete().eq('whatsapp', cleanPhone);
+        await supabase.from('providers').delete().ilike('phone', `%${cleanPhone.slice(-8)}%`);
+      }
+
+      if (options?.name) {
+        await supabase.from('providers').delete().eq('name', options.name);
       }
     } catch (err) {
-      console.error('Supabase delete exception:', err);
+      console.warn('Supabase delete exception:', err);
     }
   }
 
-  return { success: true, fallback: true };
+  // 2. Cross-Device / LocalStorage Tombstone and Cache Purge
+  if (typeof window !== 'undefined') {
+    try {
+      // A. Register in deleted blacklist so it NEVER resurfaces
+      const deletedIds: string[] = JSON.parse(localStorage.getItem('sama_deleted_providers') || '[]');
+      if (id && !deletedIds.includes(id)) deletedIds.push(id);
+      if (cleanSlug && !deletedIds.includes(cleanSlug)) deletedIds.push(cleanSlug);
+      if (cleanPhone && !deletedIds.includes(cleanPhone)) deletedIds.push(cleanPhone);
+      localStorage.setItem('sama_deleted_providers', JSON.stringify(deletedIds));
+
+      // B. Filter from sama_admin_providers_data
+      const adminData = JSON.parse(localStorage.getItem('sama_admin_providers_data') || '[]');
+      const filteredAdmin = adminData.filter((p: any) => {
+        const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
+        const pSlug = (p.slug || '').toLowerCase();
+        if (p.id === id || pSlug === cleanSlug || (cleanPhone && pPhone.includes(cleanPhone))) return false;
+        return true;
+      });
+      localStorage.setItem('sama_admin_providers_data', JSON.stringify(filteredAdmin));
+
+      // C. Filter from sama_registered_accounts
+      const accounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
+      const filteredAccs = accounts.filter((a: any) => {
+        const aPhone = (a.phone || '').replace(/[^0-9]/g, '');
+        const aSlug = (a.slug || '').toLowerCase();
+        if (a.id === id || aSlug === cleanSlug || (cleanPhone && aPhone.includes(cleanPhone))) return false;
+        return true;
+      });
+      localStorage.setItem('sama_registered_accounts', JSON.stringify(filteredAccs));
+
+      // D. Filter from sama_artisan_registrations
+      const reg = JSON.parse(localStorage.getItem('sama_artisan_registrations') || '[]');
+      const filteredReg = reg.filter((r: any) => {
+        const rPhone = (r.phone || '').replace(/[^0-9]/g, '');
+        if (r.id === id || (cleanPhone && rPhone.includes(cleanPhone))) return false;
+        return true;
+      });
+      localStorage.setItem('sama_artisan_registrations', JSON.stringify(filteredReg));
+
+      // E. Clear session if it belongs to the deleted artisan
+      const currentPro = localStorage.getItem('samapro_current_user');
+      if (currentPro) {
+        try {
+          const parsedPro = JSON.parse(currentPro);
+          const pPhone = (parsedPro.phone || '').replace(/[^0-9]/g, '');
+          if (parsedPro.id === id || parsedPro.slug === cleanSlug || (cleanPhone && pPhone.includes(cleanPhone))) {
+            localStorage.removeItem('samapro_current_user');
+          }
+        } catch {}
+      }
+
+      const currentSession = localStorage.getItem('sama_user_session');
+      if (currentSession) {
+        try {
+          const parsedSession = JSON.parse(currentSession);
+          const sPhone = (parsedSession.phone || '').replace(/[^0-9]/g, '');
+          if (parsedSession.id === id || (cleanPhone && sPhone.includes(cleanPhone))) {
+            localStorage.removeItem('sama_user_session');
+            localStorage.removeItem('samapro_current_user');
+          }
+        } catch {}
+      }
+
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('sama_data_updated'));
+    } catch (e) {
+      console.warn('Local cleanup error:', e);
+    }
+  }
+
+  return { success: true };
+}
+
+// 5b. DELETE USER ACCOUNT (Client or Pro User Full Deletion)
+export async function deleteUserAccount(userId: string, options?: { phone?: string; email?: string; name?: string; role?: 'client' | 'pro' }): Promise<{ success: boolean }> {
+  const cleanPhone = (options?.phone || '').replace(/[^0-9]/g, '');
+  const cleanEmail = (options?.email || '').trim().toLowerCase();
+
+  // 1. Delete from Supabase cloud
+  if (isSupabaseConfigured()) {
+    try {
+      if (userId && !userId.startsWith('usr-') && !userId.startsWith('acc-') && !userId.startsWith('p-')) {
+        await supabase.from('providers').delete().eq('id', userId);
+      }
+      if (cleanPhone && cleanPhone.length >= 7) {
+        await supabase.from('providers').delete().eq('whatsapp', cleanPhone);
+        await supabase.from('providers').delete().ilike('phone', `%${cleanPhone.slice(-8)}%`);
+      }
+      if (cleanEmail) {
+        await supabase.from('providers').delete().ilike('bio', `%"email":"${cleanEmail}"%`);
+      }
+    } catch (err) {
+      console.warn('Supabase delete user exception:', err);
+    }
+  }
+
+  // 2. Local persistence cleanup
+  if (typeof window !== 'undefined') {
+    try {
+      const deletedAccounts: string[] = JSON.parse(localStorage.getItem('sama_deleted_accounts') || '[]');
+      if (userId && !deletedAccounts.includes(userId)) deletedAccounts.push(userId);
+      if (cleanPhone && !deletedAccounts.includes(cleanPhone)) deletedAccounts.push(cleanPhone);
+      if (cleanEmail && !deletedAccounts.includes(cleanEmail)) deletedAccounts.push(cleanEmail);
+      localStorage.setItem('sama_deleted_accounts', JSON.stringify(deletedAccounts));
+
+      // Filter registered accounts
+      const accounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
+      const filteredAccs = accounts.filter((a: any) => {
+        const aPhone = (a.phone || '').replace(/[^0-9]/g, '');
+        const aEmail = (a.email || '').trim().toLowerCase();
+        if (a.id === userId) return false;
+        if (cleanPhone && aPhone.includes(cleanPhone)) return false;
+        if (cleanEmail && aEmail === cleanEmail) return false;
+        return true;
+      });
+      localStorage.setItem('sama_registered_accounts', JSON.stringify(filteredAccs));
+
+      // Filter admin providers
+      const adminData = JSON.parse(localStorage.getItem('sama_admin_providers_data') || '[]');
+      const filteredAdmin = adminData.filter((p: any) => {
+        const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
+        if (p.id === userId || (cleanPhone && pPhone.includes(cleanPhone))) return false;
+        return true;
+      });
+      localStorage.setItem('sama_admin_providers_data', JSON.stringify(filteredAdmin));
+
+      // Filter artisan registrations
+      const reg = JSON.parse(localStorage.getItem('sama_artisan_registrations') || '[]');
+      const filteredReg = reg.filter((r: any) => {
+        const rPhone = (r.phone || '').replace(/[^0-9]/g, '');
+        if (r.id === userId || (cleanPhone && rPhone.includes(cleanPhone))) return false;
+        return true;
+      });
+      localStorage.setItem('sama_artisan_registrations', JSON.stringify(filteredReg));
+
+      // Clear session if logged in
+      const currentSession = localStorage.getItem('sama_user_session');
+      if (currentSession) {
+        try {
+          const parsedSession = JSON.parse(currentSession);
+          const sPhone = (parsedSession.phone || '').replace(/[^0-9]/g, '');
+          const sEmail = (parsedSession.email || '').trim().toLowerCase();
+          if (parsedSession.id === userId || (cleanPhone && sPhone.includes(cleanPhone)) || (cleanEmail && sEmail === cleanEmail)) {
+            localStorage.removeItem('sama_user_session');
+            localStorage.removeItem('samapro_current_user');
+          }
+        } catch {}
+      }
+
+      const currentPro = localStorage.getItem('samapro_current_user');
+      if (currentPro) {
+        try {
+          const parsedPro = JSON.parse(currentPro);
+          const pPhone = (parsedPro.phone || '').replace(/[^0-9]/g, '');
+          if (parsedPro.id === userId || (cleanPhone && pPhone.includes(cleanPhone))) {
+            localStorage.removeItem('samapro_current_user');
+          }
+        } catch {}
+      }
+
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('sama_data_updated'));
+    } catch (e) {
+      console.warn('Local account cleanup error:', e);
+    }
+  }
+
+  return { success: true };
 }
 
 // 6. LOG SERVICE REQUEST / CONTACT CLICK (Supabase Live Tracking)
@@ -542,6 +791,17 @@ export async function registerUserAccount(userData: UserAccountData): Promise<{ 
 
     // 2. Local Session Cache
     if (typeof window !== 'undefined') {
+      // Un-blacklist if re-registering
+      try {
+        const deletedPros: string[] = JSON.parse(localStorage.getItem('sama_deleted_providers') || '[]');
+        const filteredPros = deletedPros.filter(d => d !== cleanPhone && d !== userData.phone && d !== cleanEmail);
+        localStorage.setItem('sama_deleted_providers', JSON.stringify(filteredPros));
+
+        const deletedAccs: string[] = JSON.parse(localStorage.getItem('sama_deleted_accounts') || '[]');
+        const filteredAccs = deletedAccs.filter(d => d !== cleanPhone && d !== userData.phone && d !== cleanEmail);
+        localStorage.setItem('sama_deleted_accounts', JSON.stringify(filteredAccs));
+      } catch {}
+
       const existingAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
       const filtered = existingAccounts.filter((a: any) => {
         const aClean = (a.phone || '').replace(/[^0-9]/g, '');
@@ -575,6 +835,11 @@ export async function loginUserAccount(identifier: string, password: string): Pr
     const cleanDigits = identifier.replace(/[^0-9]/g, '');
     const givenHash = typeof btoa !== 'undefined' ? btoa(password) : Buffer.from(password).toString('base64');
 
+    // 0. Check if account or phone is blacklisted/deleted
+    if (isBlacklistedOrDeleted({ phone: identifier, email: identifier, id: identifier })) {
+      return { success: false, error: "Ce compte a été supprimé par l'administration." };
+    }
+
     let foundUser: any = null;
 
     // 1. Check Cloud Supabase First (Enables cross-device phone <-> PC sync)
@@ -586,6 +851,8 @@ export async function loginUserAccount(identifier: string, password: string): Pr
 
         if (dbPros && dbPros.length > 0) {
           const match = dbPros.find((p: any) => {
+            if (isBlacklistedOrDeleted({ id: p.id, slug: p.slug, phone: p.phone, whatsapp: p.whatsapp })) return false;
+
             const pPhoneDigits = (p.phone || '').replace(/[^0-9]/g, '');
             const pWhatsAppDigits = (p.whatsapp || '').replace(/[^0-9]/g, '');
             
@@ -649,6 +916,7 @@ export async function loginUserAccount(identifier: string, password: string): Pr
     // 2. Check Static/Verified Providers Dataset (PROVIDERS)
     if (!foundUser) {
       const matchedStaticPro = PROVIDERS.find((p: any) => {
+        if (isBlacklistedOrDeleted(p)) return false;
         const pDigits = (p.phone || '').replace(/[^0-9]/g, '');
         const pWa = (p.whatsapp || '').replace(/[^0-9]/g, '');
         if (cleanDigits.length >= 7) {
@@ -681,6 +949,7 @@ export async function loginUserAccount(identifier: string, password: string): Pr
     if (!foundUser && typeof window !== 'undefined') {
       const localAccounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
       const localMatch = localAccounts.find((a: any) => {
+        if (isBlacklistedOrDeleted(a)) return false;
         const aDigits = (a.phone || '').replace(/[^0-9]/g, '');
         const aEmail = (a.email || '').toLowerCase();
         return (cleanDigits.length >= 7 && (aDigits.includes(cleanDigits) || cleanDigits.includes(aDigits))) || (aEmail && aEmail === cleanIdent);
@@ -699,22 +968,24 @@ export async function loginUserAccount(identifier: string, password: string): Pr
         if (storedPro) {
           try {
             const p = JSON.parse(storedPro);
-            const pDigits = (p.phone || '').replace(/[^0-9]/g, '');
-            if (cleanDigits.length >= 7 && (pDigits.includes(cleanDigits) || cleanDigits.includes(pDigits))) {
-              foundUser = {
-                id: p.id,
-                slug: p.slug,
-                name: p.name,
-                phone: p.phone,
-                email: p.email || 'pro@samaartisan.sn',
-                role: 'pro',
-                businessName: p.businessName || p.name,
-                categorySlug: p.categorySlug,
-                categoryName: p.categoryName,
-                neighborhood: p.neighborhood,
-                avatar: p.avatar,
-                bio: p.bio
-              };
+            if (!isBlacklistedOrDeleted(p)) {
+              const pDigits = (p.phone || '').replace(/[^0-9]/g, '');
+              if (cleanDigits.length >= 7 && (pDigits.includes(cleanDigits) || cleanDigits.includes(pDigits))) {
+                foundUser = {
+                  id: p.id,
+                  slug: p.slug,
+                  name: p.name,
+                  phone: p.phone,
+                  email: p.email || 'pro@samaartisan.sn',
+                  role: 'pro',
+                  businessName: p.businessName || p.name,
+                  categorySlug: p.categorySlug,
+                  categoryName: p.categoryName,
+                  neighborhood: p.neighborhood,
+                  avatar: p.avatar,
+                  bio: p.bio
+                };
+              }
             }
           } catch (e) {}
         }
@@ -724,6 +995,7 @@ export async function loginUserAccount(identifier: string, password: string): Pr
       if (!foundUser) {
         const regList = JSON.parse(localStorage.getItem('sama_artisan_registrations') || '[]');
         const regMatch = regList.find((r: any) => {
+          if (isBlacklistedOrDeleted(r)) return false;
           const rDigits = (r.phone || '').replace(/[^0-9]/g, '');
           return cleanDigits.length >= 7 && (rDigits.includes(cleanDigits) || cleanDigits.includes(rDigits));
         });
@@ -746,6 +1018,10 @@ export async function loginUserAccount(identifier: string, password: string): Pr
 
     if (!foundUser) {
       return { success: false, error: "Aucun compte trouvé avec ce numéro ou email. Veuillez vérifier vos identifiants ou créer un profil." };
+    }
+
+    if (isBlacklistedOrDeleted(foundUser)) {
+      return { success: false, error: "Ce compte a été supprimé par l'administration." };
     }
 
     // 4. Activate session locally on device
@@ -848,20 +1124,23 @@ export async function getContactMessages(): Promise<ContactMessage[]> {
 
   // Local storage real messages
   let localMessages: ContactMessage[] = [];
+  let deletedMsgIds: string[] = [];
+
   if (typeof window !== 'undefined') {
     try {
+      deletedMsgIds = JSON.parse(localStorage.getItem('sama_deleted_message_ids') || '[]');
       const stored = localStorage.getItem('sama_contact_messages_cache');
       if (stored) {
         const parsed = JSON.parse(stored);
-        // Filter out any previous fake mock IDs
-        localMessages = parsed.filter((m: any) => !m.id?.startsWith('msg-'));
+        // Filter out any previous fake mock IDs and deleted IDs
+        localMessages = parsed.filter((m: any) => !m.id?.startsWith('msg-') && !deletedMsgIds.includes(m.id));
       }
     } catch {}
   }
 
-  const combined = [...dbMessages];
+  const combined = dbMessages.filter(m => !deletedMsgIds.includes(m.id));
   for (const lm of localMessages) {
-    if (!combined.some(c => c.id === lm.id)) {
+    if (!deletedMsgIds.includes(lm.id) && !combined.some(c => c.id === lm.id)) {
       combined.push(lm);
     }
   }
@@ -937,6 +1216,10 @@ export async function deleteContactMessage(id: string): Promise<boolean> {
 
   if (typeof window !== 'undefined') {
     try {
+      const deletedIds: string[] = JSON.parse(localStorage.getItem('sama_deleted_message_ids') || '[]');
+      if (!deletedIds.includes(id)) deletedIds.push(id);
+      localStorage.setItem('sama_deleted_message_ids', JSON.stringify(deletedIds));
+
       const stored = localStorage.getItem('sama_contact_messages_cache');
       if (stored) {
         const parsed: ContactMessage[] = JSON.parse(stored);

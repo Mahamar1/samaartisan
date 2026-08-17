@@ -38,11 +38,19 @@ export default function LandingPage() {
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
 
   useEffect(() => {
-    getProviders().then((pros) => {
-      if (pros && pros.length > 0) {
-        setProviders(pros);
-      }
-    });
+    const loadPros = () => {
+      getProviders().then((pros) => {
+        setProviders(pros || []);
+      });
+    };
+
+    loadPros();
+    window.addEventListener('storage', loadPros);
+    window.addEventListener('sama_data_updated', loadPros);
+    return () => {
+      window.removeEventListener('storage', loadPros);
+      window.removeEventListener('sama_data_updated', loadPros);
+    };
   }, []);
 
   const faqs = [

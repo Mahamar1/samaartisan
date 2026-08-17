@@ -39,13 +39,21 @@ function SearchContent() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
-  // Load live data from Supabase
+  // Load live data from Supabase & sync dynamically
   React.useEffect(() => {
-    getProviders().then((pros) => {
-      if (pros && pros.length > 0) {
-        setProvidersList(pros);
-      }
-    });
+    const loadPros = () => {
+      getProviders().then((pros) => {
+        setProvidersList(pros || []);
+      });
+    };
+
+    loadPros();
+    window.addEventListener('storage', loadPros);
+    window.addEventListener('sama_data_updated', loadPros);
+    return () => {
+      window.removeEventListener('storage', loadPros);
+      window.removeEventListener('sama_data_updated', loadPros);
+    };
   }, []);
 
   // Compute available districts based on selected region

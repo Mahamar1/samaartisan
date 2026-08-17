@@ -37,11 +37,19 @@ export function SamaBot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    getProviders().then((pros) => {
-      if (pros && pros.length > 0) {
-        setProvidersList(pros);
-      }
-    });
+    const loadPros = () => {
+      getProviders().then((pros) => {
+        setProvidersList(pros || []);
+      });
+    };
+
+    loadPros();
+    window.addEventListener('storage', loadPros);
+    window.addEventListener('sama_data_updated', loadPros);
+    return () => {
+      window.removeEventListener('storage', loadPros);
+      window.removeEventListener('sama_data_updated', loadPros);
+    };
   }, []);
 
   useEffect(() => {

@@ -730,46 +730,88 @@ export interface UserAccountData {
   regionId?: string;
 }
 
+export interface AppUserAccount {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  role: 'client' | 'pro';
+  neighborhood?: string;
+  city?: string;
+  categoryName?: string;
+  businessName?: string;
+  registeredAt: string;
+  status: 'ACTIVE' | 'SUSPENDED';
+}
+
+export interface PendingArtisanData {
+  id: string;
+  name: string;
+  businessName?: string;
+  trade: string;
+  neighborhood: string;
+  regionName?: string;
+  phone: string;
+  email?: string;
+  cniNumber: string;
+  dateSubmitted: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+}
+
 export async function registerUserAccount(userData: UserAccountData): Promise<{ success: boolean; user?: any; error?: string }> {
   try {
     const cleanPhone = userData.phone ? userData.phone.replace(/[^0-9]/g, '') : '';
     const cleanEmail = userData.email ? userData.email.trim().toLowerCase() : '';
     const cleanName = userData.name ? userData.name.trim() : 'Utilisateur Sama';
-    const role = userData.role || 'user';
+    const isPro = userData.role === 'pro';
+    const role = isPro ? 'pro' : 'client';
     const password = userData.password || '';
     const passwordHash = typeof btoa !== 'undefined' ? btoa(password) : Buffer.from(password).toString('base64');
-    const slug = `usr-${cleanPhone || Date.now()}`;
+    const slug = isPro ? `pro-${cleanPhone || Date.now()}` : `client-${cleanPhone || Date.now()}`;
 
-    // 1. Cloud Save in Supabase (STRICTLY FOR ARTISANS ONLY, NEVER FOR CLIENTS)
-    if (role === 'pro' && isSupabaseConfigured()) {
+    // 1. Cloud Save in Supabase for ALL users (Clients and Artisans)
+    if (isSupabaseConfigured()) {
       try {
         const metadata = {
           email: cleanEmail,
           passwordHash,
           password,
-          role: 'pro',
+          role,
           businessName: userData.businessName || cleanName,
           registeredAt: new Date().toISOString()
         };
 
-        const proSlug = `pro-${cleanPhone || Date.now()}`;
-        const { error } = await supabase
-          .from('providers')
-          .insert([{
-            slug: proSlug,
-            name: cleanName,
-            business_name: userData.businessName || cleanName,
-            phone: userData.phone.trim(),
-            whatsapp: cleanPhone || '221770000000',
-            category_slug: userData.categorySlug || 'plomberie',
-            category_name: userData.categoryName || 'Artisan Qualifié',
-            neighborhood: userData.neighborhood || 'Dakar',
-            verification_level: 'ID_VERIFIED',
-            bio: JSON.stringify(metadata)
-          }]);
+        // Check if already in Supabase to avoid duplicate rows
+        let existingUser: any = null;
+        if (cleanPhone.length >= 7) {
+          const { data } = await supabase
+            .from('providers')
+            .select('id, slug, phone, whatsapp')
+            .or(`whatsapp.eq.${cleanPhone},phone.ilike.%${cleanPhone.slice(-8)}%`);
+          if (data && data.length > 0) {
+            existingUser = data[0];
+          }
+        }
 
-        if (error) {
-          console.warn('Supabase pro register note:', error.message);
+        if (!existingUser) {
+          const { error } = await supabase
+            .from('providers')
+            .insert([{
+              slug,
+              name: cleanName,
+              business_name: userData.businessName || cleanName,
+              phone: userData.phone.trim(),
+              whatsapp: cleanPhone || '221770000000',
+              category_slug: isPro ? (userData.categorySlug || 'plomberie') : 'client',
+              category_name: isPro ? (userData.categoryName || 'Artisan Qualifié') : 'Client Particulier',
+              neighborhood: userData.neighborhood || 'Dakar',
+              verification_level: 'ID_VERIFIED',
+              bio: JSON.stringify(metadata)
+            }]);
+
+          if (error) {
+            console.warn('Supabase user register note:', error.message);
+          }
         }
       } catch (err) {
         console.warn('Supabase register exception:', err);
@@ -819,6 +861,7 @@ export async function registerUserAccount(userData: UserAccountData): Promise<{ 
       }
 
       window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('sama_data_updated'));
     }
 
     return { success: true, user: newUser };
@@ -826,6 +869,177 @@ export async function registerUserAccount(userData: UserAccountData): Promise<{ 
     console.error('registerUserAccount error:', err);
     return { success: false, error: err.message || "Erreur lors de l'enregistrement." };
   }
+}
+
+// 7b. FETCH ALL REGISTERED ACCOUNTS FROM SUPABASE CLOUD (Live Multi-Device Sync)
+export async function getRegisteredAccounts(): Promise<AppUserAccount[]> {
+  let dbUsers: AppUserAccount[] = [];
+
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from('providers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        for (const item of data) {
+          if (isBlacklistedOrDeleted({ id: item.id, slug: item.slug, phone: item.phone, whatsapp: item.whatsapp })) {
+            continue;
+          }
+
+          let meta: any = {};
+          try {
+            if (item.bio && item.bio.startsWith('{')) {
+              meta = JSON.parse(item.bio);
+            }
+          } catch {}
+
+          const catName = (item.category_name || '').toLowerCase();
+          const catSlug = (item.category_slug || '').toLowerCase();
+          const pSlug = (item.slug || '').toLowerCase();
+          const pName = (item.name || '').toLowerCase();
+          const isClient = 
+            catName.includes('client') || 
+            catSlug.includes('client') || 
+            pSlug.startsWith('client-') || 
+            pSlug.startsWith('usr-') || 
+            pName.includes('compte client') || 
+            meta.role === 'client' || 
+            meta.role === 'user';
+
+          dbUsers.push({
+            id: item.id ? String(item.id) : (item.slug || `acc-${Date.now()}`),
+            name: item.name || 'Utilisateur',
+            phone: item.phone || '',
+            email: meta.email || (isClient ? 'client@samaartisan.sn' : `${item.slug || 'pro'}@samaartisan.sn`),
+            role: isClient ? 'client' : 'pro',
+            neighborhood: item.neighborhood || 'Dakar',
+            city: item.city || 'Dakar',
+            categoryName: isClient ? 'Particulier' : (item.category_name || 'Artisan'),
+            businessName: item.business_name || item.name,
+            registeredAt: item.created_at ? (item.created_at.includes('T') ? new Date(item.created_at).toLocaleDateString('fr-FR') : item.created_at) : 'Récemment',
+            status: item.is_available === false ? 'SUSPENDED' : 'ACTIVE'
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase getRegisteredAccounts error:', err);
+    }
+  }
+
+  // Merge local storage accounts
+  let localUsers: AppUserAccount[] = [];
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('sama_registered_accounts');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        for (const a of parsed) {
+          if (!isBlacklistedOrDeleted(a)) {
+            const isClient = a.role === 'client' || a.role === 'user';
+            localUsers.push({
+              id: a.id || `acc-${Date.now()}`,
+              name: a.name || 'Utilisateur',
+              phone: a.phone || '',
+              email: a.email || '',
+              role: isClient ? 'client' : 'pro',
+              neighborhood: a.neighborhood || 'Dakar',
+              city: a.city || 'Dakar',
+              categoryName: a.categoryName || (isClient ? 'Particulier' : 'Artisan'),
+              businessName: a.businessName || a.name,
+              registeredAt: a.registeredAt ? (a.registeredAt.includes('T') ? new Date(a.registeredAt).toLocaleDateString('fr-FR') : a.registeredAt) : 'Récemment',
+              status: 'ACTIVE'
+            });
+          }
+        }
+      }
+    } catch {}
+  }
+
+  const combined: AppUserAccount[] = [...dbUsers];
+  for (const lu of localUsers) {
+    const luPhoneDigits = (lu.phone || '').replace(/[^0-9]/g, '');
+    if (!combined.some(c => {
+      const cPhoneDigits = (c.phone || '').replace(/[^0-9]/g, '');
+      return (luPhoneDigits.length >= 7 && cPhoneDigits.includes(luPhoneDigits)) || (lu.id && c.id === lu.id);
+    })) {
+      combined.push(lu);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('sama_registered_accounts', JSON.stringify(combined));
+  }
+
+  return combined;
+}
+
+// 7c. FETCH PENDING ARTISANS (Cloud + Local)
+export async function getPendingArtisans(): Promise<PendingArtisanData[]> {
+  let pending: PendingArtisanData[] = [];
+
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from('providers')
+        .select('*')
+        .eq('verification_level', 'UNVERIFIED')
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        for (const item of data) {
+          if (isBlacklistedOrDeleted({ id: item.id, slug: item.slug, phone: item.phone, whatsapp: item.whatsapp })) {
+            continue;
+          }
+
+          pending.push({
+            id: String(item.id),
+            name: item.name,
+            businessName: item.business_name || item.name,
+            trade: item.category_name || 'Artisan',
+            neighborhood: item.neighborhood || 'Dakar',
+            regionName: item.region_id || 'Dakar',
+            phone: item.phone,
+            cniNumber: item.cni_number || '1 756 1989 02341',
+            dateSubmitted: item.created_at ? (item.created_at.includes('T') ? new Date(item.created_at).toLocaleDateString('fr-FR') : item.created_at) : 'Récemment',
+            status: 'PENDING'
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase getPendingArtisans error:', err);
+    }
+  }
+
+  // Merge local registrations
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('sama_artisan_registrations');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        for (const p of parsed) {
+          if (!isBlacklistedOrDeleted(p) && !pending.some(item => item.phone === p.phone || item.id === p.id)) {
+            pending.push({
+              id: p.id || `reg-${Date.now()}`,
+              name: p.name,
+              businessName: p.businessName || p.name,
+              trade: p.categoryName || 'Artisan',
+              neighborhood: p.neighborhood || 'Dakar',
+              regionName: p.regionName || 'Dakar',
+              phone: p.phone,
+              email: p.email,
+              cniNumber: p.cniNumber || '1 756 1989 02341',
+              dateSubmitted: p.dateSubmitted || 'Récemment',
+              status: 'PENDING'
+            });
+          }
+        }
+      }
+    } catch {}
+  }
+
+  return pending;
 }
 
 // 8. CROSS-DEVICE USER LOGIN & INSTANT CLOUD SYNC

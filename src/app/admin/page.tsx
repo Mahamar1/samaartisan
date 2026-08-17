@@ -56,6 +56,8 @@ import {
   getContactMessages,
   updateContactMessageStatus,
   deleteContactMessage,
+  getRegisteredAccounts,
+  getPendingArtisans,
   ContactMessage 
 } from '@/lib/supabase/services';
 import { Provider, VerificationLevel } from '@/lib/types';
@@ -166,8 +168,39 @@ export default function AdminDashboardPage() {
   // Brute force lockout state
   const [lockoutTime, setLockoutTime] = useState<number | null>(null);
   const [failedAttempts, setFailedAttempts] = useState<number>(0);
+  const [isSyncingData, setIsSyncingData] = useState(false);
 
-  // Check Auth & Session Expiry on load
+  // Load all live data from Supabase Cloud (Pros, Clients, Submissions, Messages)
+  const loadAllAdminData = async (showNotification = false) => {
+    setIsSyncingData(true);
+    try {
+      // 1. Providers live from Supabase
+      const pros = await getProviders();
+      setProvidersList(pros || []);
+
+      // 2. Real Accounts (Clients & Pros) live from Supabase Cloud
+      const users = await getRegisteredAccounts();
+      setClientsList(users || []);
+
+      // 3. Pending Dossiers live from Supabase Cloud + Local
+      const pending = await getPendingArtisans();
+      setPendingList(pending || []);
+
+      // 4. Contact Messages live from Supabase Cloud
+      const msgs = await getContactMessages();
+      setMessagesList(msgs || []);
+
+      if (showNotification) {
+        showToast('Données et comptes synchronisés en direct depuis Supabase Cloud.');
+      }
+    } catch (e) {
+      console.warn('Admin loadAllAdminData error:', e);
+    } finally {
+      setIsSyncingData(false);
+    }
+  };
+
+  // Check Auth & Session Expiry on load + Auto sync data
   useEffect(() => {
     // 1. Check brute force lockout
     const storedLockout = localStorage.getItem('sama_admin_lockout_until');
@@ -200,73 +233,23 @@ export default function AdminDashboardPage() {
       setCurrentAdminPass(savedPass);
     }
 
-    // Load Providers Live from Supabase
-    getProviders().then((pros) => {
-      if (pros && pros.length > 0) {
-        setProvidersList(pros);
-      }
-    });
+    // Initial Live Load from Supabase Cloud
+    loadAllAdminData();
 
-    // Load Contact Messages Live
-    getContactMessages().then((msgs) => {
-      if (msgs && msgs.length > 0) {
-        setMessagesList(msgs);
-      }
-    });
+    // Auto-sync every 8 seconds & on window events
+    const timer = setInterval(() => {
+      loadAllAdminData(false);
+    }, 8000);
 
-    // Load Pending Submissions
-    const storedRegistrations = localStorage.getItem('sama_artisan_registrations');
-    let localPending: PendingArtisan[] = [];
-    if (storedRegistrations) {
-      try {
-        const parsed = JSON.parse(storedRegistrations);
-        localPending = parsed.map((item: any) => ({
-          id: item.id || `reg-${Date.now()}`,
-          name: item.name,
-          businessName: item.businessName,
-          trade: item.categoryName || 'Artisan',
-          neighborhood: item.neighborhood || 'Dakar',
-          regionName: item.regionName || 'Dakar',
-          phone: item.phone,
-          email: item.email,
-          cniNumber: item.cniNumber || '1 756 1989 02341',
-          dateSubmitted: item.dateSubmitted || 'Récemment',
-          status: 'PENDING'
-        }));
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    setPendingList(localPending);
+    const handleStorageEvent = () => loadAllAdminData(false);
+    window.addEventListener('storage', handleStorageEvent);
+    window.addEventListener('sama_data_updated', handleStorageEvent);
 
-    // Load Clients & Registered Accounts (100% Real)
-    const storedAccounts = localStorage.getItem('sama_registered_accounts');
-    if (storedAccounts) {
-      try {
-        const parsed = JSON.parse(storedAccounts);
-        const mapped: AppUser[] = parsed
-          .filter((a: any) => !a.id?.startsWith('usr-'))
-          .map((a: any, idx: number) => ({
-            id: a.id || `acc-${idx}-${Date.now()}`,
-            name: a.name || 'Utilisateur',
-            phone: a.phone || '',
-            email: a.email || '',
-            role: a.role || 'client',
-            neighborhood: a.neighborhood || 'Dakar',
-            city: 'Dakar',
-            categoryName: a.categoryName,
-            businessName: a.businessName,
-            registeredAt: a.registeredAt ? (a.registeredAt.includes('T') ? new Date(a.registeredAt).toLocaleDateString('fr-FR') : a.registeredAt) : 'Récemment',
-            status: 'ACTIVE'
-          }));
-        setClientsList(mapped);
-        localStorage.setItem('sama_registered_accounts', JSON.stringify(mapped));
-      } catch {
-        setClientsList([]);
-      }
-    } else {
-      setClientsList([]);
-    }
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('sama_data_updated', handleStorageEvent);
+    };
   }, []);
 
   // Email Template generator
@@ -933,6 +916,16 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => loadAllAdminData(true)}
+              disabled={isSyncingData}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-sama-600/20 hover:bg-sama-600/30 text-sama-300 border border-sama-500/30 transition-all active:scale-95 disabled:opacity-50"
+              title="Synchroniser immédiatement avec Supabase Cloud"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingData ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Actualiser Cloud</span>
+            </button>
+
             <Link
               href="/"
               target="_blank"

@@ -5,20 +5,141 @@ export const SENEGAL_REGIONS: Region[] = [
     id: 'dakar',
     name: 'Dakar',
     districts: [
+      // 1. Plateau & Centre-Ville
+      { id: 'plateau', name: 'Plateau' },
+      { id: 'sandaga', name: 'Sandaga' },
+      { id: 'kermel', name: 'Kermel' },
+      { id: 'cap-manuel', name: 'Cap Manuel' },
+      { id: 'rue-10', name: 'Rue 10' },
+      { id: 'lamine-gueye', name: 'Avenue Lamine Guèye' },
+      { id: 'cite-cap-vert', name: 'Cité Cap-Vert' },
+      { id: 'ponty', name: 'Ponty' },
+      { id: 'castel', name: 'Castel' },
+      { id: 'mbambara', name: 'Mbambara' },
+
+      // 2. Médina & Environs
+      { id: 'medina', name: 'Médina' },
+      { id: 'gibraltar', name: 'Gibraltar' },
+      { id: 'diecko', name: 'Diecko' },
+      { id: 'gouye-salane', name: 'Gouye Salane' },
+      { id: 'santhiaba', name: 'Santhiaba' },
+      { id: 'tilene', name: 'Tilène' },
+      { id: 'abattoirs', name: 'Abattoirs' },
+      { id: 'thierigne', name: 'Thierigne' },
+
+      // 3. Gueule Tapée, Fass & Colobane
+      { id: 'gueule-tapee', name: 'Gueule Tapée' },
+      { id: 'fass', name: 'Fass' },
+      { id: 'fass-delorme', name: 'Fass Delorme' },
+      { id: 'fass-casier', name: 'Fass Casier' },
+      { id: 'colobane', name: 'Colobane' },
+      { id: 'colobane-hock', name: 'Colobane Hock' },
+      { id: 'colobane-bayelaye', name: 'Colobane Bayélaye' },
+
+      // 4. Fann, Point E & Amitié
+      { id: 'fann-residence', name: 'Fann Résidence' },
+      { id: 'fann-hock', name: 'Fann Hock' },
+      { id: 'point-e', name: 'Point E' },
+      { id: 'amitie-1-2-3', name: 'Amitié I, II, III' },
+      { id: 'karack', name: 'Karack' },
+      { id: 'baobabs', name: 'Baobabs' },
+
+      // 5. Grand Dakar, Niary Tally & Bopp
+      { id: 'grand-dakar', name: 'Grand Dakar' },
+      { id: 'zone-a', name: 'Zone A' },
+      { id: 'zone-b', name: 'Zone B' },
+      { id: 'bopp', name: 'Bopp' },
+      { id: 'cerf-volant', name: 'Cerf-Volant' },
+      { id: 'ouagou-niayes', name: 'Ouagou Niayes' },
+      { id: 'usine-bene-tally', name: 'Usine Bène Tally' },
+      { id: 'usine-niary-tally', name: 'Usine Niary Tally' },
+
+      // 6. Biscuiterie, Castors & Soprim
+      { id: 'biscuiterie', name: 'Biscuiterie' },
+      { id: 'castors', name: 'Castors' },
+      { id: 'soprim', name: 'Soprim' },
+      { id: 'cite-marine', name: 'Cité Marine' },
+      { id: 'cite-elevage', name: 'Cité Élevage' },
+
+      // 7. HLM
+      { id: 'hlm-1-6', name: 'HLM 1 à HLM 6' },
+      { id: 'hlm-grand-medine', name: 'HLM Grand Médine' },
+      { id: 'hlm-montagne', name: 'HLM Montagne' },
+
+      // 8. Hann, Maristes & Bel-Air
+      { id: 'hann', name: 'Hann' },
+      { id: 'hann-maristes', name: 'Hann Maristes' },
+      { id: 'bel-air', name: 'Bel-Air' },
+      { id: 'yarakh', name: 'Yarakh' },
+      { id: 'zone-industrielle', name: 'Zone industrielle' },
+
+      // 9. Liberté & Sicap
+      { id: 'liberte-1-6', name: 'Liberté I, II, III, IV, V, VI' },
+      { id: 'liberte-6-ext', name: 'Liberté VI Extension' },
+      { id: 'sicap-amitie', name: 'Sicap Amitié' },
+      { id: 'sicap-darabis', name: 'Sicap Darabis' },
+
+      // 10. Dieuppeul & Derklé
+      { id: 'dieuppeul-1-4', name: 'Dieuppeul I à IV' },
+      { id: 'derkle', name: 'Derklé' },
+
+      // 11. Mermoz & Sacré-Cœur
+      { id: 'mermoz', name: 'Mermoz' },
+      { id: 'sacre-coeur-1-2-3', name: 'Sacré-Cœur I, II, III' },
+      { id: 'cite-keur-gorgui', name: 'Cité Keur Gorgui' },
+      { id: 'sotrac', name: 'Sotrac' },
+
+      // 12. Ouakam & Mamelles
+      { id: 'ouakam', name: 'Ouakam' },
+      { id: 'mamelles', name: 'Mamelles' },
+      { id: 'cite-asecna', name: 'Cité ASECNA' },
+      { id: 'cite-el-hadji-malick-sy', name: 'Cité El Hadji Malick Sy' },
+      { id: 'monument-renaissance', name: 'Monument de la Renaissance' },
+
+      // 13. Ngor & Almadies
+      { id: 'ngor', name: 'Ngor' },
       { id: 'almadies', name: 'Almadies' },
-      { id: 'ngor', name: 'Ngor & Virage' },
-      { id: 'ouakam', name: 'Ouakam & Mamelles' },
-      { id: 'mermoz', name: 'Mermoz & Sacré-Cœur' },
-      { id: 'point-e', name: 'Point E & Fann' },
-      { id: 'plateau', name: 'Dakar Plateau & Centre-Ville' },
-      { id: 'medina', name: 'Médina, Fass & Gueule Tapée' },
-      { id: 'liberte', name: 'Liberté 1 à 6, Sicap & Dieuppeul' },
-      { id: 'yoff', name: 'Yoff, Ouest-Foire & Nord-Foire' },
-      { id: 'maristes', name: 'Hann Maristes & Bel-Air' },
-      { id: 'parcelles', name: 'Parcelles Assainies & Grand Médine' },
-      { id: 'grand-yoff', name: 'Grand Yoff & Khar Yalla' },
-      { id: 'guediawaye', name: 'Guédiawaye (Golf, Hamo, Wakhinane)' },
-      { id: 'pikine', name: 'Pikine, Thiaroye & Guinaw Rails' },
+      { id: 'ngor-almadies', name: 'Ngor Almadies' },
+      { id: 'virage', name: 'Virage' },
+
+      // 14. Yoff & Foires
+      { id: 'yoff', name: 'Yoff' },
+      { id: 'tonghor', name: 'Tonghor' },
+      { id: 'ndeungagne', name: 'Ndeungagne' },
+      { id: 'layenne', name: 'Layenne' },
+      { id: 'diamalaye', name: 'Diamalaye' },
+      { id: 'nord-foire', name: 'Nord-Foire' },
+      { id: 'ouest-foire', name: 'Ouest-Foire' },
+
+      // 15. Grand Yoff
+      { id: 'grand-yoff', name: 'Grand Yoff' },
+      { id: 'khar-yalla', name: 'Khar Yalla' },
+      { id: 'arafat', name: 'Arafat' },
+      { id: 'zone-captage', name: 'Zone de Captage' },
+      { id: 'darou-salam', name: 'Darou Salam' },
+      { id: 'taiba', name: 'Taïba' },
+      { id: 'gazelle', name: 'Gazelle' },
+      { id: 'cite-millionnaire', name: 'Cité Millionnaire' },
+
+      // 16. Patte d'Oie & Keur Damel
+      { id: 'patte-doie', name: 'Patte d’Oie' },
+      { id: 'grand-medine', name: 'Grand Médine' },
+      { id: 'patte-doie-builders', name: 'Patte d’Oie Builders' },
+      { id: 'keur-damel', name: 'Keur Damel' },
+      { id: 'cite-soprim', name: 'Cité Soprim' },
+      { id: 'cite-impots-domaines', name: 'Cité Impôts et Domaines' },
+
+      // 17. Parcelles Assainies
+      { id: 'parcelles-assainies', name: 'Unités 1 à 26 (Parcelles Assainies)' },
+      { id: 'cite-fadia', name: 'Cité Fadia' },
+
+      // 18. Cambérène
+      { id: 'camberene-traditionnel', name: 'Cambérène traditionnel' },
+      { id: 'camberene-extension', name: 'Cambérène Extension' },
+
+      // 19. Banlieue & Périphérie
+      { id: 'guediawaye', name: 'Guédiawaye (Golf, Hamo, Wakhinane, Ndiarème)' },
+      { id: 'pikine', name: 'Pikine (Centre, Thiaroye, Guinaw Rails)' },
       { id: 'keur-massar', name: 'Keur Massar & Malika' },
       { id: 'rufisque', name: 'Rufisque (Centre, Arafat, Bargny)' },
       { id: 'diamniadio', name: 'Diamniadio & Sébikotane' },
@@ -178,19 +299,144 @@ export const SENEGAL_REGIONS: Region[] = [
 ];
 
 export const NEIGHBORHOODS: Neighborhood[] = [
-  { id: 'almadies', name: 'Almadies', city: 'Dakar', latitude: 14.7456, longitude: -17.5186, popularServices: ['Plomberie', 'Climatisation', 'Électricité'] },
-  { id: 'ngor', name: 'Ngor', city: 'Dakar', latitude: 14.7533, longitude: -17.5144, popularServices: ['Serrurerie', 'Menuiserie', 'Peinture'] },
-  { id: 'ouakam', name: 'Ouakam', city: 'Dakar', latitude: 14.7234, longitude: -17.4891, popularServices: ['Maçonnerie', 'Électricité', 'Plomberie'] },
+  // Plateau & Centre-Ville
+  { id: 'plateau', name: 'Plateau', city: 'Dakar', latitude: 14.6712, longitude: -17.4332, popularServices: ['Électricité', 'Serrurerie d\'urgence', 'Vitrerie'] },
+  { id: 'sandaga', name: 'Sandaga', city: 'Dakar', latitude: 14.6725, longitude: -17.4370, popularServices: ['Électricité', 'Plomberie', 'Serrurerie'] },
+  { id: 'kermel', name: 'Kermel', city: 'Dakar', latitude: 14.6700, longitude: -17.4310, popularServices: ['Climatisation', 'Plomberie', 'Électricité'] },
+  { id: 'cap-manuel', name: 'Cap Manuel', city: 'Dakar', latitude: 14.6550, longitude: -17.4300, popularServices: ['Peinture', 'Maçonnerie', 'Électricité'] },
+  { id: 'rue-10', name: 'Rue 10', city: 'Dakar', latitude: 14.6850, longitude: -17.4480, popularServices: ['Plomberie', 'Menuiserie', 'Électricité'] },
+  { id: 'lamine-gueye', name: 'Avenue Lamine Guèye', city: 'Dakar', latitude: 14.6740, longitude: -17.4380, popularServices: ['Serrurerie', 'Vitrerie', 'Électricité'] },
+  { id: 'cite-cap-vert', name: 'Cité Cap-Vert', city: 'Dakar', latitude: 14.6650, longitude: -17.4340, popularServices: ['Plomberie', 'Électricité', 'Nettoyage'] },
+  { id: 'ponty', name: 'Ponty', city: 'Dakar', latitude: 14.6710, longitude: -17.4350, popularServices: ['Électricité', 'Climatisation', 'Serrurerie'] },
+  { id: 'castel', name: 'Castel', city: 'Dakar', latitude: 14.6680, longitude: -17.4320, popularServices: ['Menuiserie', 'Peinture', 'Plomberie'] },
+  { id: 'mbambara', name: 'Mbambara', city: 'Dakar', latitude: 14.6780, longitude: -17.4420, popularServices: ['Maçonnerie', 'Plomberie', 'Électricité'] },
+
+  // Médina
+  { id: 'medina', name: 'Médina', city: 'Dakar', latitude: 14.6880, longitude: -17.4520, popularServices: ['Plomberie', 'Électricité', 'Menuiserie Alu'] },
+  { id: 'gibraltar', name: 'Gibraltar', city: 'Dakar', latitude: 14.6830, longitude: -17.4490, popularServices: ['Peinture', 'Plomberie', 'Électricité'] },
+  { id: 'diecko', name: 'Diecko', city: 'Dakar', latitude: 14.6870, longitude: -17.4510, popularServices: ['Maçonnerie', 'Soudure', 'Plomberie'] },
+  { id: 'gouye-salane', name: 'Gouye Salane', city: 'Dakar', latitude: 14.6890, longitude: -17.4530, popularServices: ['Électricité', 'Plomberie', 'Serrurerie'] },
+  { id: 'santhiaba', name: 'Santhiaba', city: 'Dakar', latitude: 14.6860, longitude: -17.4500, popularServices: ['Menuiserie', 'Peinture', 'Électricité'] },
+  { id: 'tilene', name: 'Tilène', city: 'Dakar', latitude: 14.6840, longitude: -17.4480, popularServices: ['Serrurerie', 'Électricité', 'Plomberie'] },
+  { id: 'abattoirs', name: 'Abattoirs', city: 'Dakar', latitude: 14.6920, longitude: -17.4450, popularServices: ['Frigoriste', 'Plomberie', 'Électricité'] },
+  { id: 'thierigne', name: 'Thierigne', city: 'Dakar', latitude: 14.6855, longitude: -17.4515, popularServices: ['Maçonnerie', 'Électricité', 'Plomberie'] },
+
+  // Gueule Tapée, Fass & Colobane
+  { id: 'gueule-tapee', name: 'Gueule Tapée', city: 'Dakar', latitude: 14.6895, longitude: -17.4580, popularServices: ['Plomberie', 'Électricité', 'Mécanique'] },
+  { id: 'fass', name: 'Fass', city: 'Dakar', latitude: 14.6930, longitude: -17.4550, popularServices: ['Climatisation', 'Électricité', 'Peinture'] },
+  { id: 'fass-delorme', name: 'Fass Delorme', city: 'Dakar', latitude: 14.6940, longitude: -17.4540, popularServices: ['Électricité', 'Plomberie', 'Menuiserie'] },
+  { id: 'fass-casier', name: 'Fass Casier', city: 'Dakar', latitude: 14.6925, longitude: -17.4560, popularServices: ['Maçonnerie', 'Carrelage', 'Plomberie'] },
+  { id: 'colobane', name: 'Colobane', city: 'Dakar', latitude: 14.6960, longitude: -17.4480, popularServices: ['Mécanique', 'Électricité auto', 'Soudure'] },
+  { id: 'colobane-hock', name: 'Colobane Hock', city: 'Dakar', latitude: 14.6950, longitude: -17.4490, popularServices: ['Menuiserie Alu', 'Soudure', 'Électricité'] },
+  { id: 'colobane-bayelaye', name: 'Colobane Bayélaye', city: 'Dakar', latitude: 14.6970, longitude: -17.4470, popularServices: ['Mécanique', 'Plomberie', 'Électricité'] },
+
+  // Fann, Point E & Amitié
+  { id: 'fann-residence', name: 'Fann Résidence', city: 'Dakar', latitude: 14.6910, longitude: -17.4720, popularServices: ['Climatisation', 'Électricité', 'Piscine'] },
+  { id: 'fann-hock', name: 'Fann Hock', city: 'Dakar', latitude: 14.6850, longitude: -17.4640, popularServices: ['Plomberie', 'Peinture', 'Serrurerie'] },
+  { id: 'point-e', name: 'Point E', city: 'Dakar', latitude: 14.6932, longitude: -17.4678, popularServices: ['Climatisation', 'Plomberie', 'Serrurerie'] },
+  { id: 'amitie-1-2-3', name: 'Amitié I, II, III', city: 'Dakar', latitude: 14.7010, longitude: -17.4610, popularServices: ['Électricité', 'Plomberie', 'Peinture'] },
+  { id: 'karack', name: 'Karack', city: 'Dakar', latitude: 14.7030, longitude: -17.4630, popularServices: ['Menuiserie', 'Plomberie', 'Électricité'] },
+  { id: 'baobabs', name: 'Baobabs', city: 'Dakar', latitude: 14.7020, longitude: -17.4590, popularServices: ['Climatisation', 'Électricité', 'Jardinage'] },
+
+  // Grand Dakar, Niary Tally & Bopp
+  { id: 'grand-dakar', name: 'Grand Dakar', city: 'Dakar', latitude: 14.7050, longitude: -17.4490, popularServices: ['Plomberie', 'Électricité', 'Maçonnerie'] },
+  { id: 'zone-a', name: 'Zone A', city: 'Dakar', latitude: 14.7015, longitude: -17.4530, popularServices: ['Peinture', 'Menuiserie', 'Électricité'] },
+  { id: 'zone-b', name: 'Zone B', city: 'Dakar', latitude: 14.7040, longitude: -17.4560, popularServices: ['Climatisation', 'Plomberie', 'Électricité'] },
+  { id: 'bopp', name: 'Bopp', city: 'Dakar', latitude: 14.6980, longitude: -17.4440, popularServices: ['Serrurerie', 'Électricité', 'Plomberie'] },
+  { id: 'cerf-volant', name: 'Cerf-Volant', city: 'Dakar', latitude: 14.7060, longitude: -17.4470, popularServices: ['Menuiserie Alu', 'Peinture', 'Plomberie'] },
+  { id: 'ouagou-niayes', name: 'Ouagou Niayes', city: 'Dakar', latitude: 14.7100, longitude: -17.4510, popularServices: ['Électricité', 'Plomberie', 'Carrelage'] },
+  { id: 'usine-bene-tally', name: 'Usine Bène Tally', city: 'Dakar', latitude: 14.7070, longitude: -17.4460, popularServices: ['Maçonnerie', 'Soudure', 'Électricité'] },
+  { id: 'usine-niary-tally', name: 'Usine Niary Tally', city: 'Dakar', latitude: 14.7080, longitude: -17.4480, popularServices: ['Menuiserie', 'Plomberie', 'Électricité'] },
+
+  // Biscuiterie, Castors & Soprim
+  { id: 'biscuiterie', name: 'Biscuiterie', city: 'Dakar', latitude: 14.7045, longitude: -17.4430, popularServices: ['Électricité', 'Plomberie', 'Climatisation'] },
+  { id: 'castors', name: 'Castors', city: 'Dakar', latitude: 14.7110, longitude: -17.4450, popularServices: ['Plomberie', 'Électricité', 'Maçonnerie'] },
+  { id: 'soprim', name: 'Soprim', city: 'Dakar', latitude: 14.7480, longitude: -17.4250, popularServices: ['Carrelage', 'Plomberie', 'Peinture'] },
+  { id: 'cite-marine', name: 'Cité Marine', city: 'Dakar', latitude: 14.7055, longitude: -17.4410, popularServices: ['Électricité', 'Plomberie', 'Nettoyage'] },
+  { id: 'cite-elevage', name: 'Cité Élevage', city: 'Dakar', latitude: 14.7130, longitude: -17.4420, popularServices: ['Peinture', 'Menuiserie', 'Électricité'] },
+
+  // HLM
+  { id: 'hlm-1-6', name: 'HLM 1 à HLM 6', city: 'Dakar', latitude: 14.7090, longitude: -17.4410, popularServices: ['Menuiserie', 'Plomberie', 'Électricité'] },
+  { id: 'hlm-grand-medine', name: 'HLM Grand Médine', city: 'Dakar', latitude: 14.7420, longitude: -17.4350, popularServices: ['Climatisation', 'Électricité', 'Peinture'] },
+  { id: 'hlm-montagne', name: 'HLM Montagne', city: 'Dakar', latitude: 14.7075, longitude: -17.4390, popularServices: ['Plomberie', 'Maçonnerie', 'Soudure'] },
+
+  // Hann, Maristes & Bel-Air
+  { id: 'hann', name: 'Hann', city: 'Dakar', latitude: 14.7250, longitude: -17.4280, popularServices: ['Plomberie', 'Électricité', 'Maçonnerie'] },
+  { id: 'hann-maristes', name: 'Hann Maristes', city: 'Dakar', latitude: 14.7302, longitude: -17.4321, popularServices: ['Peinture', 'Climatisation', 'Nettoyage'] },
+  { id: 'bel-air', name: 'Bel-Air', city: 'Dakar', latitude: 14.7180, longitude: -17.4200, popularServices: ['Frigoriste', 'Électricité', 'Plomberie'] },
+  { id: 'yarakh', name: 'Yarakh', city: 'Dakar', latitude: 14.7290, longitude: -17.4210, popularServices: ['Mécanique', 'Soudure', 'Électricité'] },
+  { id: 'zone-industrielle', name: 'Zone industrielle', city: 'Dakar', latitude: 14.7150, longitude: -17.4250, popularServices: ['Électricité industrielle', 'Soudure', 'Climatisation'] },
+
+  // Liberté & Sicap
+  { id: 'liberte-1-6', name: 'Liberté I, II, III, IV, V, VI', city: 'Dakar', latitude: 14.7121, longitude: -17.4520, popularServices: ['Menuiserie', 'Soudure', 'Mécanique'] },
+  { id: 'liberte-6-ext', name: 'Liberté VI Extension', city: 'Dakar', latitude: 14.7190, longitude: -17.4580, popularServices: ['Climatisation', 'Électricité', 'Plomberie'] },
+  { id: 'sicap-amitie', name: 'Sicap Amitié', city: 'Dakar', latitude: 14.7060, longitude: -17.4570, popularServices: ['Plomberie', 'Électricité', 'Peinture'] },
+  { id: 'sicap-darabis', name: 'Sicap Darabis', city: 'Dakar', latitude: 14.7140, longitude: -17.4540, popularServices: ['Serrurerie', 'Menuiserie Alu', 'Carrelage'] },
+
+  // Dieuppeul & Derklé
+  { id: 'dieuppeul-1-4', name: 'Dieuppeul I à IV', city: 'Dakar', latitude: 14.7145, longitude: -17.4490, popularServices: ['Climatisation', 'Électricité', 'Plomberie'] },
+  { id: 'derkle', name: 'Derklé', city: 'Dakar', latitude: 14.7170, longitude: -17.4470, popularServices: ['Peinture', 'Plomberie', 'Menuiserie'] },
+
+  // Mermoz & Sacré-Cœur
   { id: 'mermoz', name: 'Mermoz', city: 'Dakar', latitude: 14.7088, longitude: -17.4764, popularServices: ['Climatisation', 'Nettoyage', 'Peinture'] },
-  { id: 'sacre-coeur', name: 'Sacré-Cœur 1, 2, 3 & VDN', city: 'Dakar', latitude: 14.7156, longitude: -17.4642, popularServices: ['Électricité', 'Plomberie', 'Déménagement'] },
-  { id: 'liberte', name: 'Liberté 1 à 6 / Sicap', city: 'Dakar', latitude: 14.7121, longitude: -17.4520, popularServices: ['Menuiserie', 'Soudure', 'Mécanique'] },
-  { id: 'point-e', name: 'Point E & Fann', city: 'Dakar', latitude: 14.6932, longitude: -17.4678, popularServices: ['Climatisation', 'Plomberie', 'Serrurerie'] },
-  { id: 'plateau', name: 'Dakar Plateau / Centre-ville', city: 'Dakar', latitude: 14.6712, longitude: -17.4332, popularServices: ['Électricité', 'Serrurerie d\'urgence', 'Vitrerie'] },
-  { id: 'yoff', name: 'Yoff / Ouest-Foire / Nord-Foire', city: 'Dakar', latitude: 14.7578, longitude: -17.4678, popularServices: ['Plomberie', 'Maçonnerie', 'Soudure'] },
-  { id: 'maristes', name: 'Hann Maristes', city: 'Dakar', latitude: 14.7302, longitude: -17.4321, popularServices: ['Peinture', 'Climatisation', 'Nettoyage'] },
-  { id: 'guediawaye', name: 'Guédiawaye & Parcelles Assainies', city: 'Dakar', latitude: 14.7734, longitude: -17.3987, popularServices: ['Maçonnerie', 'Menuiserie Alu', 'Mécanique'] },
-  { id: 'keur-massar', name: 'Keur Massar', city: 'Dakar', latitude: 14.7865, longitude: -17.3123, popularServices: ['Carrelage', 'Plomberie', 'Soudure'] },
-  { id: 'rufisque', name: 'Rufisque & Diamniadio', city: 'Dakar', latitude: 14.7167, longitude: -17.2667, popularServices: ['Maçonnerie', 'Électricité', 'Ferronnerie'] },
+  { id: 'sacre-coeur-1-2-3', name: 'Sacré-Cœur I, II, III', city: 'Dakar', latitude: 14.7156, longitude: -17.4642, popularServices: ['Électricité', 'Plomberie', 'Déménagement'] },
+  { id: 'cite-keur-gorgui', name: 'Cité Keur Gorgui', city: 'Dakar', latitude: 14.7110, longitude: -17.4670, popularServices: ['Climatisation', 'Électricité', 'Réseau & Caméras'] },
+  { id: 'sotrac', name: 'Sotrac', city: 'Dakar', latitude: 14.7135, longitude: -17.4690, popularServices: ['Plomberie', 'Électricité', 'Peinture'] },
+
+  // Ouakam & Mamelles
+  { id: 'ouakam', name: 'Ouakam', city: 'Dakar', latitude: 14.7234, longitude: -17.4891, popularServices: ['Maçonnerie', 'Électricité', 'Plomberie'] },
+  { id: 'mamelles', name: 'Mamelles', city: 'Dakar', latitude: 14.7310, longitude: -17.4980, popularServices: ['Peinture', 'Climatisation', 'Plomberie'] },
+  { id: 'cite-asecna', name: 'Cité ASECNA', city: 'Dakar', latitude: 14.7260, longitude: -17.4920, popularServices: ['Électricité', 'Climatisation', 'Serrurerie'] },
+  { id: 'cite-el-hadji-malick-sy', name: 'Cité El Hadji Malick Sy', city: 'Dakar', latitude: 14.7280, longitude: -17.4940, popularServices: ['Plomberie', 'Électricité', 'Peinture'] },
+  { id: 'monument-renaissance', name: 'Monument de la Renaissance', city: 'Dakar', latitude: 14.7220, longitude: -17.4950, popularServices: ['Vitrerie', 'Électricité', 'Soudure'] },
+
+  // Ngor & Almadies
+  { id: 'ngor', name: 'Ngor', city: 'Dakar', latitude: 14.7533, longitude: -17.5144, popularServices: ['Serrurerie', 'Menuiserie', 'Peinture'] },
+  { id: 'almadies', name: 'Almadies', city: 'Dakar', latitude: 14.7456, longitude: -17.5186, popularServices: ['Plomberie', 'Climatisation', 'Électricité'] },
+  { id: 'ngor-almadies', name: 'Ngor Almadies', city: 'Dakar', latitude: 14.7500, longitude: -17.5160, popularServices: ['Piscine', 'Climatisation', 'Serrurerie'] },
+  { id: 'virage', name: 'Virage', city: 'Dakar', latitude: 14.7510, longitude: -17.5020, popularServices: ['Menuiserie Alu', 'Plomberie', 'Électricité'] },
+
+  // Yoff & Foires
+  { id: 'yoff', name: 'Yoff', city: 'Dakar', latitude: 14.7578, longitude: -17.4678, popularServices: ['Plomberie', 'Maçonnerie', 'Soudure'] },
+  { id: 'tonghor', name: 'Tonghor', city: 'Dakar', latitude: 14.7610, longitude: -17.4720, popularServices: ['Maçonnerie', 'Plomberie', 'Électricité'] },
+  { id: 'ndeungagne', name: 'Ndeungagne', city: 'Dakar', latitude: 14.7590, longitude: -17.4650, popularServices: ['Électricité', 'Peinture', 'Menuiserie'] },
+  { id: 'layenne', name: 'Layenne', city: 'Dakar', latitude: 14.7620, longitude: -17.4690, popularServices: ['Plomberie', 'Serrurerie', 'Maçonnerie'] },
+  { id: 'diamalaye', name: 'Diamalaye', city: 'Dakar', latitude: 14.7640, longitude: -17.4580, popularServices: ['Carrelage', 'Plomberie', 'Électricité'] },
+  { id: 'nord-foire', name: 'Nord-Foire', city: 'Dakar', latitude: 14.7490, longitude: -17.4610, popularServices: ['Climatisation', 'Électricité', 'Plomberie'] },
+  { id: 'ouest-foire', name: 'Ouest-Foire', city: 'Dakar', latitude: 14.7440, longitude: -17.4660, popularServices: ['Serrurerie', 'Peinture', 'Nettoyage'] },
+
+  // Grand Yoff
+  { id: 'grand-yoff', name: 'Grand Yoff', city: 'Dakar', latitude: 14.7360, longitude: -17.4520, popularServices: ['Maçonnerie', 'Menuiserie Alu', 'Mécanique'] },
+  { id: 'khar-yalla', name: 'Khar Yalla', city: 'Dakar', latitude: 14.7310, longitude: -17.4560, popularServices: ['Électricité', 'Plomberie', 'Soudure'] },
+  { id: 'arafat', name: 'Arafat', city: 'Dakar', latitude: 14.7340, longitude: -17.4490, popularServices: ['Carrelage', 'Maçonnerie', 'Électricité'] },
+  { id: 'zone-captage', name: 'Zone de Captage', city: 'Dakar', latitude: 14.7280, longitude: -17.4450, popularServices: ['Climatisation', 'Plomberie', 'Électricité'] },
+  { id: 'darou-salam', name: 'Darou Salam', city: 'Dakar', latitude: 14.7380, longitude: -17.4540, popularServices: ['Menuiserie', 'Peinture', 'Plomberie'] },
+  { id: 'taiba', name: 'Taïba', city: 'Dakar', latitude: 14.7350, longitude: -17.4505, popularServices: ['Soudure', 'Maçonnerie', 'Électricité'] },
+  { id: 'gazelle', name: 'Gazelle', city: 'Dakar', latitude: 14.7370, longitude: -17.4480, popularServices: ['Plomberie', 'Électricité', 'Peinture'] },
+  { id: 'cite-millionnaire', name: 'Cité Millionnaire', city: 'Dakar', latitude: 14.7390, longitude: -17.4460, popularServices: ['Climatisation', 'Électricité', 'Plomberie'] },
+
+  // Patte d'Oie & Keur Damel
+  { id: 'patte-doie', name: 'Patte d’Oie', city: 'Dakar', latitude: 14.7430, longitude: -17.4420, popularServices: ['Plomberie', 'Électricité', 'Peinture'] },
+  { id: 'grand-medine', name: 'Grand Médine', city: 'Dakar', latitude: 14.7410, longitude: -17.4380, popularServices: ['Menuiserie Alu', 'Carrelage', 'Électricité'] },
+  { id: 'patte-doie-builders', name: 'Patte d’Oie Builders', city: 'Dakar', latitude: 14.7450, longitude: -17.4400, popularServices: ['Climatisation', 'Plomberie', 'Électricité'] },
+  { id: 'keur-damel', name: 'Keur Damel', city: 'Dakar', latitude: 14.7470, longitude: -17.4450, popularServices: ['Serrurerie', 'Peinture', 'Plomberie'] },
+  { id: 'cite-soprim', name: 'Cité Soprim', city: 'Dakar', latitude: 14.7485, longitude: -17.4260, popularServices: ['Électricité', 'Plomberie', 'Maçonnerie'] },
+  { id: 'cite-impots-domaines', name: 'Cité Impôts et Domaines', city: 'Dakar', latitude: 14.7460, longitude: -17.4310, popularServices: ['Climatisation', 'Nettoyage', 'Électricité'] },
+
+  // Parcelles Assainies
+  { id: 'parcelles-assainies', name: 'Unités 1 à 26 (Parcelles Assainies)', city: 'Dakar', latitude: 14.7580, longitude: -17.4310, popularServices: ['Maçonnerie', 'Plomberie', 'Électricité', 'Carrelage'] },
+  { id: 'cite-fadia', name: 'Cité Fadia', city: 'Dakar', latitude: 14.7620, longitude: -17.4280, popularServices: ['Plomberie', 'Électricité', 'Peinture'] },
+
+  // Cambérène
+  { id: 'camberene-traditionnel', name: 'Cambérène traditionnel', city: 'Dakar', latitude: 14.7700, longitude: -17.4220, popularServices: ['Maçonnerie', 'Soudure', 'Plomberie'] },
+  { id: 'camberene-extension', name: 'Cambérène Extension', city: 'Dakar', latitude: 14.7730, longitude: -17.4180, popularServices: ['Électricité', 'Carrelage', 'Plomberie'] },
+
+  // Banlieue & Périphérie
+  { id: 'guediawaye', name: 'Guédiawaye (Golf, Hamo, Wakhinane, Ndiarème)', city: 'Dakar', latitude: 14.7734, longitude: -17.3987, popularServices: ['Maçonnerie', 'Menuiserie Alu', 'Mécanique'] },
+  { id: 'pikine', name: 'Pikine (Centre, Thiaroye, Guinaw Rails)', city: 'Dakar', latitude: 14.7550, longitude: -17.3950, popularServices: ['Soudure', 'Mécanique', 'Électricité'] },
+  { id: 'keur-massar', name: 'Keur Massar & Malika', city: 'Dakar', latitude: 14.7865, longitude: -17.3123, popularServices: ['Carrelage', 'Plomberie', 'Soudure'] },
+  { id: 'rufisque', name: 'Rufisque (Centre, Arafat, Bargny)', city: 'Dakar', latitude: 14.7167, longitude: -17.2667, popularServices: ['Maçonnerie', 'Électricité', 'Ferronnerie'] },
+  { id: 'diamniadio', name: 'Diamniadio & Sébikotane', city: 'Dakar', latitude: 14.7300, longitude: -17.1800, popularServices: ['Gros œuvre', 'Électricité', 'Plomberie'] },
 ];
 
 export const CATEGORIES: Category[] = [

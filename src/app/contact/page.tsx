@@ -147,7 +147,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-800 text-sm">Courrier Électronique</h4>
-                    <p className="text-slate-500 mt-0.5">contact@samaartisan.sn</p>
+                    <a href="mailto:mmahamar32@gmail.com" className="text-slate-500 hover:text-sama-600 font-medium text-xs mt-0.5 block transition-colors">mmahamar32@gmail.com</a>
                     <p className="text-[11px] text-slate-400">Réponse sous 2 à 4 heures ouvrées</p>
                   </div>
                 </div>

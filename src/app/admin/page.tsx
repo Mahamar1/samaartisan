@@ -2643,7 +2643,7 @@ export default function AdminDashboardPage() {
                 <div>
                   <h3 className="text-base font-black text-white">Rédiger une Réponse par E-mail</h3>
                   <p className="text-xs text-slate-400">
-                    Destinataire : <span className="text-white font-bold">{replyRecipientName}</span> ({replyRecipientEmail || 'contact@samaartisan.sn'})
+                    Destinataire : <span className="text-white font-bold">{replyRecipientName}</span> ({replyRecipientEmail || 'mmahamar32@gmail.com'})
                   </p>
                 </div>
               </div>

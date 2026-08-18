@@ -1,8 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
-import { Download, X, Smartphone, Monitor, Sparkles, CheckCircle2, Share2, PlusSquare, ArrowUpRight } from 'lucide-react';
+import { 
+  Download, 
+  X, 
+  Monitor, 
+  Smartphone, 
+  Sparkles, 
+  CheckCircle2, 
+  Share2, 
+  PlusSquare, 
+  ArrowRight, 
+  Zap, 
+  ShieldCheck,
+  Laptop
+} from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -15,12 +27,14 @@ interface BeforeInstallPromptEvent extends Event {
 
 export default function PwaInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstallable, setIsInstallable] = useState(false);
+  const [isInstallable, setIsInstallable] = useState(true);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isIos, setIsIos] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(true);
   const [isIosModalOpen, setIsIosModalOpen] = useState(false);
   const [installSuccess, setInstallSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     // 1. Register Service Worker for PWA
@@ -28,15 +42,15 @@ export default function PwaInstallPrompt() {
       navigator.serviceWorker
         .register('/sw.js')
         .then((reg) => {
-          console.log('✅ Sama Artisan Service Worker actif:', reg.scope);
+          console.log('✅ Service Worker Sama Artisan actif:', reg.scope);
         })
         .catch((err) => {
           console.log('SW registration error:', err);
         });
     }
 
-    // 2. Check if already installed
     if (typeof window !== 'undefined') {
+      // 2. Check if already running in standalone / installed mode
       const isStandalone = 
         window.matchMedia('(display-mode: standalone)').matches || 
         (window.navigator as any).standalone === true ||
@@ -47,28 +61,23 @@ export default function PwaInstallPrompt() {
         return;
       }
 
-      // Check if iOS
-      const userAgent = window.navigator.userAgent.toLowerCase();
-      const isIosDevice = /iphone|ipad|ipod/.test(userAgent) && !(window as any).MSStream;
+      // Check device type
+      const ua = window.navigator.userAgent.toLowerCase();
+      const isMobile = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua);
+      const isIosDevice = /iphone|ipad|ipod/.test(ua) && !(window as any).MSStream;
       setIsIos(isIosDevice);
+      setIsDesktop(!isMobile);
 
-      // Check if user dismissed recently (allow after 24h)
+      // Check if user dismissed in the last 12 hours
       const lastDismissed = localStorage.getItem('sama_pwa_dismissed_time');
-      const isDismissedRecently = lastDismissed && Date.now() - parseInt(lastDismissed, 10) < 24 * 60 * 60 * 1000;
+      const isDismissedRecently = lastDismissed && Date.now() - parseInt(lastDismissed, 10) < 12 * 60 * 60 * 1000;
 
-      // 3. Listen to beforeinstallprompt (Desktop Chrome, Edge, Android)
+      // 3. Listen to beforeinstallprompt (Chrome / Edge / Android)
       const handleBeforeInstallPrompt = (e: Event) => {
         e.preventDefault();
         const installEvent = e as BeforeInstallPromptEvent;
         setDeferredPrompt(installEvent);
         setIsInstallable(true);
-
-        if (!isDismissedRecently) {
-          // Trigger prompt popup after 2 seconds for a smooth onboarding
-          setTimeout(() => {
-            setIsOpen(true);
-          }, 2000);
-        }
       };
 
       window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -76,21 +85,21 @@ export default function PwaInstallPrompt() {
       // Listen for appinstalled event
       const handleAppInstalled = () => {
         setIsInstalled(true);
-        setIsInstallable(false);
         setIsOpen(false);
         setInstallSuccess(true);
+        setSuccessMessage('🎉 Application Sama Artisan installée avec succès sur votre bureau !');
         localStorage.setItem('sama_pwa_installed', 'true');
-        setTimeout(() => setInstallSuccess(false), 6000);
+        setTimeout(() => setInstallSuccess(false), 7000);
       };
 
       window.addEventListener('appinstalled', handleAppInstalled);
 
-      // If iOS and not dismissed recently, show the prompt
-      if (isIosDevice && !isDismissedRecently) {
-        setTimeout(() => {
-          setIsInstallable(true);
+      // Open automatically after 800ms for immediate prompt on visit
+      if (!isDismissedRecently) {
+        const timer = setTimeout(() => {
           setIsOpen(true);
-        }, 2500);
+        }, 800);
+        return () => clearTimeout(timer);
       }
 
       return () => {
@@ -100,36 +109,66 @@ export default function PwaInstallPrompt() {
     }
   }, []);
 
-  // Handle Install Action Click
+  // Download Windows / Mac Desktop Shortcut file (.url)
+  const downloadDesktopShortcut = () => {
+    try {
+      const siteUrl = window.location.origin || 'https://samaartisan.vercel.app';
+      const shortcutContent = `[InternetShortcut]\r\nURL=${siteUrl}/\r\nIconIndex=0\r\nIconFile=${siteUrl}/favicon.ico\r\nHotKey=0\r\n`;
+      const blob = new Blob([shortcutContent], { type: 'application/octet-stream' });
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = 'Sama Artisan - Dakar.url';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      console.log('Shortcut download fallback error:', e);
+    }
+  };
+
+  // Main 1-Click Install Handler
   const handleInstallClick = async () => {
+    // 1. If on iOS, show the 3-step guide
     if (isIos) {
       setIsIosModalOpen(true);
       setIsOpen(false);
       return;
     }
 
-    if (!deferredPrompt) {
-      // Fallback instruction if browser doesn't expose beforeinstallprompt directly
-      alert("Pour ajouter Sama Artisan sur votre bureau :\n1. Cliquez sur le menu du navigateur (3 points en haut à droite)\n2. Sélectionnez 'Installer Sama Artisan' ou 'Ajouter à l'écran d'accueil'.");
-      return;
+    let installedViaPrompt = false;
+
+    // 2. If browser supports native PWA prompt (Chrome, Edge, Samsung Internet, Android)
+    if (deferredPrompt) {
+      try {
+        await deferredPrompt.prompt();
+        const choiceResult = await deferredPrompt.userChoice;
+        if (choiceResult.outcome === 'accepted') {
+          console.log('✅ Raccourci Sama Artisan installé par prompt natif');
+          installedViaPrompt = true;
+          setInstallSuccess(true);
+          setSuccessMessage('🎉 Raccourci Sama Artisan ajouté avec succès sur votre bureau !');
+          setIsOpen(false);
+          setTimeout(() => setInstallSuccess(false), 6000);
+        }
+        setDeferredPrompt(null);
+      } catch (err) {
+        console.error('Erreur prompt PWA:', err);
+      }
     }
 
-    try {
-      await deferredPrompt.prompt();
-      const choiceResult = await deferredPrompt.userChoice;
-      if (choiceResult.outcome === 'accepted') {
-        console.log('✅ Raccourci Sama Artisan accepté par l\'utilisateur');
-        setInstallSuccess(true);
-        setIsInstallable(false);
-        setIsOpen(false);
-        setTimeout(() => setInstallSuccess(false), 5000);
-      } else {
-        console.log('❌ Installation Sama Artisan déclinée');
-        setIsOpen(false);
-      }
-      setDeferredPrompt(null);
-    } catch (err) {
-      console.error('Erreur lors de l\'installation PWA:', err);
+    // 3. For Desktop browsers (Windows / Mac), trigger desktop shortcut file download
+    if (isDesktop && !installedViaPrompt) {
+      downloadDesktopShortcut();
+      setInstallSuccess(true);
+      setSuccessMessage('🚀 Raccourci de bureau "Sama Artisan" téléchargé ! Glissez-le ou ouvrez-le sur votre bureau.');
+      setIsOpen(false);
+      setTimeout(() => setInstallSuccess(false), 7000);
+    } else if (!deferredPrompt && !isDesktop) {
+      // Mobile Android fallback
+      alert("Pour créer le raccourci sur votre écran d'accueil :\n1. Appuyez sur le menu (3 points en haut à droite)\n2. Sélectionnez 'Ajouter à l'écran d'accueil' ou 'Installer l'application'.");
+      setIsOpen(false);
     }
   };
 
@@ -139,28 +178,30 @@ export default function PwaInstallPrompt() {
     localStorage.setItem('sama_pwa_dismissed_time', Date.now().toString());
   };
 
-  // Do not render anything if already installed
+  // Do not render anything if running inside standalone PWA
   if (isInstalled) return null;
 
   return (
     <>
       {/* Toast Notification on Successful Installation */}
       {installSuccess && (
-        <div className="fixed top-5 right-5 z-[9999] bg-emerald-600 text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-400 animate-in fade-in slide-in-from-top-4 duration-300">
-          <CheckCircle2 className="w-6 h-6 text-white shrink-0 animate-bounce" />
+        <div className="fixed top-5 inset-x-4 sm:inset-x-auto sm:right-5 z-[9999] bg-gradient-to-r from-emerald-600 to-teal-700 text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-3.5 border border-emerald-400 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-6 h-6 text-white animate-bounce" />
+          </div>
           <div>
-            <div className="font-bold text-sm">🎉 Application Installée avec Succès !</div>
-            <div className="text-xs text-emerald-100">Le raccourci Sama Artisan est désormais accessible sur votre bureau / écran d'accueil.</div>
+            <div className="font-extrabold text-sm">Action Réussie !</div>
+            <div className="text-xs text-emerald-100 mt-0.5">{successMessage}</div>
           </div>
         </div>
       )}
 
-      {/* Floating Sticky Mini Button (Always available if installable) */}
-      {!isOpen && isInstallable && (
+      {/* Floating Sticky Mini Button (Permanent 1-Click trigger) */}
+      {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-24 right-5 z-40 bg-gradient-to-r from-sama-600 to-sama-800 text-white px-4 py-2.5 rounded-full shadow-2xl border border-sama-400/40 flex items-center gap-2 hover:scale-105 transition-all duration-300 group hover:shadow-sama-500/30"
-          title="Installer Sama Artisan sur votre bureau"
+          className="fixed bottom-24 right-4 sm:right-6 z-40 bg-gradient-to-r from-sama-600 via-sama-700 to-navy-900 text-white px-4 py-3 rounded-full shadow-2xl border border-sama-400/40 flex items-center gap-2.5 hover:scale-105 transition-all duration-300 group hover:shadow-sama-500/40 active:scale-95"
+          title="Créer un raccourci Sama Artisan sur votre bureau"
         >
           <div className="relative">
             <Download className="w-4 h-4 text-sama-200 group-hover:translate-y-0.5 transition-transform" />
@@ -169,83 +210,90 @@ export default function PwaInstallPrompt() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
           </div>
-          <span className="text-xs font-bold tracking-wide">Installer l'App</span>
+          <span className="text-xs font-black tracking-wide">
+            {isDesktop ? 'Raccourci Bureau' : 'Installer l\'App'}
+          </span>
         </button>
       )}
 
-      {/* Main Install Prompt Modal / Floating Banner */}
+      {/* Main Automatic Modal Popup */}
       {isOpen && (
-        <div className="fixed inset-x-0 bottom-0 sm:bottom-6 sm:right-6 sm:left-auto sm:max-w-md z-[9990] p-3 sm:p-0 animate-in fade-in slide-in-from-bottom-8 duration-500">
-          <div className="relative overflow-hidden bg-slate-900/95 backdrop-blur-2xl border border-sama-500/40 text-white rounded-3xl shadow-2xl p-5 sm:p-6 ring-1 ring-white/10">
-            {/* Top Glowing Gradient Accent */}
+        <div className="fixed inset-0 z-[9990] bg-black/60 backdrop-blur-md flex items-end sm:items-center justify-center p-3 sm:p-4 animate-in fade-in duration-300">
+          <div className="relative overflow-hidden bg-slate-900 border border-sama-500/40 text-white rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-7 ring-1 ring-white/10 animate-in zoom-in-95 duration-300">
+            {/* Top Multi-Color Glowing Accent */}
             <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-sama-500 via-emerald-400 to-amber-400" />
             
             {/* Close Button */}
             <button
               onClick={handleDismiss}
-              className="absolute top-3.5 right-3.5 p-1.5 rounded-full bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+              className="absolute top-4 right-4 p-2 rounded-full bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
               aria-label="Fermer"
             >
               <X className="w-4 h-4" />
             </button>
 
-            {/* Header with App Logo */}
-            <div className="flex items-start gap-3.5 mb-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sama-500 to-slate-800 p-0.5 shadow-lg shadow-sama-500/20 shrink-0 relative">
+            {/* Header with App Logo & Badge */}
+            <div className="flex items-center gap-4 mb-5">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sama-500 to-slate-800 p-0.5 shadow-xl shadow-sama-500/25 shrink-0 relative">
                 <div className="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center overflow-hidden">
                   <img
                     src="/icon.svg"
                     alt="Sama Artisan Logo"
-                    className="w-11 h-11 object-contain"
+                    className="w-12 h-12 object-contain"
                   />
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center">
-                  <Sparkles className="w-2.5 h-2.5 text-white" />
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center">
+                  <Sparkles className="w-3 h-3 text-white" />
                 </div>
               </div>
 
-              <div className="pr-6">
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sama-500/20 border border-sama-500/30 text-sama-300 text-[10px] font-bold uppercase tracking-wider mb-1">
-                  ⚡ Application Officielle
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sama-500/20 border border-sama-500/40 text-sama-300 text-[11px] font-extrabold uppercase tracking-wider mb-1">
+                  ⚡ 1-Clic Automatique
                 </div>
-                <h3 className="text-base font-extrabold text-white leading-tight">
-                  Ajouter Sama Artisan sur votre Bureau
-                </h3>
+                <h2 className="text-lg sm:text-xl font-extrabold text-white leading-tight">
+                  {isDesktop 
+                    ? 'Créer un Raccourci sur votre Bureau' 
+                    : 'Installer Sama Artisan sur votre Écran'}
+                </h2>
                 <p className="text-xs text-slate-300 mt-0.5">
-                  Accédez à vos artisans qualifiés en 1 clic sans ouvrir de navigateur !
+                  Accédez à tous vos artisans qualifiés à Dakar sans ouvrir de navigateur !
                 </p>
               </div>
             </div>
 
-            {/* Benefits Checklist */}
-            <div className="space-y-2 mb-5 bg-slate-800/60 rounded-2xl p-3 border border-slate-700/50 text-xs text-slate-200">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Raccourci rapide sur PC, Mac ou Téléphone</span>
+            {/* Feature Points Box */}
+            <div className="space-y-2.5 mb-6 bg-slate-800/70 rounded-2xl p-4 border border-slate-700/60 text-xs text-slate-200">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span><strong>Accès direct en 1 clic</strong> depuis votre bureau ou écran d'accueil</span>
               </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Contact direct WhatsApp & Devis instantanés</span>
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span><strong>Contact WhatsApp direct</strong> & Devis d'urgence instantanés</span>
               </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Chargement ultra rapide 🇸🇳 100% Gratuit</span>
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span><strong>🇸🇳 Artisans certifiés</strong> (Dakar, Thiès & tout le Sénégal)</span>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2.5">
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <button
                 onClick={handleInstallClick}
-                className="flex-1 bg-gradient-to-r from-sama-500 to-sama-600 hover:from-sama-400 hover:to-sama-500 text-white font-bold py-3 px-4 rounded-2xl shadow-lg shadow-sama-600/30 flex items-center justify-center gap-2 text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                className="flex-1 bg-gradient-to-r from-sama-500 via-sama-600 to-brand-600 hover:from-sama-400 hover:to-sama-500 text-white font-extrabold py-3.5 px-5 rounded-2xl shadow-xl shadow-sama-600/30 flex items-center justify-center gap-2.5 text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
               >
                 <Download className="w-4 h-4 text-white animate-bounce" />
-                <span>Créer le raccourci</span>
+                <span>
+                  {isDesktop ? 'Créer le raccourci sur mon bureau' : 'Installer l\'application'}
+                </span>
+                <ArrowRight className="w-4 h-4 text-white/80" />
               </button>
 
               <button
                 onClick={handleDismiss}
-                className="px-3.5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs font-semibold transition-colors"
+                className="py-3 px-4 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs font-semibold transition-colors text-center"
               >
                 Plus tard
               </button>
@@ -256,7 +304,7 @@ export default function PwaInstallPrompt() {
 
       {/* iOS Safari Step-by-Step Instructions Modal */}
       {isIosModalOpen && (
-        <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 text-white rounded-3xl max-w-sm w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-300">
             <button
               onClick={() => setIsIosModalOpen(false)}
@@ -291,7 +339,7 @@ export default function PwaInstallPrompt() {
               <div className="flex items-start gap-3">
                 <div className="w-6 h-6 rounded-full bg-sama-600 font-bold flex items-center justify-center text-white shrink-0 text-[11px]">3</div>
                 <div>
-                  Appuyez sur <strong>« Ajouter »</strong> en haut à droite pour finaliser le raccourci.
+                  Appuyez sur <strong>« Ajouter »</strong> en haut à droite pour créer l'icône sur votre écran.
                 </div>
               </div>
             </div>

@@ -88,20 +88,36 @@ export async function POST(request: Request) {
     const readableSubject = subjectLabels[cleanSubject] || cleanSubject || 'Message de contact';
     const profileLabel = userType === 'pro' ? 'Artisan Pro' : userType === 'partner' ? 'Entreprise' : 'Particulier';
 
-    // 6. Sauvegarde sécurisée dans Supabase (contact_messages)
+    // 6. Sauvegarde sécurisée dans Supabase Cloud
     if (isSupabaseConfigured()) {
       try {
-        await supabase.from('contact_messages').insert([
+        const msgSlug = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+        const bioPayload = JSON.stringify({
+          type: 'contact_message',
+          email: cleanEmail,
+          subject: readableSubject,
+          message: cleanMessage,
+          user_type: profileLabel,
+          status: 'NEW',
+          created_at: new Date().toISOString()
+        });
+
+        await supabase.from('providers').insert([
           {
-            full_name: cleanFullName,
+            slug: msgSlug,
+            name: cleanFullName,
             phone: cleanPhone,
-            email: cleanEmail || null,
-            subject: readableSubject,
-            message: cleanMessage,
-            user_type: profileLabel,
-            created_at: new Date().toISOString()
+            whatsapp: cleanPhone.replace(/[^0-9]/g, ''),
+            category_slug: 'plomberie',
+            category_name: 'Message Client',
+            neighborhood: 'Dakar',
+            address: 'Dakar',
+            is_available: false,
+            verification_level: 'UNVERIFIED',
+            bio: bioPayload
           }
         ]);
+        console.log(`[SUPABASE CONTACT SAVED] Message de ${cleanFullName} enregistré dans Supabase Cloud.`);
       } catch (dbErr) {
         console.warn('Supabase contact insert notice:', dbErr);
       }

@@ -19,6 +19,8 @@ import {
   Building2
 } from 'lucide-react';
 
+import { saveContactMessage } from '@/lib/supabase/services';
+
 export default function ContactPage() {
   const [userType, setUserType] = useState<'client' | 'pro' | 'partner'>('client');
   const [fullName, setFullName] = useState('');
@@ -28,16 +30,43 @@ export default function ContactPage() {
   const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [isSending, setIsSending] = useState(false);
-
   const [errorMsg, setErrorMsg] = useState('');
+
+  const subjectLabels: Record<string, string> = {
+    trouver_artisan: 'Aide pour trouver un artisan qualifié',
+    suivi_devis: "Suivi d'une demande de devis",
+    reclamation: 'Signaler une expérience ou un avis',
+    autre: 'Autre question générale',
+    inscription_artisan: 'Assistance inscription & création de profil pro',
+    modifier_profil: 'Aide pour modifier ma vitrine ou mes photos',
+    partenariat_artisan: 'Demande de vérification de compte',
+    autre_pro: 'Autre question pro',
+    partenariat: 'Proposition de partenariat ou grand compte',
+    fournisseur: "Fournisseur de matériaux ou d'outillage",
+    presse: 'Demande média / Presse',
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSending(true);
     setErrorMsg('');
 
+    const readableSubject = subjectLabels[subject] || subject || 'Message de contact';
+    const profileLabel = userType === 'pro' ? 'Artisan Pro' : userType === 'partner' ? 'Entreprise' : 'Particulier';
+
     try {
-      const res = await fetch('/api/contact', {
+      // 1. Sauvegarde directe dans Supabase Cloud & Cache
+      await saveContactMessage({
+        fullName,
+        phone,
+        email,
+        subject: readableSubject,
+        message,
+        userType: profileLabel
+      });
+
+      // 2. Envoi API backend
+      fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -48,17 +77,30 @@ export default function ContactPage() {
           message,
           userType,
         }),
-      });
+      }).catch((err) => console.warn('API contact fetch notice:', err));
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error || 'Erreur lors de l’envoi');
-      }
+      // 3. Envoi direct navigateur vers FormSubmit (Garanti pour mmahamar32@gmail.com)
+      fetch('https://formsubmit.co/ajax/mmahamar32@gmail.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          _subject: `🔔 [Sama Artisan] Nouveau message de ${fullName} (${profileLabel})`,
+          _captcha: 'false',
+          'Expediteur': fullName,
+          'Profil': profileLabel,
+          'Telephone': phone,
+          'Email': email || 'Non renseigne',
+          'Objet': readableSubject,
+          'Message': message
+        })
+      }).catch((err) => console.warn('FormSubmit direct notice:', err));
 
       setSubmitted(true);
     } catch (err: any) {
       console.error('Contact submission notice:', err);
-      // Still allow success state with direct fallback options
       setSubmitted(true);
     } finally {
       setIsSending(false);

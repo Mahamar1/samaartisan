@@ -188,7 +188,8 @@ export async function getProviders(): Promise<Provider[]> {
     const role = (p.role || '').toLowerCase();
 
     if (catName.includes('client') || catSlug.includes('client')) return false;
-    if (pSlug.startsWith('usr-')) return false;
+    if (catName.includes('message') || pSlug.startsWith('msg-')) return false;
+    if (pSlug.startsWith('usr-') || pSlug.startsWith('client-')) return false;
     if (pName.includes('compte client') || bName.includes('compte client')) return false;
     if (role === 'user' || role === 'client') return false;
     return true;
@@ -899,6 +900,12 @@ export async function getRegisteredAccounts(): Promise<AppUserAccount[]> {
           const catSlug = (item.category_slug || '').toLowerCase();
           const pSlug = (item.slug || '').toLowerCase();
           const pName = (item.name || '').toLowerCase();
+
+          // Skip contact messages
+          if (meta.type === 'contact_message' || catName.includes('message') || pSlug.startsWith('msg-')) {
+            continue;
+          }
+
           const isClient = 
             catName.includes('client') || 
             catSlug.includes('client') || 
@@ -990,6 +997,19 @@ export async function getPendingArtisans(): Promise<PendingArtisanData[]> {
       if (!error && data && data.length > 0) {
         for (const item of data) {
           if (isBlacklistedOrDeleted({ id: item.id, slug: item.slug, phone: item.phone, whatsapp: item.whatsapp })) {
+            continue;
+          }
+
+          let meta: any = {};
+          try {
+            if (item.bio && item.bio.startsWith('{')) {
+              meta = JSON.parse(item.bio);
+            }
+          } catch {}
+
+          const catName = (item.category_name || '').toLowerCase();
+          const pSlug = (item.slug || '').toLowerCase();
+          if (meta.type === 'contact_message' || catName.includes('message') || pSlug.startsWith('msg-') || catName.includes('client') || pSlug.startsWith('client-') || pSlug.startsWith('usr-')) {
             continue;
           }
 
@@ -1305,38 +1325,131 @@ export interface ContactMessage {
 
 export const DEFAULT_CONTACT_MESSAGES: ContactMessage[] = [];
 
-// Fetch all contact messages (100% Real from Supabase & actual submissions)
+// Save a contact message directly in Supabase Cloud & Local Storage
+export async function saveContactMessage(msgData: {
+  fullName: string;
+  phone: string;
+  email?: string;
+  subject: string;
+  message: string;
+  userType?: string;
+}): Promise<{ success: boolean; data?: ContactMessage; error?: any }> {
+  const cleanFullName = msgData.fullName.trim();
+  const cleanPhone = msgData.phone.trim();
+  const cleanEmail = (msgData.email || '').trim();
+  const cleanSubject = msgData.subject.trim();
+  const cleanMessage = msgData.message.trim();
+  const cleanUserType = msgData.userType || 'Particulier';
+  const nowIso = new Date().toISOString();
+  const msgSlug = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+  const bioPayload = JSON.stringify({
+    type: 'contact_message',
+    email: cleanEmail,
+    subject: cleanSubject,
+    message: cleanMessage,
+    user_type: cleanUserType,
+    status: 'NEW',
+    created_at: nowIso
+  });
+
+  let createdMessage: ContactMessage = {
+    id: msgSlug,
+    full_name: cleanFullName,
+    phone: cleanPhone,
+    email: cleanEmail,
+    subject: cleanSubject,
+    message: cleanMessage,
+    user_type: cleanUserType as any,
+    status: 'NEW',
+    created_at: nowIso
+  };
+
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabase
+        .from('providers')
+        .insert([{
+          slug: msgSlug,
+          name: cleanFullName,
+          phone: cleanPhone,
+          whatsapp: cleanPhone.replace(/[^0-9]/g, ''),
+          category_slug: 'plomberie',
+          category_name: 'Message Client',
+          neighborhood: 'Dakar',
+          address: 'Dakar',
+          is_available: false,
+          verification_level: 'UNVERIFIED',
+          bio: bioPayload
+        }])
+        .select()
+        .single();
+
+      if (!error && data) {
+        createdMessage.id = String(data.id);
+      }
+    } catch (e) {
+      console.warn('saveContactMessage supabase notice:', e);
+    }
+  }
+
+  // Cache locally
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('sama_contact_messages_cache');
+      const parsed: ContactMessage[] = stored ? JSON.parse(stored) : [];
+      if (!parsed.some(m => m.id === createdMessage.id || (m.phone === createdMessage.phone && m.created_at === createdMessage.created_at))) {
+        parsed.unshift(createdMessage);
+        localStorage.setItem('sama_contact_messages_cache', JSON.stringify(parsed));
+      }
+    } catch {}
+  }
+
+  return { success: true, data: createdMessage };
+}
+
+// Fetch all contact messages (100% Real from Supabase Cloud providers table)
 export async function getContactMessages(): Promise<ContactMessage[]> {
   let dbMessages: ContactMessage[] = [];
 
   if (isSupabaseConfigured()) {
     try {
       const { data, error } = await supabase
-        .from('contact_messages')
+        .from('providers')
         .select('*')
+        .or('category_name.eq.Message Client,slug.ilike.msg-%')
         .order('created_at', { ascending: false });
 
       if (!error && data && data.length > 0) {
-        dbMessages = data.map((m: any) => ({
-          id: String(m.id),
-          full_name: m.full_name || 'Expéditeur anonyme',
-          phone: m.phone || '',
-          email: m.email || '',
-          subject: m.subject || 'Message de contact',
-          message: m.message || '',
-          user_type: m.user_type || 'Particulier',
-          status: (m.status || 'NEW') as any,
-          created_at: m.created_at || new Date().toISOString(),
-          replied_at: m.replied_at,
-          reply_notes: m.reply_notes
-        }));
+        for (const item of data) {
+          let meta: any = {};
+          try {
+            if (item.bio && item.bio.startsWith('{')) {
+              meta = JSON.parse(item.bio);
+            }
+          } catch {}
+
+          dbMessages.push({
+            id: String(item.id),
+            full_name: item.name || 'Expéditeur anonyme',
+            phone: item.phone || '',
+            email: meta.email || '',
+            subject: meta.subject || 'Message de contact',
+            message: meta.message || item.bio || '',
+            user_type: (meta.user_type || 'Particulier') as any,
+            status: (meta.status || 'NEW') as any,
+            created_at: meta.created_at || item.created_at || new Date().toISOString(),
+            replied_at: meta.replied_at,
+            reply_notes: meta.reply_notes
+          });
+        }
       }
     } catch (err) {
       console.warn('Supabase getContactMessages error:', err);
     }
   }
 
-  // Local storage real messages
+  // Local storage cache
   let localMessages: ContactMessage[] = [];
   let deletedMsgIds: string[] = [];
 
@@ -1346,15 +1459,14 @@ export async function getContactMessages(): Promise<ContactMessage[]> {
       const stored = localStorage.getItem('sama_contact_messages_cache');
       if (stored) {
         const parsed = JSON.parse(stored);
-        // Filter out any previous fake mock IDs and deleted IDs
-        localMessages = parsed.filter((m: any) => !m.id?.startsWith('msg-') && !deletedMsgIds.includes(m.id));
+        localMessages = parsed.filter((m: any) => !deletedMsgIds.includes(m.id));
       }
     } catch {}
   }
 
   const combined = dbMessages.filter(m => !deletedMsgIds.includes(m.id));
   for (const lm of localMessages) {
-    if (!deletedMsgIds.includes(lm.id) && !combined.some(c => c.id === lm.id)) {
+    if (!deletedMsgIds.includes(lm.id) && !combined.some(c => c.id === lm.id || (lm.phone && c.phone === lm.phone && c.created_at === lm.created_at))) {
       combined.push(lm);
     }
   }
@@ -1369,7 +1481,7 @@ export async function getContactMessages(): Promise<ContactMessage[]> {
   return combined;
 }
 
-// Update contact message status
+// Update contact message status in Supabase Cloud
 export async function updateContactMessageStatus(
   id: string, 
   status: 'NEW' | 'READ' | 'REPLIED' | 'ARCHIVED',
@@ -1377,15 +1489,25 @@ export async function updateContactMessageStatus(
 ): Promise<boolean> {
   if (isSupabaseConfigured()) {
     try {
-      const updateData: any = { status };
-      if (status === 'REPLIED') {
-        updateData.replied_at = new Date().toISOString();
-        if (replyNotes) updateData.reply_notes = replyNotes;
+      const { data } = await supabase.from('providers').select('*').eq('id', id).single();
+      if (data) {
+        let meta: any = {};
+        try {
+          if (data.bio && data.bio.startsWith('{')) {
+            meta = JSON.parse(data.bio);
+          }
+        } catch {}
+
+        meta.status = status;
+        if (status === 'REPLIED') {
+          meta.replied_at = new Date().toISOString();
+          if (replyNotes) meta.reply_notes = replyNotes;
+        }
+        await supabase
+          .from('providers')
+          .update({ bio: JSON.stringify(meta) })
+          .eq('id', id);
       }
-      await supabase
-        .from('contact_messages')
-        .update(updateData)
-        .eq('id', id);
     } catch (err) {
       console.warn('Supabase updateContactMessageStatus notice:', err);
     }
@@ -1415,12 +1537,12 @@ export async function updateContactMessageStatus(
   return true;
 }
 
-// Delete contact message
+// Delete contact message from Supabase Cloud
 export async function deleteContactMessage(id: string): Promise<boolean> {
   if (isSupabaseConfigured()) {
     try {
       await supabase
-        .from('contact_messages')
+        .from('providers')
         .delete()
         .eq('id', id);
     } catch (err) {

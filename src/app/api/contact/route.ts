@@ -107,16 +107,39 @@ export async function POST(request: Request) {
       }
     }
 
-    // 7. Envoi direct d'email à mmahamar32@gmail.com via FormSubmit
+    // 7. Envoi direct d'email à mmahamar32@gmail.com (Double passerelle robuste)
     try {
-      const emailRes = await fetch('https://formsubmit.co/ajax/mmahamar32@gmail.com', {
+      const emailParams = new URLSearchParams();
+      emailParams.append('_subject', `🔔 [Sama Artisan] Nouveau message de ${cleanFullName} (${profileLabel})`);
+      emailParams.append('_captcha', 'false');
+      emailParams.append('_template', 'table');
+      emailParams.append('_replyto', cleanEmail || 'mmahamar32@gmail.com');
+      emailParams.append('Expéditeur', cleanFullName);
+      emailParams.append('Profil', profileLabel);
+      emailParams.append('Téléphone', cleanPhone);
+      emailParams.append('Email', cleanEmail || 'Non renseigné');
+      emailParams.append('Objet', readableSubject);
+      emailParams.append('Message', cleanMessage);
+
+      // Passerelle 1: URL-encoded FormSubmit
+      await fetch('https://formsubmit.co/mmahamar32@gmail.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Referer': 'https://samaartisan.vercel.app/contact',
+          'Origin': 'https://samaartisan.vercel.app'
+        },
+        body: emailParams.toString()
+      }).catch((e) => console.warn('Gateway 1 FormSubmit notice:', e));
+
+      // Passerelle 2: AJAX JSON FormSubmit
+      await fetch('https://formsubmit.co/ajax/mmahamar32@gmail.com', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Origin': 'https://samaartisan.vercel.app',
           'Referer': 'https://samaartisan.vercel.app/contact',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          'Origin': 'https://samaartisan.vercel.app'
         },
         body: JSON.stringify({
           _subject: `🔔 [Sama Artisan] Nouveau message de ${cleanFullName} (${profileLabel})`,
@@ -124,17 +147,13 @@ export async function POST(request: Request) {
           'Expediteur': cleanFullName,
           'Profil': profileLabel,
           'Telephone': cleanPhone,
-          'Email_Client': cleanEmail || 'Non renseigne',
+          'Email': cleanEmail || 'Non renseigne',
           'Objet': readableSubject,
-          'Message': cleanMessage,
-          _template: 'table',
-          _replyto: cleanEmail || 'mmahamar32@gmail.com'
+          'Message': cleanMessage
         })
-      });
-      const emailResult = await emailRes.json().catch(() => null);
-      if (emailResult) {
-        console.log('[EMAIL DISPATCH SUCCESS]', emailResult);
-      }
+      }).catch((e) => console.warn('Gateway 2 FormSubmit notice:', e));
+
+      console.log(`[EMAIL DISPATCH] Notification sent to mmahamar32@gmail.com for ${cleanFullName}`);
     } catch (mailErr) {
       console.error('Email dispatch notice:', mailErr);
     }

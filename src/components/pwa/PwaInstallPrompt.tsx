@@ -196,21 +196,21 @@ export default function PwaInstallPrompt() {
         </div>
       )}
 
-      {/* Floating Sticky Mini Button (Permanent 1-Click trigger) */}
+      {/* Floating Sticky Mini Button (Permanent 1-Click trigger positioned in bottom-left to avoid form overlap) */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-24 right-4 sm:right-6 z-40 bg-gradient-to-r from-sama-600 via-sama-700 to-navy-900 text-white px-4 py-3 rounded-full shadow-2xl border border-sama-400/40 flex items-center gap-2.5 hover:scale-105 transition-all duration-300 group hover:shadow-sama-500/40 active:scale-95"
+          className="fixed bottom-5 left-4 sm:left-6 z-30 bg-gradient-to-r from-sama-600 via-sama-700 to-navy-900 text-white px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-full shadow-2xl border border-sama-400/40 flex items-center gap-2 hover:scale-105 transition-all duration-300 group hover:shadow-sama-500/40 active:scale-95"
           title="Créer un raccourci Sama Artisan sur votre bureau"
         >
           <div className="relative">
-            <Download className="w-4 h-4 text-sama-200 group-hover:translate-y-0.5 transition-transform" />
+            <Download className="w-3.5 h-3.5 text-sama-200 group-hover:translate-y-0.5 transition-transform" />
             <span className="absolute -top-1 -right-1 flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
           </div>
-          <span className="text-xs font-black tracking-wide">
+          <span className="text-[11px] sm:text-xs font-black tracking-wide">
             {isDesktop ? 'Raccourci Bureau' : 'Installer l\'App'}
           </span>
         </button>

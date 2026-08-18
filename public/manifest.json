@@ -1,0 +1,66 @@
+{
+  "name": "Sama Artisan - Artisans & Dépannage Sénégal",
+  "short_name": "Sama Artisan",
+  "description": "Trouvez un artisan qualifié et certifié à Dakar et au Sénégal en 2 minutes (Plomberie, Électricité, Climatisation, Serrurerie).",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#0284c7",
+  "scope": "/",
+  "lang": "fr-SN",
+  "dir": "ltr",
+  "categories": ["business", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Rechercher un Artisan",
+      "short_name": "Recherche",
+      "description": "Trouver un artisan qualifié à Dakar",
+      "url": "/recherche",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Mon Compte",
+      "short_name": "Compte",
+      "description": "Espace client et artisan",
+      "url": "/mon-compte",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Devenir Prestataire",
+      "short_name": "Inscription Pro",
+      "description": "Inscrire son activité d'artisan",
+      "url": "/devenir-prestataire",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Contact & Support",
+      "short_name": "Support 7j/7",
+      "description": "Assistance client Sama Artisan",
+      "url": "/contact",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    }
+  ],
+  "prefer_related_applications": false
+}

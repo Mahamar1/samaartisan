@@ -96,7 +96,7 @@ const DEFAULT_CLIENTS: AppUser[] = [];
 export default function AdminDashboardPage() {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [adminEmail, setAdminEmail] = useState('');
+  const [adminEmail, setAdminEmail] = useState('mmahamar32@gmail.com');
   const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
@@ -257,13 +257,13 @@ export default function AdminDashboardPage() {
   const getEmailTemplate = (key: string, name: string, phone: string, subject: string) => {
     switch (key) {
       case 'mise_en_relation':
-        return `Bonjour ${name},\n\nMerci d'avoir contacté Sama Artisan concernant votre demande "${subject}".\n\nNos équipes ont sélectionné des artisans professionnels qualifiés et certifiés CNI dans votre zone.\n\nUn artisan de confiance va prendre contact avec vous directement au numéro ${phone}.\n\nRestant à votre entière disposition,\n\nBien cordialement,\nMohamed - Service Client Sama Artisan\nGrand Dakar, Sénégal\nTel / WhatsApp : +221 78 750 52 18\nEmail : contact@samaartisan.sn\nSite : https://samaartisan.vercel.app`;
+        return `Bonjour ${name},\n\nMerci d'avoir contacté Sama Artisan concernant votre demande "${subject}".\n\nNos équipes ont sélectionné des artisans professionnels qualifiés et certifiés CNI dans votre zone.\n\nUn artisan de confiance va prendre contact avec vous directement au numéro ${phone}.\n\nRestant à votre entière disposition,\n\nBien cordialement,\nMohamed - Service Client Sama Artisan\nGrand Dakar, Sénégal\nTel / WhatsApp : +221 78 750 52 18\nEmail : mmahamar32@gmail.com\nSite : https://samaartisan.vercel.app`;
       case 'validation_artisan':
-        return `Bonjour ${name},\n\nNous avons le plaisir de vous informer que votre profil d'artisan sur Sama Artisan a été vérifié et activé avec succès avec le badge de confiance CNI.\n\nVous pouvez dès à présent recevoir les demandes de devis et appels directs des clients sur votre numéro WhatsApp ${phone}.\n\nLien de votre vitrine pro : https://samaartisan.vercel.app\n\nBien cordialement,\nL'équipe Sama Artisan Sénégal\nService Artisans : +221 78 750 52 18`;
+        return `Bonjour ${name},\n\nNous avons le plaisir de vous informer que votre profil d'artisan sur Sama Artisan a été vérifié et activé avec succès avec le badge de confiance CNI.\n\nVous pouvez dès à présent recevoir les demandes de devis et appels directs des clients sur votre numéro WhatsApp ${phone}.\n\nLien de votre vitrine pro : https://samaartisan.vercel.app\n\nBien cordialement,\nL'équipe Sama Artisan Sénégal\nService Artisans : +221 78 750 52 18\nEmail : mmahamar32@gmail.com`;
       case 'info_complementaire':
-        return `Bonjour ${name},\n\nMerci pour votre message sur Sama Artisan concernant "${subject}".\n\nPour vous orienter vers le meilleur professionnel disponible, pourriez-vous nous préciser votre quartier exact à Dakar ainsi que la date ou le créneau souhaité pour l'intervention ?\n\nVous pouvez également nous joindre directement au +221 78 750 52 18.\n\nBien cordialement,\nL'équipe Sama Artisan`;
+        return `Bonjour ${name},\n\nMerci pour votre message sur Sama Artisan concernant "${subject}".\n\nPour vous orienter vers le meilleur professionnel disponible, pourriez-vous nous préciser votre quartier exact à Dakar ainsi que la date ou le créneau souhaité pour l'intervention ?\n\nVous pouvez également nous joindre directement au +221 78 750 52 18.\n\nBien cordialement,\nL'équipe Sama Artisan\nEmail : mmahamar32@gmail.com`;
       case 'partenariat':
-        return `Bonjour ${name},\n\nNous vous remercions pour l'intérêt que vous portez à la plateforme Sama Artisan.\n\nVotre proposition concernant "${subject}" a retenu toute notre attention. Notre responsable de développement vous propose un échange téléphonique ou un rendez-vous à notre siège de Grand Dakar.\n\nBien cordialement,\nMohamed - Direction Sama Artisan\nEmail : contact@samaartisan.sn | Tel : +221 78 750 52 18`;
+        return `Bonjour ${name},\n\nNous vous remercions pour l'intérêt que vous portez à la plateforme Sama Artisan.\n\nVotre proposition concernant "${subject}" a retenu toute notre attention. Notre responsable de développement vous propose un échange téléphonique ou un rendez-vous à notre siège de Grand Dakar.\n\nBien cordialement,\nMohamed - Direction Sama Artisan\nEmail : mmahamar32@gmail.com | Tel : +221 78 750 52 18`;
       default:
         return `Bonjour ${name},\n\nMerci pour votre message concernant "${subject}".\n\nNous avons bien pris en compte votre demande et revenons vers vous dans les plus brefs délais.\n\nBien cordialement,\nL'équipe Sama Artisan\nTel : +221 78 750 52 18\nhttps://samaartisan.vercel.app`;
     }
@@ -801,7 +801,7 @@ export default function AdminDashboardPage() {
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="contact@samaartisan.sn"
+                  placeholder="mmahamar32@gmail.com"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   required
@@ -852,8 +852,8 @@ export default function AdminDashboardPage() {
 
           {/* Quick Access Info for Owner */}
           <div className="p-3 rounded-xl bg-slate-950/50 border border-slate-800/80 text-[11px] text-slate-400 space-y-1 text-center">
-            <p className="text-slate-300 font-bold">Identifiants par défaut du propriétaire :</p>
-            <p className="font-mono text-sama-400">Email : contact@samaartisan.sn</p>
+            <p className="text-slate-300 font-bold">Identifiants de connexion :</p>
+            <p className="font-mono text-sama-400">Email : mmahamar32@gmail.com</p>
             <p className="font-mono text-emerald-400">Mot de passe : admin2026</p>
           </div>
 
@@ -1365,8 +1365,8 @@ export default function AdminDashboardPage() {
                   <span>Email Officiel Réception</span>
                   <Mail className="w-4 h-4 text-purple-400" />
                 </div>
-                <div className="text-xs font-mono font-black text-white mt-3 truncate" title="contact@samaartisan.sn">
-                  contact@samaartisan.sn
+                <div className="text-xs font-mono font-black text-white mt-3 truncate" title="mmahamar32@gmail.com">
+                  mmahamar32@gmail.com
                 </div>
                 <p className="text-[11px] text-emerald-400 font-bold mt-1">✓ Notification en direct active</p>
               </div>
@@ -1387,7 +1387,7 @@ export default function AdminDashboardPage() {
 
                 <div className="flex items-center gap-2">
                   <a
-                    href="mailto:contact@samaartisan.sn"
+                    href="mailto:mmahamar32@gmail.com"
                     target="_blank"
                     rel="noreferrer"
                     className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-700 transition-colors"

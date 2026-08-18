@@ -156,7 +156,7 @@ function HomePageContent() {
           clientName: newRegistration.name,
           clientPhone: newRegistration.phone,
           serviceType: `Inscription Artisan Pro - ${newRegistration.categoryName}`,
-          channel: 'INSCRIPTION_PAGE'
+          channel: 'FORM'
         }).catch(() => {});
 
       } else {
@@ -186,7 +186,7 @@ function HomePageContent() {
           clientName: clientAccount.name,
           clientPhone: clientAccount.phone,
           serviceType: 'Inscription Client Particulier',
-          channel: 'INSCRIPTION_PAGE'
+          channel: 'FORM'
         }).catch(() => {});
       }
     } catch (err) {

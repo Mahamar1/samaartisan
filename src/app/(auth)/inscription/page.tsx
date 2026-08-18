@@ -37,7 +37,7 @@ function InscriptionContent() {
   
   // Pro Specific Fields
   const [businessName, setBusinessName] = useState('');
-  const [category, setCategory] = useState('plomberie');
+  const [category, setCategory] = useState(CATEGORIES[0]?.slug || 'plombier');
 
   // Get available districts for the selected region
   const availableDistricts = useMemo(() => {

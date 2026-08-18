@@ -42,7 +42,7 @@ function HomePageContent() {
   
   // Pro Specific Fields
   const [businessName, setBusinessName] = useState('');
-  const [category, setCategory] = useState('plomberie');
+  const [category, setCategory] = useState(CATEGORIES[0]?.slug || 'plombier');
 
   // Districts for selected region
   const availableDistricts = useMemo(() => {

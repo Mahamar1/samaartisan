@@ -154,7 +154,7 @@ export default function AdminDashboardPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newArtisanName, setNewArtisanName] = useState('');
   const [newArtisanBusiness, setNewArtisanBusiness] = useState('');
-  const [newArtisanCategory, setNewArtisanCategory] = useState('plomberie');
+  const [newArtisanCategory, setNewArtisanCategory] = useState(CATEGORIES[0]?.slug || 'plombier');
   const [newArtisanPhone, setNewArtisanPhone] = useState('+221 77 ');
   const [newArtisanNeighborhood, setNewArtisanNeighborhood] = useState('Almadies');
 

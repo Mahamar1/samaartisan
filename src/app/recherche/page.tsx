@@ -252,18 +252,13 @@ function SearchContent() {
               <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
                 Quartiers {selectedRegion ? `(${SENEGAL_REGIONS.find(r => r.id === selectedRegion)?.name})` : ''}
               </label>
-              <select
+              <input
+                type="text"
                 value={selectedDistrict}
                 onChange={(e) => setSelectedDistrict(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 focus:bg-white focus:ring-2 focus:ring-sama-500 text-navy-900"
-              >
-                <option value="">Tous les quartiers ({availableDistricts.length})</option>
-                {availableDistricts.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+                placeholder="Filtrer par quartier (ex: Sacré-Cœur, Medina...)"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold bg-slate-50 focus:bg-white focus:ring-2 focus:ring-sama-500 text-navy-900 placeholder:text-slate-400 font-medium"
+              />
             </div>
 
             {/* 4. Trier par */}

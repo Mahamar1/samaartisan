@@ -128,21 +128,16 @@ export default function HeroSearch() {
               <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                 Quartiers
               </label>
-              <select
+              <input
+                type="text"
                 value={selectedDistrict}
                 onChange={(e) => {
                   setSelectedDistrict(e.target.value);
                   setGeoDetectedText(null);
                 }}
-                className="w-full bg-transparent text-xs font-bold text-navy-900 focus:outline-none cursor-pointer"
-              >
-                <option value="">Tous les quartiers ({availableDistricts.length})</option>
-                {availableDistricts.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+                placeholder="Entrez un quartier..."
+                className="w-full bg-transparent text-xs font-bold text-navy-900 focus:outline-none placeholder:text-slate-400 font-medium"
+              />
             </div>
 
             {/* GPS Locate Button */}

@@ -39,18 +39,11 @@ function HomePageContent() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [selectedRegionId, setSelectedRegionId] = useState('dakar');
+  const [neighborhood, setNeighborhood] = useState('');
   
   // Pro Specific Fields
   const [businessName, setBusinessName] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0]?.slug || 'plombier');
-
-  // Districts for selected region
-  const availableDistricts = useMemo(() => {
-    const found = SENEGAL_REGIONS.find((r) => r.id === selectedRegionId);
-    return found ? found.districts : [];
-  }, [selectedRegionId]);
-
-  const [selectedDistrictId, setSelectedDistrictId] = useState('almadies');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registeredSuccess, setRegisteredSuccess] = useState<any>(null);
   const [formError, setFormError] = useState('');
@@ -65,12 +58,6 @@ function HomePageContent() {
   // Handle region change
   const handleRegionChange = (newRegionId: string) => {
     setSelectedRegionId(newRegionId);
-    const region = SENEGAL_REGIONS.find((r) => r.id === newRegionId);
-    if (region && region.districts.length > 0) {
-      setSelectedDistrictId(region.districts[0].id);
-    } else {
-      setSelectedDistrictId('');
-    }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -113,9 +100,7 @@ function HomePageContent() {
         return;
       }
 
-      const regionObj = SENEGAL_REGIONS.find((r) => r.id === selectedRegionId);
-      const districtObj = regionObj?.districts.find((d) => d.id === selectedDistrictId);
-      const districtName = districtObj ? districtObj.name : (selectedDistrictId || 'Dakar');
+      const districtName = neighborhood.trim() || 'Dakar';
 
       if (activeRole === 'pro') {
         const categoryObj = CATEGORIES.find((c) => c.slug === category);
@@ -468,20 +453,16 @@ function HomePageContent() {
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-sama-600" />
-                    <span>Quartier / Ville *</span>
+                    <span>Quartier / Adresse *</span>
                   </label>
-                  <select
-                    value={selectedDistrictId}
-                    onChange={(e) => setSelectedDistrictId(e.target.value)}
+                  <input
+                    type="text"
+                    placeholder="Écrivez votre quartier (ex: Sacré-Cœur, Almadies, Medina...)"
+                    value={neighborhood}
+                    onChange={(e) => setNeighborhood(e.target.value)}
                     required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-sama-500 focus:outline-none"
-                  >
-                    {availableDistricts.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:ring-2 focus:ring-sama-500 focus:outline-none font-medium"
+                  />
                 </div>
               </div>
 

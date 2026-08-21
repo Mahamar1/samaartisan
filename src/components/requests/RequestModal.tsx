@@ -220,19 +220,15 @@ export default function RequestModal({ provider, isOpen, onClose }: RequestModal
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-sama-600" />
-                    <span>Votre Quartier</span>
+                    <span>Votre Quartier / Adresse</span>
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={neighborhood}
                     onChange={(e) => setNeighborhood(e.target.value)}
+                    placeholder="Ex: Sacré-Cœur, Almadies, Medina..."
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold bg-slate-50 focus:bg-white focus:ring-2 focus:ring-sama-500"
-                  >
-                    {NEIGHBORHOODS.map((n) => (
-                      <option key={n.id} value={n.name}>
-                        {n.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 <div>

@@ -27,7 +27,10 @@ import {
   HeartHandshake,
   TrendingUp,
   Award,
-  ChevronDown
+  ChevronDown,
+  Monitor,
+  Tv,
+  Truck
 } from 'lucide-react';
 import { CATEGORIES, NEIGHBORHOODS, formatFcfa } from '@/lib/data';
 import { getProviders } from '@/lib/supabase/services';
@@ -231,14 +234,19 @@ export default function LandingPage() {
                 className="group p-6 rounded-3xl bg-slate-900 border border-slate-800 hover:border-sama-500/50 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
               >
                 <div className="w-12 h-12 rounded-2xl bg-slate-800 group-hover:bg-sama-600 text-sama-400 group-hover:text-white transition-all flex items-center justify-center mb-4">
-                  {cat.slug === 'plomberie' && <Wrench className="w-6 h-6" />}
-                  {cat.slug === 'electricite' && <Zap className="w-6 h-6" />}
-                  {cat.slug === 'climatisation' && <Wind className="w-6 h-6" />}
-                  {cat.slug === 'menuiserie' && <Hammer className="w-6 h-6" />}
-                  {cat.slug === 'peinture' && <Paintbrush className="w-6 h-6" />}
-                  {cat.slug === 'serrurerie' && <Key className="w-6 h-6" />}
-                  {cat.slug === 'soudure' && <Flame className="w-6 h-6" />}
-                  {cat.slug === 'maconnerie' && <Layers className="w-6 h-6" />}
+                  {cat.iconName === 'Zap' && <Zap className="w-6 h-6" />}
+                  {cat.iconName === 'Wind' && <Wind className="w-6 h-6" />}
+                  {cat.iconName === 'Hammer' && <Hammer className="w-6 h-6" />}
+                  {cat.iconName === 'Paintbrush' && <Paintbrush className="w-6 h-6" />}
+                  {cat.iconName === 'Key' && <Key className="w-6 h-6" />}
+                  {cat.iconName === 'Flame' && <Flame className="w-6 h-6" />}
+                  {cat.iconName === 'Layers' && <Layers className="w-6 h-6" />}
+                  {cat.iconName === 'Smartphone' && <Smartphone className="w-6 h-6" />}
+                  {cat.iconName === 'Monitor' && <Monitor className="w-6 h-6" />}
+                  {cat.iconName === 'Tv' && <Tv className="w-6 h-6" />}
+                  {cat.iconName === 'Truck' && <Truck className="w-6 h-6" />}
+                  {cat.iconName === 'Sparkles' && <Sparkles className="w-6 h-6" />}
+                  {(!cat.iconName || cat.iconName === 'Wrench' || !['Zap', 'Wind', 'Hammer', 'Paintbrush', 'Key', 'Flame', 'Layers', 'Smartphone', 'Monitor', 'Tv', 'Truck', 'Sparkles'].includes(cat.iconName)) && <Wrench className="w-6 h-6" />}
                 </div>
                 <h3 className="font-bold text-white group-hover:text-sama-400 transition-colors text-base">
                   {cat.name}

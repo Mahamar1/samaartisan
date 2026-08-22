@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
+
+export const dynamic = 'force-dynamic';
 import { 
   sanitizeText, 
   sanitizePhone, 

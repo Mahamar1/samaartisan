@@ -515,7 +515,7 @@ export default function AdminDashboardPage() {
     await loadAllAdminData(false);
   };
 
-  // 4. SUSPEND / REACTIVATE PROVIDER IN SUPABASE
+  // 4. SUSPEND / REACTIVATE / BLOCK PROVIDER IN SUPABASE
   const handleToggleSuspend = async (providerId: string) => {
     const target = providersList.find((p) => p.id === providerId);
     if (!target) return;
@@ -530,7 +530,44 @@ export default function AdminDashboardPage() {
       return p;
     });
     updateProviders(updated);
-    showToast('Statut de disponibilité mis à jour dans Supabase.');
+
+    // Also update in clientsList if exists
+    const updatedUsers = clientsList.map((u) => {
+      if (u.id === providerId || (target.phone && u.phone === target.phone)) {
+        return { ...u, status: (newStatus ? 'ACTIVE' : 'SUSPENDED') as 'ACTIVE' | 'SUSPENDED' };
+      }
+      return u;
+    });
+    updateClients(updatedUsers);
+
+    showToast(newStatus ? `✅ L'artisan "${target.name}" a été débloqué et réactivé.` : `🛑 L'artisan "${target.name}" a été bloqué et suspendu.`);
+    await loadAllAdminData(false);
+  };
+
+  // BLOCK / UNBLOCK USER ACCOUNT
+  const handleToggleSuspendUser = async (user: AppUser) => {
+    const newStatus = user.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
+    const isAvailable = newStatus === 'ACTIVE';
+
+    await updateProvider(user.id, { isAvailable });
+
+    const updatedUsers = clientsList.map((u) => {
+      if (u.id === user.id || (user.phone && u.phone === user.phone)) {
+        return { ...u, status: newStatus as 'ACTIVE' | 'SUSPENDED' };
+      }
+      return u;
+    });
+    updateClients(updatedUsers);
+
+    const updatedProviders = providersList.map((p) => {
+      if (p.id === user.id || (user.phone && p.phone === user.phone)) {
+        return { ...p, isAvailable };
+      }
+      return p;
+    });
+    updateProviders(updatedProviders);
+
+    showToast(newStatus === 'SUSPENDED' ? `🛑 Le compte de "${user.name}" a été bloqué.` : `✅ Le compte de "${user.name}" a été débloqué.`);
     await loadAllAdminData(false);
   };
 
@@ -1856,7 +1893,7 @@ export default function AdminDashboardPage() {
 
                         {/* Actions */}
                         <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
                             <a
                               href={`tel:${u.phone.replace(/[^0-9]/g, '')}`}
                               className="p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-emerald-400 hover:bg-slate-700 transition-colors"
@@ -1866,11 +1903,25 @@ export default function AdminDashboardPage() {
                             </a>
 
                             <button
+                              onClick={() => handleToggleSuspendUser(u)}
+                              className={`px-2 py-1 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 ${
+                                u.status === 'SUSPENDED'
+                                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
+                                  : 'bg-amber-500/20 border-amber-500/40 text-amber-300 hover:bg-amber-500/30'
+                              }`}
+                              title={u.status === 'SUSPENDED' ? 'Débloquer cet utilisateur' : 'Bloquer / Suspendre cet utilisateur'}
+                            >
+                              <Ban className="w-3.5 h-3.5" />
+                              <span>{u.status === 'SUSPENDED' ? 'Débloquer' : 'Bloquer'}</span>
+                            </button>
+
+                            <button
                               onClick={() => handleDeleteUser(u.id, u.name, u.phone, u.email, u.role)}
-                              className="p-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors"
+                              className="px-2 py-1 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 font-bold text-xs flex items-center gap-1 transition-all"
                               title="Supprimer définitivement ce compte utilisateur"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
+                              <span>Supprimer</span>
                             </button>
                           </div>
                         </td>
@@ -2100,8 +2151,8 @@ export default function AdminDashboardPage() {
                         )}
 
                         {!p.isAvailable && (
-                          <span className="ml-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/30">
-                            Suspendu
+                          <span className="ml-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-red-500/20 text-red-300 border border-red-500/40">
+                            🛑 Bloqué / Suspendu
                           </span>
                         )}
                       </td>
@@ -2123,17 +2174,18 @@ export default function AdminDashboardPage() {
                             <ShieldCheck className="w-3.5 h-3.5" />
                           </button>
 
-                          {/* Toggle Suspend */}
+                          {/* Toggle Suspend / Block */}
                           <button
                             onClick={() => handleToggleSuspend(p.id)}
-                            className={`p-1.5 rounded-lg border transition-colors ${
+                            className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 ${
                               !p.isAvailable
-                                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 hover:bg-amber-500/30'
-                                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
+                                : 'bg-amber-500/20 border-amber-500/40 text-amber-300 hover:bg-amber-500/30'
                             }`}
-                            title={p.isAvailable ? 'Suspendre temporairement l\'artisan' : 'Réactiver l\'artisan'}
+                            title={p.isAvailable ? 'Bloquer / Suspendre cet artisan' : 'Débloquer cet artisan'}
                           >
                             <Ban className="w-3.5 h-3.5" />
+                            <span>{!p.isAvailable ? 'Débloquer' : 'Bloquer'}</span>
                           </button>
 
                           {/* View public profile */}
@@ -2149,10 +2201,11 @@ export default function AdminDashboardPage() {
                           {/* Delete */}
                           <button
                             onClick={() => handleDeleteProvider(p.id, p.name, p.phone, p.slug)}
-                            className="p-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors"
-                            title="Supprimer définitivement ce profil"
+                            className="px-2 py-1 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 font-bold text-xs flex items-center gap-1 transition-all"
+                            title="Supprimer définitivement cet artisan"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
+                            <span>Supprimer</span>
                           </button>
 
                         </div>

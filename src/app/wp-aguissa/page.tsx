@@ -2270,7 +2270,7 @@ export default function AdminDashboardPage() {
             <div className="pt-6 border-t border-slate-800 space-y-3">
               <h4 className="text-xs font-bold text-slate-300 uppercase">Protection des Données</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Le lien d'administration a été entièrement retiré des barres de navigation et des menus publics. Vous pouvez accéder directement à ce tableau de bord à tout moment en tapant <code className="text-sama-400 font-mono">/admin</code> dans votre navigateur.
+                Le lien d'administration a été entièrement retiré des barres de navigation et des menus publics. Vous pouvez accéder directement à ce tableau de bord à tout moment en tapant <code className="text-sama-400 font-mono">/wp-aguissa</code> dans votre navigateur.
               </p>
             </div>
           </div>

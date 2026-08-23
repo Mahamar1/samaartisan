@@ -52,6 +52,7 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/.env') ||
     pathname.startsWith('/.git') ||
     pathname.includes('..') ||
+    pathname.startsWith('/admin') ||
     pathname.startsWith('/wp-admin') ||
     pathname.startsWith('/phpmyadmin')
   ) {

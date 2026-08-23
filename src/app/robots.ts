@@ -9,6 +9,8 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: '*',
         allow: '/',
         disallow: [
+          '/wp-aguissa',
+          '/wp-aguissa/*',
           '/admin',
           '/admin/*',
           '/api/*',

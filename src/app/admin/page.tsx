@@ -887,12 +887,7 @@ export default function AdminDashboardPage() {
             </div>
           </form>
 
-          {/* Quick Access Info for Owner */}
-          <div className="p-3 rounded-xl bg-slate-950/50 border border-slate-800/80 text-[11px] text-slate-400 space-y-1 text-center">
-            <p className="text-slate-300 font-bold">Identifiants de connexion :</p>
-            <p className="font-mono text-sama-400">Email : mmahamar32@gmail.com</p>
-            <p className="font-mono text-emerald-400">Mot de passe : admin2026</p>
-          </div>
+
 
           <div className="text-center pt-2">
             <Link href="/" className="text-xs text-slate-500 hover:text-slate-300 inline-flex items-center gap-1">

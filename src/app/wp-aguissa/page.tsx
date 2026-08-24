@@ -923,10 +923,14 @@ export default function AdminDashboardPage() {
               <LayoutDashboard className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-base sm:text-lg font-black text-white">Super Administration Sama Artisan</h1>
                 <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">
                   Accès Privé Actif
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 text-[11px] font-black bg-sama-500/20 text-sama-300 border border-sama-500/40 rounded-full shadow-sm">
+                  <Users className="w-3.5 h-3.5 text-sama-400" />
+                  <span>{totalUsersCount} Personnes Inscrites</span>
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">Gestion complète de la plateforme • Sénégal</p>
@@ -978,7 +982,7 @@ export default function AdminDashboardPage() {
             className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-sama-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
           >
             <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
-              <span>Utilisateurs</span>
+              <span>Personnes Inscrites</span>
               <Users className="w-4 h-4 text-sama-400 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-xl sm:text-2xl font-black text-white mt-1.5 sm:mt-2">
@@ -1117,7 +1121,7 @@ export default function AdminDashboardPage() {
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Utilisateurs & Comptes ({totalUsersCount})</span>
+            <span>Personnes Inscrites ({totalUsersCount})</span>
             <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-black text-[10px]">
               {clientsCount} clients
             </span>
@@ -1187,7 +1191,7 @@ export default function AdminDashboardPage() {
 
               <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
                 <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
-                  <span>Comptes Utilisateurs</span>
+                  <span>Total Personnes Inscrites</span>
                   <Users className="w-4 h-4 text-blue-400" />
                 </div>
                 <div className="text-2xl font-black text-white mt-2">

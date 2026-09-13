@@ -132,3 +132,60 @@ INSERT INTO public.providers (
     ARRAY['Recharge de gaz R410', 'Nettoyage antibactérien', 'Installation split']
 )
 ON CONFLICT (slug) DO NOTHING;
+
+-- 7. TABLE DES COMPTES INSCRITS (Particuliers & Artisans inscrits en ligne)
+CREATE TABLE IF NOT EXISTS public.registered_accounts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    slug TEXT UNIQUE,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    email TEXT,
+    role TEXT DEFAULT 'client' CHECK (role IN ('client', 'pro')),
+    neighborhood TEXT DEFAULT 'Dakar',
+    city TEXT DEFAULT 'Dakar',
+    category_name TEXT,
+    business_name TEXT,
+    status TEXT DEFAULT 'ACTIVE',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 8. TABLE DES DOSSIERS DE CANDIDATURE ARTISAN (Vérification CNI & Métiers)
+CREATE TABLE IF NOT EXISTS public.pending_artisans (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    business_name TEXT,
+    trade TEXT NOT NULL,
+    neighborhood TEXT DEFAULT 'Dakar',
+    region_name TEXT DEFAULT 'Dakar',
+    phone TEXT NOT NULL,
+    email TEXT,
+    cni_number TEXT,
+    status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
+    date_submitted TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 9. TABLE DES MESSAGES DE CONTACT & SUPPORT
+CREATE TABLE IF NOT EXISTS public.contact_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    full_name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    email TEXT,
+    subject TEXT NOT NULL,
+    message TEXT NOT NULL,
+    user_type TEXT DEFAULT 'Particulier',
+    status TEXT DEFAULT 'NEW' CHECK (status IN ('NEW', 'READ', 'REPLIED', 'ARCHIVED')),
+    reply_notes TEXT,
+    replied_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- POLITIQUES RLS
+ALTER TABLE public.registered_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pending_artisans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view accounts" ON public.registered_accounts FOR SELECT USING (true);
+CREATE POLICY "Anyone can register account" ON public.registered_accounts FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can submit artisan dossier" ON public.pending_artisans FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can submit contact message" ON public.contact_messages FOR INSERT WITH CHECK (true);
+

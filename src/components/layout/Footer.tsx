@@ -1,14 +1,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { 
-  Building2, 
+  Wrench, 
   MapPin, 
   Phone, 
   Mail, 
   CheckCircle2, 
-  HardHat, 
-  FileText, 
-  ShieldCheck 
+  ShieldCheck,
+  ArrowRight
 } from 'lucide-react';
 
 export default function Footer() {
@@ -17,144 +16,140 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Main Footer Content */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
           
           {/* Brand Column */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-1 space-y-4">
             <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold shadow-md">
-                <Building2 className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sama-600 to-emerald-600 flex items-center justify-center text-white font-bold shadow-md">
+                <Wrench className="w-5 h-5" />
               </div>
               <span className="text-2xl font-black text-white">
-                SAMA <span className="text-orange-500">BTP</span> IMMO
+                Sama<span className="text-sama-400">Artisan</span>
               </span>
             </Link>
-            <p className="text-sm text-slate-400 max-w-sm leading-relaxed">
-              "Construisez, gérez et publiez. Tout au même endroit."
-              Plateforme SaaS multi-tenant tout-en-un dédiée aux agences immobilières, entreprises BTP, promoteurs, architectes et artisans au Sénégal & en Afrique.
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Plateforme N°1 de mise en relation d'artisans qualifiés et prestataires de services vérifiés à Dakar et dans tout le Sénégal.
             </p>
             <div className="pt-2 flex flex-col gap-2 text-xs text-slate-400">
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-orange-500" />
-                <span>Siège : Route des Almadies, VDN Extension, Dakar, Sénégal</span>
+                <MapPin className="w-4 h-4 text-sama-400 shrink-0" />
+                <span>Grand Dakar & Almadies, Sénégal</span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-orange-500" />
-                <span>Support Commercial & Client : +221 33 860 20 20 / +221 77 654 32 10</span>
+                <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>WhatsApp / Tél : +221 78 750 52 18</span>
               </div>
               <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-orange-500" />
-                <a href="mailto:contact@samabtpimmo.sn" className="hover:text-orange-400 transition-colors">
-                  contact@samabtpimmo.sn
+                <Mail className="w-4 h-4 text-sama-400 shrink-0" />
+                <a href="mailto:mmahamar32@gmail.com" className="hover:text-sama-400 transition-colors">
+                  mmahamar32@gmail.com
                 </a>
               </div>
             </div>
           </div>
 
-          {/* Solutions Immobilier */}
+          {/* Catégories de Métiers */}
           <div>
-            <h5 className="text-white font-bold text-sm uppercase tracking-wider mb-4">
-              Immobilier
+            <h5 className="text-white font-bold text-xs uppercase tracking-wider mb-4">
+              Corps de Métiers
             </h5>
-            <ul className="space-y-2.5 text-sm">
+            <ul className="space-y-2.5 text-xs text-slate-400">
               <li>
-                <Link href="/biens?type=appartement" className="hover:text-orange-400 transition-colors">
-                  Appartements F3 / F4
+                <Link href="/categories/plombier" className="hover:text-sama-400 transition-colors">
+                  Plomberie & Dépannage
                 </Link>
               </li>
               <li>
-                <Link href="/biens?type=villa" className="hover:text-orange-400 transition-colors">
-                  Villas de Luxe
+                <Link href="/categories/electricien" className="hover:text-sama-400 transition-colors">
+                  Électricité & Installation
                 </Link>
               </li>
               <li>
-                <Link href="/biens?type=terrain" className="hover:text-orange-400 transition-colors">
-                  Terrains & Titres Fonciers
+                <Link href="/categories/climaticien" className="hover:text-sama-400 transition-colors">
+                  Climatisation & Entretien
                 </Link>
               </li>
               <li>
-                <Link href="/biens?type=bureau" className="hover:text-orange-400 transition-colors">
-                  Bureaux & Commerces
+                <Link href="/categories/peintre" className="hover:text-sama-400 transition-colors">
+                  Peinture & Décoration
                 </Link>
               </li>
               <li>
-                <Link href="/entreprises" className="hover:text-orange-400 transition-colors">
-                  Agences Immobilières
+                <Link href="/categories/macon" className="hover:text-sama-400 transition-colors">
+                  Maçonnerie & Gros Œuvre
+                </Link>
+              </li>
+              <li>
+                <Link href="/categories/menuisier-bois" className="hover:text-sama-400 transition-colors">
+                  Menuiserie Bois & Alu
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Solutions BTP & Chantiers */}
+          {/* Liens Utiles */}
           <div>
-            <h5 className="text-white font-bold text-sm uppercase tracking-wider mb-4">
-              BTP & Chantiers
+            <h5 className="text-white font-bold text-xs uppercase tracking-wider mb-4">
+              Navigation & Services
             </h5>
-            <ul className="space-y-2.5 text-sm">
+            <ul className="space-y-2.5 text-xs text-slate-400">
               <li>
-                <Link href="/projets" className="hover:text-orange-400 transition-colors flex items-center gap-1.5">
-                  <HardHat className="w-4 h-4 text-orange-500" />
-                  <span>Projets de Construction</span>
+                <Link href="/recherche" className="hover:text-sama-400 transition-colors">
+                  Rechercher un artisan par quartier
                 </Link>
               </li>
               <li>
-                <Link href="/prestataires" className="hover:text-orange-400 transition-colors">
-                  Artisans & Prestataires
+                <Link href="/devenir-prestataire" className="text-emerald-400 font-bold hover:underline">
+                  Devenir Prestataire Partenaire
                 </Link>
               </li>
               <li>
-                <Link href="/publications?category=chantier" className="hover:text-orange-400 transition-colors">
-                  Journaux de Chantier
+                <Link href="/inscription" className="hover:text-sama-400 transition-colors">
+                  Créer un profil professionnel
                 </Link>
               </li>
               <li>
-                <Link href="/blog" className="hover:text-orange-400 transition-colors">
-                  Guides Techniques BTP
+                <Link href="/a-propos" className="hover:text-sama-400 transition-colors">
+                  À Propos de Sama Artisan
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="hover:text-sama-400 transition-colors">
+                  Contact & Support Client
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* SaaS & Espace Client */}
+          {/* Espace Artisan Pro */}
           <div>
-            <h5 className="text-white font-bold text-sm uppercase tracking-wider mb-4">
-              Espace SaaS Pro
+            <h5 className="text-white font-bold text-xs uppercase tracking-wider mb-4">
+              Espace Pro & Inscription
             </h5>
-            <ul className="space-y-2.5 text-sm">
-              <li>
-                <Link href="/tarifs" className="text-orange-400 font-bold hover:underline">
-                  Nos Tarifs (Starter, Pro, Business)
-                </Link>
-              </li>
-              <li>
-                <Link href="/register" className="hover:text-orange-400 transition-colors font-medium">
-                  Créer son Espace Entreprise
-                </Link>
-              </li>
-              <li>
-                <Link href="/dashboard" className="hover:text-orange-400 transition-colors">
-                  Accéder au Tableau de Bord
-                </Link>
-              </li>
-              <li>
-                <Link href="/wp-aguissa" className="text-slate-500 hover:text-slate-300 transition-colors text-xs">
-                  Espace Administration (wp-aguissa)
-                </Link>
-              </li>
-            </ul>
+            <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 space-y-3">
+              <p className="text-xs text-slate-300 font-medium">
+                Vous êtes un artisan qualifié à Dakar ? Inscrivez-vous gratuitement et recevez des clients en direct.
+              </p>
+              <Link
+                href="/inscription?role=pro"
+                className="w-full py-2.5 px-4 rounded-xl bg-sama-600 hover:bg-sama-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all block text-center"
+              >
+                <span>Rejoindre le Réseau →</span>
+              </Link>
+            </div>
           </div>
 
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
-          <p>© {new Date().getFullYear()} SAMA BTP IMMO — Conçu pour l'Afrique et le Sénégal. Tous droits réservés.</p>
+        <div className="pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <p>© {new Date().getFullYear()} Sama Artisan — Plateforme des Artisans Qualifiés du Sénégal. Tous droits réservés.</p>
           <div className="flex items-center gap-6">
-            <span className="flex items-center gap-1.5 text-orange-400 font-medium">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Multi-Tenant & Sécurité RLS Active</span>
+            <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Profils 100% Vérifiés CNI</span>
             </span>
-            <Link href="/cgu" className="hover:text-slate-300">CGU / Mentions</Link>
           </div>
         </div>
 

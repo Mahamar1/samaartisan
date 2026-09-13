@@ -175,8 +175,8 @@ export default function HomePage() {
             
             {/* Top Badge */}
             <div className="flex justify-center mb-6">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs sm:text-sm font-semibold text-slate-200 shadow-2xl">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[11px] sm:text-sm font-semibold text-slate-200 shadow-2xl flex-wrap justify-center text-center">
+                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>Réseau d'Artisans Qualifiés & Certifiés CNI</span>
                 <span className="px-2 py-0.5 rounded-full bg-sama-500/30 text-sama-300 font-extrabold text-[10px]">
                   ★ 4.9/5
@@ -185,56 +185,52 @@ export default function HomePage() {
             </div>
 
             {/* Main Presentation Title & Subtitle */}
-            <div className="text-center max-w-4xl mx-auto space-y-6">
-              <h1 className="text-3xl sm:text-5xl lg:text-7xl font-black tracking-tight text-white leading-[1.12]">
+            <div className="text-center max-w-4xl mx-auto space-y-4 sm:space-y-6 px-1">
+              <h1 className="text-2xl sm:text-5xl lg:text-7xl font-black tracking-tight text-white leading-[1.15]">
                 Trouvez le meilleur artisan <br className="hidden sm:block" />
                 <span className="bg-gradient-to-r from-sama-400 via-emerald-300 to-amber-300 bg-clip-text text-transparent">
                   en moins de 2 minutes
                 </span> à Dakar.
               </h1>
 
-              <p className="text-base sm:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
+              <p className="text-sm sm:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
                 Plomberie, climatisation, électricité, peinture, serrurerie et maçonnerie. Prise de contact WhatsApp directe avec des artisans vérifiés.
               </p>
 
-              {/* ========================================================================= */}
-              {/* BOUTON PRINCIPAL D'ACCÈS AU FORMULAIRE D'INSCRIPTION (HIGHLIGHTED CTA)   */}
-              {/* ========================================================================= */}
-              <div className="pt-6 max-w-2xl mx-auto">
-                <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border-2 border-sama-500/60 shadow-2xl shadow-sama-600/20 backdrop-blur-xl space-y-5 transform hover:scale-[1.01] transition-all">
+              {/* BOUTON PRINCIPAL D'ACCÈS AU FORMULAIRE D'INSCRIPTION */}
+              <div className="pt-4 sm:pt-6 max-w-2xl mx-auto">
+                <div className="p-4 sm:p-8 rounded-3xl bg-slate-900/90 border-2 border-sama-500/60 shadow-2xl shadow-sama-600/20 backdrop-blur-xl space-y-4 sm:space-y-5 transform hover:scale-[1.01] transition-all">
                   
-                  <div className="flex items-center justify-center gap-2 text-amber-400 font-black text-xs uppercase tracking-wider">
-                    <Rocket className="w-4 h-4" />
+                  <div className="flex items-center justify-center gap-1.5 text-amber-400 font-black text-[11px] sm:text-xs uppercase tracking-wider text-center">
+                    <Rocket className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                     <span>Inscrivez-vous en 2 minutes gratuitement</span>
                   </div>
 
-                  <h3 className="text-xl sm:text-2xl font-black text-white">
+                  <h3 className="text-lg sm:text-2xl font-black text-white">
                     Vous souhaitez utiliser nos services ou devenir artisan ?
                   </h3>
 
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-1 sm:pt-2">
                     
-                    {/* BOUTON REQUIS : REDIRECTION VERS LE FORMULAIRE D'INSCRIPTION */}
                     <Link
                       href="/inscription"
-                      className="w-full sm:w-auto px-8 py-4 rounded-2xl font-black bg-gradient-to-r from-sama-600 via-sama-500 to-emerald-500 hover:from-sama-500 hover:to-emerald-400 text-white shadow-xl shadow-sama-600/40 flex items-center justify-center gap-3 transition-all hover:scale-105 active:scale-95 text-base border border-emerald-400/30"
+                      className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-2xl font-black bg-gradient-to-r from-sama-600 via-sama-500 to-emerald-500 hover:from-sama-500 hover:to-emerald-400 text-white shadow-xl shadow-sama-600/40 flex items-center justify-center gap-2.5 transition-all hover:scale-105 active:scale-95 text-sm sm:text-base border border-emerald-400/30"
                     >
-                      <UserPlus className="w-5 h-5 stroke-[2.5]" />
+                      <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5] shrink-0" />
                       <span>Aller au formulaire d'inscription &rarr;</span>
                     </Link>
 
-                    {/* BOUTON CONNEXION */}
                     <Link
                       href="/connexion"
-                      className="w-full sm:w-auto px-7 py-4 rounded-2xl font-extrabold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 text-sm"
+                      className="w-full sm:w-auto px-6 py-3.5 sm:px-7 sm:py-4 rounded-2xl font-extrabold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm"
                     >
-                      <LogIn className="w-4 h-4 text-sama-400" />
+                      <LogIn className="w-4 h-4 text-sama-400 shrink-0" />
                       <span>Se Connecter</span>
                     </Link>
 
                   </div>
 
-                  <p className="text-[11px] text-slate-400 font-medium">
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">
                     ✓ Inscription 100% Gratuite pour Clients et Artisans • Zéro frais cachés
                   </p>
 
@@ -244,22 +240,22 @@ export default function HomePage() {
             </div>
 
             {/* Stats Counter Bar */}
-            <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto">
-              <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 text-center backdrop-blur-sm shadow-xl">
-                <div className="text-3xl sm:text-4xl font-black text-sama-400">{providersCount}+</div>
-                <div className="text-xs sm:text-sm text-slate-300 mt-1 font-medium">Artisans Certifiés CNI</div>
+            <div className="mt-12 sm:mt-16 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 max-w-5xl mx-auto">
+              <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-slate-900/60 border border-slate-800 text-center backdrop-blur-sm shadow-xl">
+                <div className="text-2xl sm:text-4xl font-black text-sama-400">{providersCount}+</div>
+                <div className="text-[11px] sm:text-sm text-slate-300 mt-0.5 font-medium">Artisans Certifiés CNI</div>
               </div>
-              <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 text-center backdrop-blur-sm shadow-xl">
-                <div className="text-3xl sm:text-4xl font-black text-amber-400">&lt; 10 min</div>
-                <div className="text-xs sm:text-sm text-slate-300 mt-1 font-medium">Réponse WhatsApp Directe</div>
+              <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-slate-900/60 border border-slate-800 text-center backdrop-blur-sm shadow-xl">
+                <div className="text-2xl sm:text-4xl font-black text-amber-400">&lt; 10 min</div>
+                <div className="text-[11px] sm:text-sm text-slate-300 mt-0.5 font-medium">Réponse WhatsApp Directe</div>
               </div>
-              <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 text-center backdrop-blur-sm shadow-xl">
-                <div className="text-3xl sm:text-4xl font-black text-emerald-400">99.2%</div>
-                <div className="text-xs sm:text-sm text-slate-300 mt-1 font-medium">Avis Clients Positifs</div>
+              <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-slate-900/60 border border-slate-800 text-center backdrop-blur-sm shadow-xl">
+                <div className="text-2xl sm:text-4xl font-black text-emerald-400">99.2%</div>
+                <div className="text-[11px] sm:text-sm text-slate-300 mt-0.5 font-medium">Avis Clients Positifs</div>
               </div>
-              <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 text-center backdrop-blur-sm shadow-xl">
-                <div className="text-3xl sm:text-4xl font-black text-blue-400">0 FCFA</div>
-                <div className="text-xs sm:text-sm text-slate-300 mt-1 font-medium">Frais pour les particuliers</div>
+              <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-slate-900/60 border border-slate-800 text-center backdrop-blur-sm shadow-xl">
+                <div className="text-2xl sm:text-4xl font-black text-blue-400">0 FCFA</div>
+                <div className="text-[11px] sm:text-sm text-slate-300 mt-0.5 font-medium">Frais pour les particuliers</div>
               </div>
             </div>
 

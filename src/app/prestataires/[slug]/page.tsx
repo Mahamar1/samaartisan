@@ -166,46 +166,7 @@ export default function ProviderProfilePage() {
       }
     } catch (e) {}
 
-    // 2. Check in registered accounts
-    try {
-      const accounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
-      const matched = accounts.find((a: any) => {
-        if (isBlacklistedOrDeleted(a)) return false;
-        const aSlug = (a.slug || '').toLowerCase();
-        const aNameSlug = (a.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        const aPhone = (a.phone || '').replace(/[^0-9]/g, '');
-        const targetPhone = decodedSlug.replace(/[^0-9]/g, '');
-        return aSlug === decodedSlug || a.id === decodedSlug || aNameSlug === decodedSlug || (targetPhone.length >= 8 && aPhone.includes(targetPhone));
-      });
-
-      if (matched) {
-        const norm = normalizeProvider(matched);
-        setProvider(norm);
-        setReviews(norm.reviews || []);
-        setLoading(false);
-        return;
-      }
-    } catch (e) {}
-
-    // 3. Check in static dataset
-    const staticMatch = (PROVIDERS || []).find((p) => {
-      if (isBlacklistedOrDeleted(p)) return false;
-      const pSlug = (p.slug || '').toLowerCase();
-      const pNameSlug = (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
-      const targetPhone = decodedSlug.replace(/[^0-9]/g, '');
-      return pSlug === decodedSlug || p.id === decodedSlug || pNameSlug === decodedSlug || (targetPhone.length >= 8 && pPhone.includes(targetPhone));
-    });
-
-    if (staticMatch) {
-      const norm = normalizeProvider(staticMatch);
-      setProvider(norm);
-      setReviews(norm.reviews || []);
-      setLoading(false);
-      return;
-    }
-
-    // 4. Fetch from Supabase cloud
+    // 1. Fetch live from Supabase cloud FIRST as primary source
     if (decodedSlug) {
       getProviderBySlug(decodedSlug).then((livePro) => {
         if (livePro) {
@@ -223,36 +184,51 @@ export default function ProviderProfilePage() {
           const norm = normalizeProvider(finalPro);
           setProvider(norm);
           setReviews(norm.reviews || []);
-        } else {
-          // Fallback to active logged in pro if available
-          try {
-            const stored = localStorage.getItem('samapro_current_user') || localStorage.getItem('sama_user_session');
-            if (stored) {
-              const parsed = JSON.parse(stored);
-              if (parsed && (parsed.name || parsed.phone) && !isBlacklistedOrDeleted(parsed)) {
-                const norm = normalizeProvider(parsed);
-                setProvider(norm);
-                setReviews(norm.reviews || []);
-                setIsOwnProfile(true);
-              }
-            }
-          } catch (e) {}
+          setLoading(false);
+          return;
         }
-        setLoading(false);
-      }).catch(() => {
-        // Fallback on error
+
+        // Fallback 1: Local Storage
         try {
-          const stored = localStorage.getItem('samapro_current_user') || localStorage.getItem('sama_user_session');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed && (parsed.name || parsed.phone)) {
-              const norm = normalizeProvider(parsed);
-              setProvider(norm);
-              setReviews(norm.reviews || []);
-              setIsOwnProfile(true);
-            }
+          const accounts = JSON.parse(localStorage.getItem('sama_registered_accounts') || '[]');
+          const matched = accounts.find((a: any) => {
+            if (isBlacklistedOrDeleted(a)) return false;
+            const aSlug = (a.slug || '').toLowerCase();
+            const aNameSlug = (a.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const aPhone = (a.phone || '').replace(/[^0-9]/g, '');
+            const targetPhone = decodedSlug.replace(/[^0-9]/g, '');
+            return aSlug === decodedSlug || a.id === decodedSlug || aNameSlug === decodedSlug || (targetPhone.length >= 8 && aPhone.includes(targetPhone));
+          });
+
+          if (matched) {
+            const norm = normalizeProvider(matched);
+            setProvider(norm);
+            setReviews(norm.reviews || []);
+            setLoading(false);
+            return;
           }
         } catch (e) {}
+
+        // Fallback 2: Static Dataset
+        const staticMatch = (PROVIDERS || []).find((p) => {
+          if (isBlacklistedOrDeleted(p)) return false;
+          const pSlug = (p.slug || '').toLowerCase();
+          const pNameSlug = (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
+          const targetPhone = decodedSlug.replace(/[^0-9]/g, '');
+          return pSlug === decodedSlug || p.id === decodedSlug || pNameSlug === decodedSlug || (targetPhone.length >= 8 && pPhone.includes(targetPhone));
+        });
+
+        if (staticMatch) {
+          const norm = normalizeProvider(staticMatch);
+          setProvider(norm);
+          setReviews(norm.reviews || []);
+          setLoading(false);
+          return;
+        }
+
+        setLoading(false);
+      }).catch(() => {
         setLoading(false);
       });
     } else {

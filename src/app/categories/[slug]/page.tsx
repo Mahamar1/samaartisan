@@ -45,7 +45,18 @@ export default function CategorySeoPage() {
   }, []);
 
   const providers = allProviders.filter((p) => {
-    if (p.categorySlug !== category.slug) return false;
+    const pCatSlug = (p.categorySlug || '').toLowerCase();
+    const pCatName = (p.categoryName || '').toLowerCase();
+    const targetSlug = (category.slug || '').toLowerCase();
+    const targetName = (category.name || '').toLowerCase();
+
+    const matchesCategory = 
+      pCatSlug === targetSlug ||
+      pCatName.includes(targetSlug) ||
+      pCatName.includes(targetName) ||
+      targetName.includes(pCatName);
+
+    if (!matchesCategory) return false;
     if (selectedNeighborhood && !(p.neighborhood || '').toLowerCase().includes(selectedNeighborhood.toLowerCase())) {
       return false;
     }

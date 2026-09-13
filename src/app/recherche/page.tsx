@@ -112,7 +112,7 @@ export default function GlobalSearchPage() {
                       <span className="text-sm font-black text-slate-900">{formatPrice(p.startingPrice || 15000)}</span>
                     </div>
                     <Link
-                      href={`/artisan/${p.slug}`}
+                      href={`/prestataires/${p.slug}`}
                       className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-sm"
                     >
                       Voir profil

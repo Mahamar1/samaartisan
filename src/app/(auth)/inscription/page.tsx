@@ -74,9 +74,9 @@ function InscriptionContent() {
 
       // 2. Vérifier si le numéro de téléphone existe déjà
       const phoneExists = accounts.some((a: any) => {
-        if (!a.phone || cleanPhone.length < 6) return false;
+        if (!a.phone || cleanPhone.length < 8) return false;
         const aClean = a.phone.replace(/[^0-9]/g, '');
-        return aClean.includes(cleanPhone) || cleanPhone.includes(aClean);
+        return aClean === cleanPhone || (aClean.length >= 8 && cleanPhone.length >= 8 && aClean.slice(-8) === cleanPhone.slice(-8));
       });
       if (phoneExists) {
         setFormError('Ce numéro de téléphone est déjà associé à un compte. Veuillez vous connecter ou utiliser un autre numéro.');
@@ -119,6 +119,11 @@ function InscriptionContent() {
 
         localStorage.setItem('sama_last_user_role', 'pro');
         setRegisteredSuccess({ ...savedArtisan, role: 'pro' });
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new CustomEvent('sama_data_updated'));
+        }
       } else {
         // Enregistrement CLIENT PARTICULIER
         const clientAccount = {

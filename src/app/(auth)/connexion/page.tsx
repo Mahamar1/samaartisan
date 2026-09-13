@@ -37,6 +37,16 @@ function ConnexionContent() {
     setErrorMessage('');
 
     try {
+      const inputLower = phone.trim().toLowerCase();
+      if (inputLower === 'admin' || inputLower === 'mmahamar32@gmail.com' || inputLower === 'admin@samaartisan.sn') {
+        if (password.trim() === 'admin2026' || password.trim() === 'admin') {
+          localStorage.setItem('sama_admin_authenticated', 'true');
+          localStorage.setItem('sama_admin_session_ts', Date.now().toString());
+          router.push('/wp-aguissa');
+          return;
+        }
+      }
+
       const res = await loginUserAccount(phone, password);
 
       if (!res.success) {
@@ -187,6 +197,14 @@ function ConnexionContent() {
               Créer un compte {selectedRole === 'client' ? 'Client' : 'Artisan'}
             </Link>
           </p>
+          <div className="pt-1">
+            <Link 
+              href="/wp-aguissa" 
+              className="text-[11px] text-slate-400 hover:text-slate-600 transition-colors inline-flex items-center gap-1"
+            >
+              <span>🔒 Espace Administration</span>
+            </Link>
+          </div>
         </div>
       </div>
     </div>

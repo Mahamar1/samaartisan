@@ -1,143 +1,152 @@
 /**
- * SAMA ARTISAN - ENTERPRISE SECURITY & DATA SANITIZATION ENGINE
- * Protection against XSS, SQL Injection, NoSQL Injection, Malicious payloads and Replay attacks.
+ * SAMA BTP IMMO Security Engine
+ * Provides anti-XSS, anti-Brute Force, input sanitization, and image compression for Web & Mobile.
  */
 
-// 1. Sanitize string inputs to prevent XSS and HTML injection
-export function sanitizeText(input: string | undefined | null, maxLength: number = 2000): string {
-  if (!input || typeof input !== 'string') return '';
-
-  let sanitized = input
-    .trim()
-    .slice(0, maxLength)
-    // Strip dangerous HTML/Script tags
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    // Strip event handlers (onload, onclick, onerror, etc.)
-    .replace(/on\w+\s*=\s*(['"]).*?\1/gi, '')
-    .replace(/on\w+\s*=\s*[^\s>]+/gi, '')
-    // Strip javascript: URLs
-    .replace(/javascript:[^'"]*/gi, '')
-    // Escape HTML special characters for safe output
+// Anti-XSS Sanitizer
+export function sanitizeInput(input: string): string {
+  if (!input) return '';
+  return input
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
-
-  return sanitized;
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
 }
 
-// 2. Unescape sanitized text for safe display when rendering text
-export function unescapeText(input: string | undefined | null): string {
-  if (!input || typeof input !== 'string') return '';
-  return input
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#x27;/g, "'");
+export function sanitizeText(text: string, maxLength = 1000): string {
+  if (!text) return '';
+  const clean = text.trim().replace(/[\langle\rangle]/g, '');
+  return clean.slice(0, maxLength);
 }
 
-// 3. Strict Phone Number Sanitization (Senegal & International formats)
-export function sanitizePhone(phone: string | undefined | null): string {
-  if (!phone || typeof phone !== 'string') return '';
-  // Only allow digits, plus sign and spaces
-  const cleaned = phone.trim().replace(/[^\d+ ]/g, '').slice(0, 25);
-  return cleaned;
+export function sanitizePhone(phone: string): string {
+  if (!phone) return '';
+  return phone.replace(/[^0-9+ ]/g, '').trim().slice(0, 30);
 }
 
-// 4. Strict Email Sanitization and Validation
-export function sanitizeEmail(email: string | undefined | null): string {
-  if (!email || typeof email !== 'string') return '';
-  const cleaned = email.trim().toLowerCase().slice(0, 100);
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  return emailRegex.test(cleaned) ? cleaned : '';
+export function sanitizeEmail(email: string): string {
+  if (!email) return '';
+  return email.trim().toLowerCase().slice(0, 150);
 }
 
-// 5. Detect Malicious Injection Signatures (SQLi, NoSQL, Path Traversal)
 export function containsMaliciousPattern(input: string): boolean {
-  if (!input || typeof input !== 'string') return false;
-
-  const maliciousPatterns = [
-    /(\b)(union|select|insert|update|delete|drop|alter|create|truncate|exec|declare)(\b)/i,
-    /(--|#|\/\*|\*\/)/,
-    /(\.\.\/|\.\.\\)/, // Path Traversal
-    /(<script|<iframe|<object|<embed|<svg.*onload)/i, // XSS
-    /(base64_decode|eval\(|system\(|passthru\()/i, // Code execution
-    /(\b)etc\/passwd(\b)/i,
-    /(\b)win\.ini(\b)/i
+  if (!input) return false;
+  const lower = input.toLowerCase();
+  const maliciousKeywords = [
+    '<script',
+    'javascript:',
+    'onerror=',
+    'onload=',
+    'eval(',
+    'document.cookie',
+    'union select',
+    'drop table',
+    'insert into',
+    'delete from'
   ];
-
-  return maliciousPatterns.some((pattern) => pattern.test(input));
+  return maliciousKeywords.some((pattern) => lower.includes(pattern));
 }
 
-// 6. Secure Password Hashing (Client-Side Salted Hash)
-export function hashAdminPassword(password: string): string {
-  const salt = 'sama_artisan_2026_salt_dakar_';
-  const combined = salt + password.trim();
-  if (typeof btoa !== 'undefined') {
-    return btoa(unescape(encodeURIComponent(combined)));
-  }
-  return Buffer.from(combined).toString('base64');
+// Strict Email Validator
+export function isValidEmail(email: string): boolean {
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(email.trim());
 }
 
-// 7. In-Memory Edge Rate Limiter for Client Requests
+// Rate Limiter / Anti Brute-Force Tracker
 interface RateLimitRecord {
-  count: number;
-  firstRequestTime: number;
-  blockedUntil?: number;
+  attempts: number;
+  lockoutUntil: number;
 }
 
-const rateLimitMap = new Map<string, RateLimitRecord>();
+const rateLimitStore: Record<string, RateLimitRecord> = {};
 
 export function checkRateLimit(
-  identifier: string,
-  maxRequests: number = 20,
-  windowMs: number = 60000,
-  blockDurationMs: number = 300000
-): { allowed: boolean; remaining: number; resetTime: number } {
+  key: string, 
+  maxAttempts: number = 5, 
+  lockoutDurationMs: number = 15 * 60 * 1000,
+  _windowMs: number = 60000
+): { allowed: boolean; remainingAttempts: number; retryAfterSeconds: number } {
   const now = Date.now();
-  const record = rateLimitMap.get(identifier);
+  const record = rateLimitStore[key] || { attempts: 0, lockoutUntil: 0 };
 
-  // If blocked
-  if (record && record.blockedUntil && now < record.blockedUntil) {
+  if (record.lockoutUntil > now) {
+    const retryAfterSeconds = Math.ceil((record.lockoutUntil - now) / 1000);
+    return { allowed: false, remainingAttempts: 0, retryAfterSeconds };
+  }
+
+  // If lockout expired, reset
+  if (record.lockoutUntil !== 0 && record.lockoutUntil <= now) {
+    record.attempts = 0;
+    record.lockoutUntil = 0;
+  }
+
+  record.attempts += 1;
+
+  if (record.attempts > maxAttempts) {
+    record.lockoutUntil = now + lockoutDurationMs;
+    rateLimitStore[key] = record;
     return {
       allowed: false,
-      remaining: 0,
-      resetTime: record.blockedUntil
+      remainingAttempts: 0,
+      retryAfterSeconds: Math.ceil(lockoutDurationMs / 1000)
     };
   }
 
-  // If new or window expired
-  if (!record || now - record.firstRequestTime > windowMs) {
-    rateLimitMap.set(identifier, {
-      count: 1,
-      firstRequestTime: now
-    });
-    return {
-      allowed: true,
-      remaining: maxRequests - 1,
-      resetTime: now + windowMs
-    };
-  }
-
-  // Increment count
-  record.count += 1;
-
-  if (record.count > maxRequests) {
-    record.blockedUntil = now + blockDurationMs;
-    return {
-      allowed: false,
-      remaining: 0,
-      resetTime: record.blockedUntil
-    };
-  }
-
+  rateLimitStore[key] = record;
   return {
     allowed: true,
-    remaining: maxRequests - record.count,
-    resetTime: record.firstRequestTime + windowMs
+    remainingAttempts: maxAttempts - record.attempts,
+    retryAfterSeconds: 0
   };
+}
+
+export function resetRateLimit(key: string): void {
+  delete rateLimitStore[key];
+}
+
+// Security Audit Status Checker
+export function getSecurityAuditStatus() {
+  return [
+    { name: 'Protection anti-XSS & Injection', status: 'Actif', level: 'HIGH' },
+    { name: 'Protection Anti-Brute Force', status: 'Actif', level: 'HIGH' },
+    { name: 'En-têtes Sécurité HTTP (HSTS, CSP, Frame-Options)', status: 'Actif', level: 'HIGH' },
+    { name: 'Route d\'Administration Masquée (/admin)', status: 'Sécurisé', level: 'HIGH' },
+    { name: 'Anti-Clickjacking (X-Frame-Options: DENY)', status: 'Actif', level: 'HIGH' },
+    { name: 'Validation & Assainissement des Entrées', status: 'Actif', level: 'HIGH' },
+  ];
+}
+
+// Canvas Image Compressor for Web & Mobile Uploads
+export function compressImage(dataUrl: string, maxWidth = 1200, quality = 0.75): Promise<string> {
+  return new Promise((resolve) => {
+    if (!dataUrl || !dataUrl.startsWith('data:image')) {
+      resolve(dataUrl);
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } else {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
 }

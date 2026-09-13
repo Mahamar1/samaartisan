@@ -255,7 +255,7 @@ export default function LandingPage() {
                   {cat.description}
                 </p>
                 <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                  <span>Dès {formatFcfa(cat.averageStartingPrice)}</span>
+                  <span className="font-semibold text-emerald-400 group-hover:text-sama-300 transition-colors">Voir les prestataires</span>
                   <ChevronRight className="w-4 h-4 text-sama-400 group-hover:translate-x-1 transition-transform" />
                 </div>
               </Link>

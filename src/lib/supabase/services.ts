@@ -157,6 +157,87 @@ export async function getProviders(): Promise<Provider[]> {
           }
         }
       }
+
+      // Merge accounts from sama_registered_accounts (registered via /inscription)
+      const regAccounts = localStorage.getItem('sama_registered_accounts');
+      if (regAccounts) {
+        const parsedAccounts = JSON.parse(regAccounts);
+        if (Array.isArray(parsedAccounts)) {
+          for (const a of parsedAccounts) {
+            const isClient = a.role === 'client' || a.role === 'user' || (a.categoryName || '').toLowerCase().includes('client');
+            if (!isClient && !isBlacklistedOrDeleted(a)) {
+              localPros.push({
+                id: a.id || `prov-${Date.now()}`,
+                slug: a.slug || a.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || `pro-${Date.now()}`,
+                name: a.name || 'Artisan Qualifié',
+                businessName: a.businessName || a.name || 'Atelier Professionnel',
+                avatar: a.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
+                phone: a.phone || '',
+                whatsapp: (a.phone || '').replace(/[^0-9]/g, ''),
+                categorySlug: a.categorySlug || 'plomberie',
+                categoryName: a.categoryName || 'Artisan Qualifié',
+                city: 'Dakar',
+                neighborhood: a.neighborhood || 'Dakar',
+                averageRating: 5.0,
+                reviewCount: 0,
+                startingPrice: 15000,
+                responseTimeMinutes: 15,
+                isAvailable: true,
+                verificationLevel: 'UNVERIFIED',
+                subscriptionTier: 'FREE',
+                completedJobsCount: 0,
+                joinedDate: a.registeredAt || 'Récemment',
+                experienceYears: 4,
+                bio: `Artisan qualifié en ${a.categoryName || 'son domaine'} à Dakar.`,
+                specialties: ['Intervention rapide', 'Travail soigné'],
+                services: [],
+                portfolio: [],
+                reviews: []
+              });
+            }
+          }
+        }
+      }
+
+      // Merge accounts from sama_artisan_registrations
+      const regPros = localStorage.getItem('sama_artisan_registrations');
+      if (regPros) {
+        const parsedRegs = JSON.parse(regPros);
+        if (Array.isArray(parsedRegs)) {
+          for (const item of parsedRegs) {
+            if (!isBlacklistedOrDeleted(item)) {
+              localPros.push({
+                id: item.id || `prov-${Date.now()}`,
+                slug: item.slug || item.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || `pro-${Date.now()}`,
+                name: item.name || 'Artisan Qualifié',
+                businessName: item.businessName || item.name || 'Atelier Professionnel',
+                avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80',
+                phone: item.phone || '',
+                whatsapp: (item.phone || '').replace(/[^0-9]/g, ''),
+                categorySlug: item.categorySlug || 'plomberie',
+                categoryName: item.categoryName || 'Artisan Qualifié',
+                city: 'Dakar',
+                neighborhood: item.neighborhood || 'Dakar',
+                averageRating: 5.0,
+                reviewCount: 0,
+                startingPrice: 15000,
+                responseTimeMinutes: 15,
+                isAvailable: true,
+                verificationLevel: 'UNVERIFIED',
+                subscriptionTier: 'FREE',
+                completedJobsCount: 0,
+                joinedDate: 'À l\'instant',
+                experienceYears: 4,
+                bio: `Artisan qualifié en ${item.categoryName || 'son domaine'} à Dakar.`,
+                specialties: ['Intervention rapide', 'Travail soigné'],
+                services: [],
+                portfolio: [],
+                reviews: []
+              });
+            }
+          }
+        }
+      }
     } catch {}
   }
 
@@ -332,6 +413,7 @@ export async function registerArtisan(artisanData: {
   name: string;
   businessName?: string;
   phone: string;
+  email?: string;
   categorySlug: string;
   categoryName: string;
   regionId: string;
@@ -340,48 +422,104 @@ export async function registerArtisan(artisanData: {
 }) {
   const newSlug = artisanData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString().slice(-4);
   const defaultAvatar = 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=400&q=80';
+  const cleanPhone = artisanData.phone ? artisanData.phone.replace(/[^0-9]/g, '') : '';
+  const cleanEmail = artisanData.email ? artisanData.email.trim().toLowerCase() : '';
+
+  const metadata = {
+    email: cleanEmail,
+    role: 'pro',
+    businessName: artisanData.businessName || artisanData.name,
+    categorySlug: artisanData.categorySlug,
+    categoryName: artisanData.categoryName,
+    neighborhood: artisanData.neighborhood,
+    registeredAt: new Date().toISOString(),
+    isOnlineSignup: true,
+    signupSource: 'formulaire_web'
+  };
 
   if (isSupabaseConfigured()) {
     try {
-      const { data, error } = await supabase
-        .from('providers')
-        .insert([
-          {
-            slug: newSlug,
+      // 1. Check if provider already exists by phone to update instead of erroring
+      let existingRecord: any = null;
+      if (cleanPhone.length >= 7) {
+        const { data } = await supabase
+          .from('providers')
+          .select('id, slug, phone, whatsapp, bio')
+          .or(`whatsapp.eq.${cleanPhone},phone.ilike.%${cleanPhone.slice(-8)}%`);
+        if (data && data.length > 0) {
+          existingRecord = data[0];
+        }
+      }
+
+      if (existingRecord) {
+        let mergedBio = { ...metadata };
+        try {
+          if (existingRecord.bio && existingRecord.bio.startsWith('{')) {
+            mergedBio = { ...JSON.parse(existingRecord.bio), ...metadata };
+          }
+        } catch {}
+
+        const { data: updatedData } = await supabase
+          .from('providers')
+          .update({
             name: artisanData.name,
             business_name: artisanData.businessName || artisanData.name,
-            avatar: defaultAvatar,
             phone: artisanData.phone,
-            whatsapp: artisanData.phone.replace(/[^0-9]/g, ''),
+            whatsapp: cleanPhone || '221770000000',
             category_slug: artisanData.categorySlug,
             category_name: artisanData.categoryName,
             region_id: artisanData.regionId,
             neighborhood: artisanData.neighborhood,
             address: `${artisanData.neighborhood}, Dakar`,
-            is_available: true,
-            verification_level: 'ID_VERIFIED',
-            cni_number: artisanData.cniNumber || null,
-            average_rating: 5.0,
-            review_count: 0,
-            starting_price: 15000,
-            response_time_minutes: 15,
-            years_experience: 4,
-            bio: `Artisan qualifié en ${artisanData.categoryName} intervenant à ${artisanData.neighborhood} et dans la région de Dakar.`,
-            specialties: ['Prestations soignées', 'Intervention rapide', 'Conseils professionnels'],
-            services: [
-              { id: 's1', name: 'Diagnostic & Intervention Standard', indicativePrice: 15000, unit: 'forfait' },
-              { id: 's2', name: 'Prestation Complète Sur Mesure', indicativePrice: 35000, unit: 'devis' }
-            ]
-          }
-        ])
-        .select()
-        .single();
+            verification_level: 'UNVERIFIED',
+            cni_number: artisanData.cniNumber || 'En cours de validation',
+            bio: JSON.stringify(mergedBio)
+          })
+          .eq('id', existingRecord.id)
+          .select()
+          .single();
 
-      if (error) {
-        console.error('Supabase registration error:', error);
-      } else if (data) {
-        const mapped = mapDbProviderToApp(data);
-        return { success: true, data: mapped };
+        if (updatedData) {
+          const mapped = mapDbProviderToApp(updatedData);
+          return { success: true, data: mapped };
+        }
+      } else {
+        const { data, error } = await supabase
+          .from('providers')
+          .insert([
+            {
+              slug: newSlug,
+              name: artisanData.name,
+              business_name: artisanData.businessName || artisanData.name,
+              avatar: defaultAvatar,
+              phone: artisanData.phone,
+              whatsapp: cleanPhone || '221770000000',
+              category_slug: artisanData.categorySlug,
+              category_name: artisanData.categoryName,
+              region_id: artisanData.regionId,
+              neighborhood: artisanData.neighborhood,
+              address: `${artisanData.neighborhood}, Dakar`,
+              is_available: true,
+              verification_level: 'UNVERIFIED',
+              cni_number: artisanData.cniNumber || 'En cours de validation',
+              average_rating: 5.0,
+              review_count: 0,
+              starting_price: 15000,
+              response_time_minutes: 15,
+              years_experience: 4,
+              bio: JSON.stringify(metadata),
+              specialties: ['Prestations soignées', 'Intervention rapide', 'Conseils professionnels']
+            }
+          ])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Supabase registration error:', error);
+        } else if (data) {
+          const mapped = mapDbProviderToApp(data);
+          return { success: true, data: mapped };
+        }
       }
     } catch (err) {
       console.error('Supabase registration exception:', err);
@@ -410,7 +548,7 @@ export async function registerArtisan(artisanData: {
     startingPrice: 15000,
     responseTimeMinutes: 15,
     isAvailable: true,
-    verificationLevel: 'ID_VERIFIED',
+    verificationLevel: 'UNVERIFIED',
     subscriptionTier: 'FREE',
     completedJobsCount: 0,
     joinedDate: new Date().toISOString(),
@@ -427,7 +565,7 @@ export async function registerArtisan(artisanData: {
     existing.unshift({
       id: `reg-${Date.now()}`,
       ...artisanData,
-      status: 'APPROVED',
+      status: 'PENDING',
       dateSubmitted: 'À l\'instant'
     });
     localStorage.setItem('sama_artisan_registrations', JSON.stringify(existing));
@@ -743,6 +881,7 @@ export interface AppUserAccount {
   businessName?: string;
   registeredAt: string;
   status: 'ACTIVE' | 'SUSPENDED';
+  isOnlineSignup?: boolean;
 }
 
 export interface PendingArtisanData {
@@ -779,7 +918,12 @@ export async function registerUserAccount(userData: UserAccountData): Promise<{ 
           password,
           role,
           businessName: userData.businessName || cleanName,
-          registeredAt: new Date().toISOString()
+          categorySlug: userData.categorySlug,
+          categoryName: userData.categoryName,
+          neighborhood: userData.neighborhood,
+          registeredAt: new Date().toISOString(),
+          isOnlineSignup: true,
+          signupSource: 'formulaire_web'
         };
 
         // Check if already in Supabase to avoid duplicate rows
@@ -787,14 +931,40 @@ export async function registerUserAccount(userData: UserAccountData): Promise<{ 
         if (cleanPhone.length >= 7) {
           const { data } = await supabase
             .from('providers')
-            .select('id, slug, phone, whatsapp')
+            .select('id, slug, phone, whatsapp, bio, category_name, category_slug, neighborhood')
             .or(`whatsapp.eq.${cleanPhone},phone.ilike.%${cleanPhone.slice(-8)}%`);
           if (data && data.length > 0) {
             existingUser = data[0];
           }
         }
 
-        if (!existingUser) {
+        if (existingUser) {
+          let mergedBio = { ...metadata };
+          try {
+            if (existingUser.bio && existingUser.bio.startsWith('{')) {
+              mergedBio = { ...JSON.parse(existingUser.bio), ...metadata };
+            }
+          } catch {}
+
+          const updateObj: any = {
+            bio: JSON.stringify(mergedBio),
+            name: cleanName,
+            phone: userData.phone.trim()
+          };
+
+          if (isPro) {
+            if (userData.categoryName) updateObj.category_name = userData.categoryName;
+            if (userData.categorySlug) updateObj.category_slug = userData.categorySlug;
+            if (userData.neighborhood) updateObj.neighborhood = userData.neighborhood;
+          } else {
+            updateObj.category_name = 'Client Particulier';
+          }
+
+          await supabase
+            .from('providers')
+            .update(updateObj)
+            .eq('id', existingUser.id);
+        } else {
           const { error } = await supabase
             .from('providers')
             .insert([{
@@ -806,7 +976,7 @@ export async function registerUserAccount(userData: UserAccountData): Promise<{ 
               category_slug: isPro ? (userData.categorySlug || 'plomberie') : 'plomberie',
               category_name: isPro ? (userData.categoryName || 'Artisan Qualifié') : 'Client Particulier',
               neighborhood: userData.neighborhood || 'Dakar',
-              verification_level: 'ID_VERIFIED',
+              verification_level: isPro ? 'UNVERIFIED' : 'ID_VERIFIED',
               bio: JSON.stringify(metadata)
             }]);
 
@@ -915,6 +1085,14 @@ export async function getRegisteredAccounts(): Promise<AppUserAccount[]> {
             meta.role === 'client' || 
             meta.role === 'user';
 
+          const isOnlineSignup = 
+            meta.isOnlineSignup === true || 
+            Boolean(meta.passwordHash) || 
+            Boolean(meta.registeredAt) || 
+            pSlug.startsWith('client-') || 
+            pSlug.startsWith('pro-') || 
+            Boolean(item.created_at);
+
           dbUsers.push({
             id: item.id ? String(item.id) : (item.slug || `acc-${Date.now()}`),
             name: item.name || 'Utilisateur',
@@ -926,7 +1104,8 @@ export async function getRegisteredAccounts(): Promise<AppUserAccount[]> {
             categoryName: isClient ? 'Particulier' : (item.category_name || 'Artisan'),
             businessName: item.business_name || item.name,
             registeredAt: item.created_at ? (item.created_at.includes('T') ? new Date(item.created_at).toLocaleDateString('fr-FR') : item.created_at) : 'Récemment',
-            status: item.is_available === false ? 'SUSPENDED' : 'ACTIVE'
+            status: item.is_available === false ? 'SUSPENDED' : 'ACTIVE',
+            isOnlineSignup
           });
         }
       }
@@ -956,7 +1135,8 @@ export async function getRegisteredAccounts(): Promise<AppUserAccount[]> {
               categoryName: a.categoryName || (isClient ? 'Particulier' : 'Artisan'),
               businessName: a.businessName || a.name,
               registeredAt: a.registeredAt ? (a.registeredAt.includes('T') ? new Date(a.registeredAt).toLocaleDateString('fr-FR') : a.registeredAt) : 'Récemment',
-              status: 'ACTIVE'
+              status: 'ACTIVE',
+              isOnlineSignup: true
             });
           }
         }
@@ -1567,4 +1747,419 @@ export async function deleteContactMessage(id: string): Promise<boolean> {
 
   return true;
 }
+
+// ==========================================================
+// SAMA BTP IMMO — SERVICES MULTI-TENANT
+// ==========================================================
+import {
+  DEMO_PROPERTIES,
+  DEMO_PROJECTS,
+  DEMO_CONSTRUCTION_LOGS,
+  DEMO_CLIENTS,
+  DEMO_OWNERS,
+  DEMO_TENANTS,
+  DEMO_CONTRACTS,
+  DEMO_PAYMENTS,
+  DEMO_DOCUMENTS,
+  DEMO_PUBLICATIONS,
+  DEMO_ORGANIZATIONS
+} from '@/lib/data';
+import { Property, BTPProject, ConstructionLog, Client, Contract, Payment, DocumentItem, Publication, Organization } from '@/lib/types';
+
+// 1. BIENS IMMOBILIERS
+export async function getProperties(organizationId?: string): Promise<Property[]> {
+  let dbItems: Property[] = [];
+  if (isSupabaseConfigured()) {
+    try {
+      let query = supabase.from('properties').select('*');
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) {
+        dbItems = data.map((item: any) => ({
+          id: item.id,
+          organizationId: item.organization_id,
+          organizationName: item.organization_name || 'Agence Immobilière',
+          title: item.title,
+          reference: item.reference || `REF-${item.id.slice(0, 6)}`,
+          slug: item.slug || item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          propertyType: item.property_type || 'Appartement',
+          transactionType: item.transaction_type || 'Location',
+          price: Number(item.price) || 0,
+          currency: item.currency || 'FCFA',
+          surface: Number(item.surface) || 0,
+          rooms: Number(item.rooms) || 0,
+          bathrooms: Number(item.bathrooms) || 0,
+          floors: Number(item.floors) || 1,
+          floorNumber: Number(item.floor_number) || 0,
+          address: item.address || 'Dakar',
+          neighborhood: item.neighborhood || 'Almadies',
+          city: item.city || 'Dakar',
+          region: item.region || 'Dakar',
+          description: item.description || '',
+          features: item.features || [],
+          amenities: item.amenities || [],
+          status: item.status || 'Disponible',
+          viewsCount: Number(item.views_count) || 0,
+          whatsappClicks: Number(item.whatsapp_clicks) || 0,
+          inquiriesCount: Number(item.inquiries_count) || 0,
+          images: item.images || [],
+          primaryImage: item.primary_image || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80',
+          createdAt: item.created_at || new Date().toISOString()
+        }));
+      }
+    } catch (e) {
+      console.warn('Supabase getProperties notice:', e);
+    }
+  }
+
+  let localItems: Property[] = [];
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('sama_properties_data');
+      if (stored) {
+        localItems = JSON.parse(stored);
+      }
+    } catch {}
+  }
+
+  const combined = [...dbItems];
+  for (const item of (localItems.length > 0 ? localItems : DEMO_PROPERTIES)) {
+    if (!combined.some(c => c.id === item.id || c.slug === item.slug)) {
+      if (!organizationId || item.organizationId === organizationId) {
+        combined.push(item);
+      }
+    }
+  }
+
+  return combined;
+}
+
+export async function getPropertyBySlug(slug: string): Promise<Property | null> {
+  const properties = await getProperties();
+  const cleanSlug = decodeURIComponent(slug).toLowerCase().trim();
+  return properties.find(p => p.slug.toLowerCase() === cleanSlug || p.id === cleanSlug) || null;
+}
+
+export async function createProperty(propertyData: Partial<Property>): Promise<Property> {
+  const newProp: Property = {
+    id: propertyData.id || `prop-${Date.now()}`,
+    organizationId: propertyData.organizationId || 'org-noune-immo',
+    organizationName: propertyData.organizationName || 'Noune Immobilier SARL',
+    title: propertyData.title || 'Nouveau Bien Immobilier',
+    reference: propertyData.reference || `REF-${Math.floor(1000 + Math.random() * 9000)}`,
+    slug: propertyData.slug || (propertyData.title || 'bien').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString().slice(-4),
+    propertyType: propertyData.propertyType || 'Appartement',
+    transactionType: propertyData.transactionType || 'Location',
+    price: Number(propertyData.price) || 0,
+    currency: propertyData.currency || 'FCFA',
+    surface: Number(propertyData.surface) || 0,
+    rooms: Number(propertyData.rooms) || 0,
+    bathrooms: Number(propertyData.bathrooms) || 0,
+    floors: Number(propertyData.floors) || 1,
+    floorNumber: Number(propertyData.floorNumber) || 0,
+    address: propertyData.address || 'Dakar',
+    neighborhood: propertyData.neighborhood || 'Dakar',
+    city: propertyData.city || 'Dakar',
+    region: propertyData.region || 'Dakar',
+    description: propertyData.description || '',
+    features: propertyData.features || [],
+    amenities: propertyData.amenities || [],
+    status: propertyData.status || 'Disponible',
+    viewsCount: 0,
+    whatsappClicks: 0,
+    inquiriesCount: 0,
+    images: propertyData.images || [],
+    primaryImage: propertyData.primaryImage || (propertyData.images && propertyData.images.length > 0 ? propertyData.images[0].imageUrl : 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80'),
+    createdAt: new Date().toISOString()
+  };
+
+  if (isSupabaseConfigured()) {
+    try {
+      await supabase.from('properties').insert([{
+        id: newProp.id,
+        organization_id: newProp.organizationId,
+        title: newProp.title,
+        reference: newProp.reference,
+        slug: newProp.slug,
+        property_type: newProp.propertyType,
+        transaction_type: newProp.transactionType,
+        price: newProp.price,
+        currency: newProp.currency,
+        surface: newProp.surface,
+        rooms: newProp.rooms,
+        bathrooms: newProp.bathrooms,
+        address: newProp.address,
+        neighborhood: newProp.neighborhood,
+        city: newProp.city,
+        description: newProp.description,
+        features: newProp.features,
+        status: newProp.status,
+        primary_image: newProp.primaryImage
+      }]);
+    } catch (e) {
+      console.warn('Supabase createProperty error:', e);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const existing = await getProperties();
+      existing.unshift(newProp);
+      localStorage.setItem('sama_properties_data', JSON.stringify(existing));
+    } catch {}
+  }
+
+  return newProp;
+}
+
+// 2. PROJETS BTP
+export async function getBTPProjects(organizationId?: string): Promise<BTPProject[]> {
+  let dbItems: BTPProject[] = [];
+  if (isSupabaseConfigured()) {
+    try {
+      let query = supabase.from('projects').select('*');
+      if (organizationId) {
+        query = query.eq('organization_id', organizationId);
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) {
+        dbItems = data.map((item: any) => ({
+          id: item.id,
+          organizationId: item.organization_id,
+          name: item.name,
+          reference: item.reference || `PRJ-${item.id.slice(0, 6)}`,
+          slug: item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          clientName: item.client_name,
+          companyName: item.company_name || 'Entreprise BTP',
+          architectName: item.architect_name,
+          engineerName: item.engineer_name,
+          address: item.address || 'Dakar',
+          city: item.city || 'Dakar',
+          description: item.description,
+          budget: Number(item.budget) || 0,
+          actualExpenses: Number(item.actual_expenses) || 0,
+          startDate: item.start_date,
+          expectedEndDate: item.expected_end_date,
+          actualEndDate: item.actual_end_date,
+          progress: Number(item.progress) || 0,
+          status: item.status || 'En cours',
+          stages: item.stages || [],
+          primaryImage: item.primary_image || 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=1200&q=80',
+          createdAt: item.created_at || new Date().toISOString()
+        }));
+      }
+    } catch (e) {
+      console.warn('Supabase getBTPProjects notice:', e);
+    }
+  }
+
+  let localItems: BTPProject[] = [];
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('sama_btp_projects_data');
+      if (stored) {
+        localItems = JSON.parse(stored);
+      }
+    } catch {}
+  }
+
+  const combined = [...dbItems];
+  for (const item of (localItems.length > 0 ? localItems : DEMO_PROJECTS)) {
+    if (!combined.some(c => c.id === item.id || c.slug === item.slug)) {
+      if (!organizationId || item.organizationId === organizationId) {
+        combined.push(item);
+      }
+    }
+  }
+
+  return combined;
+}
+
+export async function getBTPProjectBySlug(slug: string): Promise<BTPProject | null> {
+  const projects = await getBTPProjects();
+  const cleanSlug = decodeURIComponent(slug).toLowerCase().trim();
+  return projects.find(p => p.slug.toLowerCase() === cleanSlug || p.id === cleanSlug) || null;
+}
+
+export async function createBTPProject(projectData: Partial<BTPProject>): Promise<BTPProject> {
+  const newProj: BTPProject = {
+    id: projectData.id || `proj-${Date.now()}`,
+    organizationId: projectData.organizationId || 'org-ecs-btp',
+    name: projectData.name || 'Nouveau Projet BTP',
+    reference: projectData.reference || `PRJ-${Math.floor(1000 + Math.random() * 9000)}`,
+    slug: projectData.slug || (projectData.name || 'projet').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString().slice(-4),
+    clientName: projectData.clientName || '',
+    companyName: projectData.companyName || 'ECS BTP & Immobilier',
+    architectName: projectData.architectName || '',
+    engineerName: projectData.engineerName || '',
+    address: projectData.address || 'Dakar',
+    city: projectData.city || 'Dakar',
+    description: projectData.description || '',
+    budget: Number(projectData.budget) || 0,
+    actualExpenses: Number(projectData.actualExpenses) || 0,
+    startDate: projectData.startDate || new Date().toISOString().split('T')[0],
+    expectedEndDate: projectData.expectedEndDate || '',
+    progress: Number(projectData.progress) || 0,
+    status: projectData.status || 'En cours',
+    stages: projectData.stages || [],
+    primaryImage: projectData.primaryImage || 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=1200&q=80',
+    createdAt: new Date().toISOString()
+  };
+
+  if (isSupabaseConfigured()) {
+    try {
+      await supabase.from('projects').insert([{
+        id: newProj.id,
+        organization_id: newProj.organizationId,
+        name: newProj.name,
+        reference: newProj.reference,
+        slug: newProj.slug,
+        client_name: newProj.clientName,
+        company_name: newProj.companyName,
+        architect_name: newProj.architectName,
+        engineer_name: newProj.engineerName,
+        address: newProj.address,
+        city: newProj.city,
+        description: newProj.description,
+        budget: newProj.budget,
+        progress: newProj.progress,
+        status: newProj.status
+      }]);
+    } catch (e) {
+      console.warn('Supabase createBTPProject error:', e);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const existing = await getBTPProjects();
+      existing.unshift(newProj);
+      localStorage.setItem('sama_btp_projects_data', JSON.stringify(existing));
+    } catch {}
+  }
+
+  return newProj;
+}
+
+// 3. JOURNAL DE CHANTIER
+export async function getConstructionLogs(projectId?: string): Promise<ConstructionLog[]> {
+  let items: ConstructionLog[] = DEMO_CONSTRUCTION_LOGS;
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('sama_construction_logs');
+      if (stored) {
+        items = JSON.parse(stored);
+      }
+    } catch {}
+  }
+  if (projectId) {
+    return items.filter(l => l.projectId === projectId);
+  }
+  return items;
+}
+
+export async function addConstructionLog(logData: Partial<ConstructionLog>): Promise<ConstructionLog> {
+  const newLog: ConstructionLog = {
+    id: logData.id || `log-${Date.now()}`,
+    projectId: logData.projectId || 'proj-pte-01',
+    projectName: logData.projectName || 'Construction Résidence R+5 Point E',
+    organizationId: logData.organizationId || 'org-ecs-btp',
+    logDate: logData.logDate || new Date().toISOString().split('T')[0],
+    authorName: logData.authorName || 'Chef de Chantier',
+    weather: logData.weather || 'Ensoleillé',
+    workDone: logData.workDone || 'Travaux du jour enregistrés',
+    workersCount: Number(logData.workersCount) || 10,
+    equipmentUsed: logData.equipmentUsed || '',
+    materialsUsed: logData.materialsUsed || '',
+    incidents: logData.incidents || 'Aucun incident',
+    observations: logData.observations || '',
+    images: logData.images || ['https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80'],
+    createdAt: new Date().toISOString()
+  };
+
+  if (typeof window !== 'undefined') {
+    try {
+      const existing = await getConstructionLogs();
+      existing.unshift(newLog);
+      localStorage.setItem('sama_construction_logs', JSON.stringify(existing));
+    } catch {}
+  }
+  return newLog;
+}
+
+// 4. PUBLICATIONS CMS
+export async function getPublications(category?: string): Promise<Publication[]> {
+  let items: Publication[] = DEMO_PUBLICATIONS;
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('sama_publications_data');
+      if (stored) {
+        items = JSON.parse(stored);
+      }
+    } catch {}
+  }
+  if (category) {
+    const cleanCat = category.toLowerCase().trim();
+    return items.filter(p => p.category.toLowerCase().includes(cleanCat));
+  }
+  return items;
+}
+
+export async function getPublicationBySlug(slug: string): Promise<Publication | null> {
+  const pubs = await getPublications();
+  const cleanSlug = decodeURIComponent(slug).toLowerCase().trim();
+  return pubs.find(p => p.slug.toLowerCase() === cleanSlug || p.id === cleanSlug) || null;
+}
+
+export async function createPublication(pubData: Partial<Publication>): Promise<Publication> {
+  const newPub: Publication = {
+    id: pubData.id || `pub-${Date.now()}`,
+    organizationId: pubData.organizationId || 'org-noune-immo',
+    organizationName: pubData.organizationName || 'Noune Immobilier SARL',
+    title: pubData.title || 'Nouvelle Publication',
+    slug: pubData.slug || (pubData.title || 'pub').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString().slice(-4),
+    content: pubData.content || '',
+    category: pubData.category || 'Conseil immobilier',
+    primaryImage: pubData.primaryImage || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80',
+    gallery: pubData.gallery || [],
+    author: pubData.author || 'Équipe SAMA BTP IMMO',
+    status: pubData.status || 'Publié',
+    publishDate: pubData.publishDate || new Date().toISOString(),
+    keywords: pubData.keywords || [],
+    viewsCount: 0,
+    createdAt: new Date().toISOString()
+  };
+
+  if (typeof window !== 'undefined') {
+    try {
+      const existing = await getPublications();
+      existing.unshift(newPub);
+      localStorage.setItem('sama_publications_data', JSON.stringify(existing));
+    } catch {}
+  }
+  return newPub;
+}
+
+// 5. ORGANISATIONS & ANNUAIRE ENTREPRISES
+export async function getOrganizations(): Promise<Organization[]> {
+  let items: Organization[] = DEMO_ORGANIZATIONS;
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('sama_organizations_data');
+      if (stored) {
+        items = JSON.parse(stored);
+      }
+    } catch {}
+  }
+  return items;
+}
+
+export async function getOrganizationBySlug(slug: string): Promise<Organization | null> {
+  const orgs = await getOrganizations();
+  const cleanSlug = decodeURIComponent(slug).toLowerCase().trim();
+  return orgs.find(o => o.slug.toLowerCase() === cleanSlug || o.id === cleanSlug) || null;
+}
+
 

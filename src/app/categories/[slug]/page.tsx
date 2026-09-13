@@ -46,7 +46,7 @@ export default function CategorySeoPage() {
 
   const providers = allProviders.filter((p) => {
     if (p.categorySlug !== category.slug) return false;
-    if (selectedNeighborhood && !p.neighborhood.toLowerCase().includes(selectedNeighborhood.toLowerCase())) {
+    if (selectedNeighborhood && !(p.neighborhood || '').toLowerCase().includes(selectedNeighborhood.toLowerCase())) {
       return false;
     }
     return true;

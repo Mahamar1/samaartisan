@@ -97,9 +97,9 @@ export function SamaBot() {
           id: matchedPro.id,
           slug: matchedPro.slug,
           name: matchedPro.name + ' (' + matchedPro.businessName + ')',
-          category: matchedPro.categoryName,
+          category: matchedPro.categoryName || 'BTP',
           neighborhood: matchedPro.neighborhood + ', Dakar',
-          rating: matchedPro.averageRating,
+          rating: matchedPro.averageRating || 5,
           phone: matchedPro.phone,
         };
       }

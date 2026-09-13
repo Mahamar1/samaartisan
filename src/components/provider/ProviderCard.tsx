@@ -29,12 +29,12 @@ export default function ProviderCard({ provider, userDistanceKm }: ProviderCardP
       providerId: provider.id,
       clientName: 'Visiteur Web',
       clientPhone: 'WhatsApp Direct',
-      serviceType: provider.categoryName,
+      serviceType: provider.categoryName || 'Service',
       channel: 'WHATSAPP'
     });
 
     const defaultMsg = encodeURIComponent(
-      `Bonjour ${provider.name}, je vous contacte via la plateforme Sama Artisan pour une demande de service (${provider.categoryName}). Êtes-vous disponible ?`
+      `Bonjour ${provider.name}, je vous contacte via la plateforme Sama Artisan pour une demande de service (${provider.categoryName || 'Service'}). Êtes-vous disponible ?`
     );
     window.open(`https://wa.me/${provider.whatsapp}?text=${defaultMsg}`, '_blank');
   };
@@ -44,7 +44,7 @@ export default function ProviderCard({ provider, userDistanceKm }: ProviderCardP
       providerId: provider.id,
       clientName: 'Visiteur Web',
       clientPhone: 'Appel Direct',
-      serviceType: provider.categoryName,
+      serviceType: provider.categoryName || 'Service',
       channel: 'CALL'
     });
   };
@@ -125,7 +125,7 @@ export default function ProviderCard({ provider, userDistanceKm }: ProviderCardP
                 <div className="flex items-center gap-3 mt-2 text-xs flex-wrap">
                   <div className="flex items-center gap-1 font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200/60">
                     <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    <span>{provider.averageRating.toFixed(1)}</span>
+                    <span>{(provider.averageRating || 5).toFixed(1)}</span>
                     <span className="text-slate-400 font-normal">({provider.reviewCount})</span>
                   </div>
 
@@ -169,7 +169,7 @@ export default function ProviderCard({ provider, userDistanceKm }: ProviderCardP
             </div>
 
             {/* Photo Gallery preview */}
-            {provider.portfolio.length > 0 && (
+            {provider.portfolio && provider.portfolio.length > 0 && (
               <div className="mt-3.5 grid grid-cols-3 gap-2">
                 {provider.portfolio.slice(0, 3).map((photo) => (
                   <div key={photo.id} className="h-16 sm:h-20 rounded-xl overflow-hidden bg-slate-100 relative group/img border border-slate-100">

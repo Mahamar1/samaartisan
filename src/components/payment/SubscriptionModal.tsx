@@ -32,7 +32,7 @@ export default function SubscriptionModal({ plan, isOpen, onClose, onSuccess }: 
 
   if (!isOpen) return null;
 
-  const price = billingCycle === 'MONTHLY' ? plan.priceMonthlyFcfa : plan.priceAnnualFcfa;
+  const price = (billingCycle === 'MONTHLY' ? plan.priceMonthlyFcfa : plan.priceAnnualFcfa) || 0;
 
   const handlePayment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +100,7 @@ export default function SubscriptionModal({ plan, isOpen, onClose, onSuccess }: 
                         : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    Mensuel ({formatFcfa(plan.priceMonthlyFcfa)}/m)
+                    Mensuel ({formatFcfa(plan.priceMonthlyFcfa || 0)}/m)
                   </button>
                   <button
                     type="button"
@@ -205,7 +205,7 @@ export default function SubscriptionModal({ plan, isOpen, onClose, onSuccess }: 
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
                 <p className="text-xs font-bold uppercase text-slate-600">Inclus dans votre plan :</p>
                 <div className="space-y-1.5">
-                  {plan.features.slice(0, 4).map((f, i) => (
+                  {(plan.features || []).slice(0, 4).map((f, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs text-slate-700">
                       <Check className="w-3.5 h-3.5 text-sama-600 shrink-0 stroke-[2.5]" />
                       <span>{f}</span>

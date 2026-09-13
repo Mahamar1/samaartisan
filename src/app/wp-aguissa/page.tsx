@@ -89,6 +89,7 @@ export interface AppUser {
   businessName?: string;
   registeredAt: string;
   status: 'ACTIVE' | 'SUSPENDED';
+  isOnlineSignup?: boolean;
 }
 
 const DEFAULT_CLIENTS: AppUser[] = [];
@@ -134,7 +135,7 @@ export default function AdminDashboardPage() {
   
   // Users search & filter
   const [userSearchQuery, setUserSearchQuery] = useState('');
-  const [userRoleFilter, setUserRoleFilter] = useState<'ALL' | 'client' | 'pro'>('ALL');
+  const [userRoleFilter, setUserRoleFilter] = useState<'ALL' | 'client' | 'pro' | 'online_pro' | 'online_client' | 'online_all'>('online_pro');
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('+221 77 ');
@@ -708,11 +709,11 @@ export default function AdminDashboardPage() {
   // Filtered Providers calculation
   const filteredProviders = providersList.filter((p) => {
     const matchesSearch = 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.businessName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.categoryName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.neighborhood.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.phone.includes(searchQuery);
+      (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.businessName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.categoryName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.neighborhood || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.phone || '').includes(searchQuery);
 
     const matchesCategory = categoryFilter === 'ALL' || p.categorySlug === categoryFilter;
 
@@ -755,6 +756,12 @@ export default function AdminDashboardPage() {
   const clientsCount = allRegisteredUsers.filter((u) => u.role === 'client').length;
   const prosCount = allRegisteredUsers.filter((u) => u.role === 'pro').length;
 
+  const onlineArtisans = allRegisteredUsers.filter((u) => u.role === 'pro');
+  const onlineClients = allRegisteredUsers.filter((u) => u.role === 'client');
+  const onlineArtisansCount = onlineArtisans.length;
+  const onlineClientsCount = onlineClients.length;
+  const totalOnlineCount = onlineArtisansCount + onlineClientsCount;
+
   // Filtered Users List
   const filteredUsers = allRegisteredUsers.filter((u) => {
     const query = userSearchQuery.toLowerCase();
@@ -765,7 +772,10 @@ export default function AdminDashboardPage() {
       (u.neighborhood && u.neighborhood.toLowerCase().includes(query)) ||
       (u.categoryName && u.categoryName.toLowerCase().includes(query));
 
-    const matchesRole = userRoleFilter === 'ALL' || u.role === userRoleFilter;
+    let matchesRole = true;
+    if (userRoleFilter === 'client' || userRoleFilter === 'online_client') matchesRole = u.role === 'client';
+    else if (userRoleFilter === 'pro' || userRoleFilter === 'online_pro') matchesRole = u.role === 'pro';
+    else if (userRoleFilter === 'online_all' || userRoleFilter === 'ALL') matchesRole = true;
 
     return matchesSearch && matchesRole;
   });
@@ -928,10 +938,30 @@ export default function AdminDashboardPage() {
                 <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">
                   Accès Privé Actif
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 text-[11px] font-black bg-sama-500/20 text-sama-300 border border-sama-500/40 rounded-full shadow-sm">
+                <button 
+                  onClick={() => { setActiveTab('users'); setUserRoleFilter('online_pro'); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-0.5 text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full shadow-sm hover:bg-emerald-500/30 transition-all cursor-pointer"
+                  title="Voir les Artisans inscrits via le lien web"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{onlineArtisansCount} Artisans Inscrits (Web Link)</span>
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('users'); setUserRoleFilter('online_client'); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-0.5 text-[11px] font-black bg-blue-500/20 text-blue-300 border border-blue-500/40 rounded-full shadow-sm hover:bg-blue-500/30 transition-all cursor-pointer"
+                  title="Voir les Clients inscrits via le lien web"
+                >
+                  <User className="w-3.5 h-3.5 text-blue-400" />
+                  <span>{onlineClientsCount} Clients Inscrits (Web Link)</span>
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('users'); setUserRoleFilter('online_all'); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-0.5 text-[11px] font-black bg-sama-500/20 text-sama-300 border border-sama-500/40 rounded-full shadow-sm hover:bg-sama-500/30 transition-all cursor-pointer"
+                  title="Voir toutes les inscriptions via le lien"
+                >
                   <Users className="w-3.5 h-3.5 text-sama-400" />
-                  <span>{totalUsersCount} Personnes Inscrites</span>
-                </span>
+                  <span>{totalOnlineCount} Total Link</span>
+                </button>
               </div>
               <p className="text-[11px] text-slate-400">Gestion complète de la plateforme • Sénégal</p>
             </div>
@@ -976,77 +1006,64 @@ export default function AdminDashboardPage() {
         {/* KPI Counter Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           
-          {/* Card 1: Total Users */}
+          {/* Card 1: Artisans via Link */}
           <div 
-            onClick={() => setActiveTab('users')}
-            className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-sama-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
+            onClick={() => { setActiveTab('users'); setUserRoleFilter('online_pro'); }}
+            className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-emerald-500/40 hover:border-emerald-500 shadow-lg cursor-pointer transition-all active:scale-95 group"
           >
-            <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
-              <span>Personnes Inscrites</span>
-              <Users className="w-4 h-4 text-sama-400 group-hover:scale-110 transition-transform" />
+            <div className="flex items-center justify-between text-emerald-400 text-[11px] sm:text-xs font-bold uppercase">
+              <span>Artisans Link</span>
+              <Wrench className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
             </div>
-            <div className="text-xl sm:text-2xl font-black text-white mt-1.5 sm:mt-2">
-              {totalUsersCount}
+            <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1.5 sm:mt-2">
+              {onlineArtisansCount}
             </div>
-            <p className="text-[10px] sm:text-[11px] text-sama-400 font-bold mt-1">
-              {clientsCount} clients • {prosCount} pros
-            </p>
+            <p className="text-[10px] sm:text-[11px] text-emerald-300 font-bold mt-1">Inscrits via le Link Web</p>
           </div>
 
-          {/* Card 2: Inbox & Messages (NEW) */}
+          {/* Card 2: Clients via Link */}
           <div 
-            onClick={() => setActiveTab('inbox')}
-            className={`p-4 sm:p-5 rounded-3xl bg-slate-900 border transition-all active:scale-95 cursor-pointer group shadow-lg ${
-              unreadMessagesCount > 0 
-                ? 'border-sama-500/60 bg-gradient-to-b from-slate-900 to-sama-950/20' 
-                : 'border-slate-800 hover:border-sama-500/40'
-            }`}
+            onClick={() => { setActiveTab('users'); setUserRoleFilter('online_client'); }}
+            className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-blue-500/40 hover:border-blue-500 shadow-lg cursor-pointer transition-all active:scale-95 group"
           >
-            <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
-              <span>Boîte E-mails</span>
-              <Inbox className="w-4 h-4 text-sama-400 group-hover:scale-110 transition-transform" />
-            </div>
-            <div className="text-xl sm:text-2xl font-black text-white mt-1.5 sm:mt-2 flex items-center gap-2">
-              <span>{messagesList.length}</span>
-              {unreadMessagesCount > 0 && (
-                <span className="animate-pulse px-2 py-0.5 rounded-full bg-sama-500 text-white font-black text-[10px]">
-                  {unreadMessagesCount} new
-                </span>
-              )}
-            </div>
-            <p className="text-[10px] sm:text-[11px] text-emerald-400 font-bold mt-1">
-              {repliedMessagesCount} répondus
-            </p>
-          </div>
-
-          {/* Card 3: Clients Particuliers */}
-          <div 
-            onClick={() => { setActiveTab('users'); setUserRoleFilter('client'); }}
-            className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-blue-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
-          >
-            <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
-              <span>Clients</span>
+            <div className="flex items-center justify-between text-blue-400 text-[11px] sm:text-xs font-bold uppercase">
+              <span>Clients Link</span>
               <User className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-xl sm:text-2xl font-black text-blue-400 mt-1.5 sm:mt-2">
-              {clientsCount}
+              {onlineClientsCount}
             </div>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium mt-1">Demandeurs</p>
+            <p className="text-[10px] sm:text-[11px] text-blue-300 font-bold mt-1">Inscrits via le Link Web</p>
           </div>
 
-          {/* Card 4: Artisans Pros */}
+          {/* Card 3: Total Inscriptions Link */}
           <div 
-            onClick={() => { setActiveTab('providers'); }}
+            onClick={() => { setActiveTab('users'); setUserRoleFilter('online_all'); }}
+            className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-sama-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
+          >
+            <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
+              <span>Inscriptions Link</span>
+              <Sparkles className="w-4 h-4 text-sama-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-white mt-1.5 sm:mt-2">
+              {totalOnlineCount}
+            </div>
+            <p className="text-[10px] sm:text-[11px] text-sama-400 font-bold mt-1">Total Web Inscrits</p>
+          </div>
+
+          {/* Card 4: Artisans Inscrits */}
+          <div 
+            onClick={() => { setActiveTab('users'); setUserRoleFilter('pro'); }}
             className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 shadow-lg cursor-pointer transition-all active:scale-95 group"
           >
             <div className="flex items-center justify-between text-slate-400 text-[11px] sm:text-xs font-bold uppercase">
-              <span>Artisans Pros</span>
+              <span>Artisans Inscrits</span>
               <Wrench className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
             </div>
-            <div className="text-xl sm:text-2xl font-black text-white mt-1.5 sm:mt-2">
-              {providersList.length}
+            <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1.5 sm:mt-2">
+              {prosCount}
             </div>
-            <p className="text-[10px] sm:text-[11px] text-emerald-400 font-bold mt-1">Vitrine Active</p>
+            <p className="text-[10px] sm:text-[11px] text-emerald-400 font-bold mt-1">Professionnels qualifiés</p>
           </div>
 
           {/* Card 5: Verified CNI */}
@@ -1121,9 +1138,12 @@ export default function AdminDashboardPage() {
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Personnes Inscrites ({totalUsersCount})</span>
+            <span>Inscriptions via le Link Web ({totalOnlineCount})</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-black text-[10px]">
+              ⚡ {onlineArtisansCount} artisans web
+            </span>
             <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-black text-[10px]">
-              {clientsCount} clients
+              👤 {onlineClientsCount} clients web
             </span>
           </button>
 
@@ -1709,41 +1729,80 @@ export default function AdminDashboardPage() {
           <div className="space-y-6 animate-in fade-in">
             
             {/* Top User Category Breakdown */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div 
+                onClick={() => setUserRoleFilter('online_pro')}
+                className={`p-5 rounded-3xl bg-slate-900 border transition-all cursor-pointer active:scale-95 shadow-md ${
+                  userRoleFilter === 'online_pro' ? 'border-emerald-500/60 ring-2 ring-emerald-500/30 bg-emerald-950/20' : 'border-slate-800 hover:border-emerald-500/40'
+                }`}
+              >
                 <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
-                  <span>Total Utilisateurs</span>
-                  <Users className="w-4 h-4 text-sama-400" />
+                  <span>Artisans Inscrits (Link)</span>
+                  <Wrench className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="text-2xl font-black text-emerald-400 mt-2">
+                  {onlineArtisansCount} <span className="text-xs font-medium text-slate-400">artisans</span>
+                </div>
+                <p className="text-[11px] text-emerald-400/90 font-bold mt-1 flex items-center justify-between">
+                  <span>Inscrits via le formulaire web</span>
+                  <span className="text-[10px] underline">Afficher &rarr;</span>
+                </p>
+              </div>
+
+              <div 
+                onClick={() => setUserRoleFilter('online_client')}
+                className={`p-5 rounded-3xl bg-slate-900 border transition-all cursor-pointer active:scale-95 shadow-md ${
+                  userRoleFilter === 'online_client' ? 'border-blue-500/60 ring-2 ring-blue-500/30 bg-blue-950/20' : 'border-slate-800 hover:border-blue-500/40'
+                }`}
+              >
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>Clients Inscrits (Link)</span>
+                  <User className="w-4 h-4 text-blue-400" />
+                </div>
+                <div className="text-2xl font-black text-blue-400 mt-2">
+                  {onlineClientsCount} <span className="text-xs font-medium text-slate-400">clients</span>
+                </div>
+                <p className="text-[11px] text-blue-400/90 font-bold mt-1 flex items-center justify-between">
+                  <span>Inscrits via le formulaire web</span>
+                  <span className="text-[10px] underline">Afficher &rarr;</span>
+                </p>
+              </div>
+
+              <div 
+                onClick={() => setUserRoleFilter('online_all')}
+                className={`p-5 rounded-3xl bg-slate-900 border transition-all cursor-pointer active:scale-95 shadow-md ${
+                  userRoleFilter === 'online_all' ? 'border-sama-500/60 ring-2 ring-sama-500/30 bg-sama-950/20' : 'border-slate-800 hover:border-sama-500/40'
+                }`}
+              >
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>Total Inscriptions Link</span>
+                  <Sparkles className="w-4 h-4 text-sama-400" />
+                </div>
+                <div className="text-2xl font-black text-white mt-2">
+                  {totalOnlineCount} <span className="text-xs font-medium text-slate-400">inscrits</span>
+                </div>
+                <p className="text-[11px] text-sama-400 font-bold mt-1 flex items-center justify-between">
+                  <span>Nouveaux comptes en ligne</span>
+                  <span className="text-[10px] underline">Afficher &rarr;</span>
+                </p>
+              </div>
+
+              <div 
+                onClick={() => setUserRoleFilter('ALL')}
+                className={`p-5 rounded-3xl bg-slate-900 border transition-all cursor-pointer active:scale-95 shadow-md ${
+                  userRoleFilter === 'ALL' ? 'border-slate-500/60 ring-2 ring-slate-500/30 bg-slate-950/20' : 'border-slate-800 hover:border-slate-500/40'
+                }`}
+              >
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
+                  <span>Répertoire Global</span>
+                  <Users className="w-4 h-4 text-slate-400" />
                 </div>
                 <div className="text-2xl font-black text-white mt-2">
                   {totalUsersCount} <span className="text-xs font-medium text-slate-400">comptes</span>
                 </div>
-                <p className="text-[11px] text-emerald-400 font-bold mt-1">Plateforme Sama Artisan</p>
-              </div>
-
-              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
-                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
-                  <span>Particuliers & Clients</span>
-                  <User className="w-4 h-4 text-blue-400" />
-                </div>
-                <div className="text-2xl font-black text-blue-400 mt-2">
-                  {clientsCount} <span className="text-xs font-medium text-slate-400">demandeurs</span>
-                </div>
-                <p className="text-[11px] text-slate-400 font-medium mt-1">
-                  {Math.round((clientsCount / (totalUsersCount || 1)) * 100)}% de la communauté
-                </p>
-              </div>
-
-              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-md">
-                <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase">
-                  <span>Artisans Prestataires</span>
-                  <Wrench className="w-4 h-4 text-sama-400" />
-                </div>
-                <div className="text-2xl font-black text-sama-400 mt-2">
-                  {prosCount} <span className="text-xs font-medium text-slate-400">professionnels</span>
-                </div>
-                <p className="text-[11px] text-slate-400 font-medium mt-1">
-                  {Math.round((prosCount / (totalUsersCount || 1)) * 100)}% de la communauté
+                <p className="text-[11px] text-slate-400 font-bold mt-1 flex items-center justify-between">
+                  <span>Tous les comptes réunis</span>
+                  <span className="text-[10px] underline">Tout afficher &rarr;</span>
                 </p>
               </div>
             </div>
@@ -1754,10 +1813,17 @@ export default function AdminDashboardPage() {
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
                     <Users className="w-5 h-5 text-sama-400" />
-                    <span>Répertoire Complet des Utilisateurs ({filteredUsers.length})</span>
+                    <span>
+                      {userRoleFilter === 'online_pro' && `⚡ Artisans Inscrits via le Link Web (${filteredUsers.length})`}
+                      {userRoleFilter === 'online_client' && `⚡ Clients Inscrits via le Link Web (${filteredUsers.length})`}
+                      {userRoleFilter === 'online_all' && `⚡ Toutes les Inscriptions via le Link Web (${filteredUsers.length})`}
+                      {userRoleFilter === 'pro' && `Tous les Artisans (${filteredUsers.length})`}
+                      {userRoleFilter === 'client' && `Tous les Clients (${filteredUsers.length})`}
+                      {userRoleFilter === 'ALL' && `Répertoire Complet des Comptes (${filteredUsers.length})`}
+                    </span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Consultez, contactez par WhatsApp ou gérez les comptes de vos utilisateurs et clients.
+                    Consultez, contactez par WhatsApp ou gérez les comptes de vos artisans et clients inscrits via le lien.
                   </p>
                 </div>
 
@@ -1784,30 +1850,40 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {/* Role toggle filters */}
-                <div className="flex items-center gap-1.5 p-1 bg-slate-950 border border-slate-800 rounded-xl">
+                <div className="flex items-center gap-1.5 p-1 bg-slate-950 border border-slate-800 rounded-xl flex-wrap">
+                  <button
+                    onClick={() => setUserRoleFilter('online_pro')}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      userRoleFilter === 'online_pro' ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-500/40' : 'text-slate-400 hover:text-emerald-400'
+                    }`}
+                  >
+                    <Wrench className="w-3.5 h-3.5" />
+                    <span>⚡ Artisans Link ({onlineArtisansCount})</span>
+                  </button>
+                  <button
+                    onClick={() => setUserRoleFilter('online_client')}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      userRoleFilter === 'online_client' ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-500/40' : 'text-slate-400 hover:text-blue-400'
+                    }`}
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>⚡ Clients Link ({onlineClientsCount})</span>
+                  </button>
+                  <button
+                    onClick={() => setUserRoleFilter('online_all')}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      userRoleFilter === 'online_all' ? 'bg-sama-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Tous Link ({totalOnlineCount})
+                  </button>
                   <button
                     onClick={() => setUserRoleFilter('ALL')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       userRoleFilter === 'ALL' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    Tous ({totalUsersCount})
-                  </button>
-                  <button
-                    onClick={() => setUserRoleFilter('client')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                      userRoleFilter === 'client' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Clients ({clientsCount})
-                  </button>
-                  <button
-                    onClick={() => setUserRoleFilter('pro')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                      userRoleFilter === 'pro' ? 'bg-sama-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Artisans ({prosCount})
+                    Répertoire Global ({totalUsersCount})
                   </button>
                 </div>
               </div>

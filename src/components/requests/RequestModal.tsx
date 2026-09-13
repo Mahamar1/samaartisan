@@ -130,12 +130,12 @@ export default function RequestModal({ provider, isOpen, onClose }: RequestModal
                   onChange={(e) => setSelectedService(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium bg-slate-50 focus:bg-white focus:ring-2 focus:ring-sama-500 focus:outline-none"
                 >
-                  {provider.services.map((s) => (
+                  {(provider.services || []).map((s) => (
                     <option key={s.id} value={s.name}>
                       {s.name} ({s.indicativePrice.toLocaleString()} FCFA)
                     </option>
                   ))}
-                  <option value={provider.categoryName}>Autre demande de {provider.categoryName}</option>
+                  <option value={provider.categoryName || 'Service'}>Autre demande de {provider.categoryName || 'Service'}</option>
                 </select>
               </div>
 

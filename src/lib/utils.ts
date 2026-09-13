@@ -5,22 +5,29 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatPrice(price: number): string {
-  return new Intl.NumberFormat('fr-FR', {
+export function formatPrice(price: number, currency = 'FCFA'): string {
+  const formatted = new Intl.NumberFormat('fr-FR', {
     maximumFractionDigits: 0,
-  }).format(price) + ' FCFA';
+  }).format(price);
+  
+  if (currency === 'EUR') return `${formatted} €`;
+  if (currency === 'USD') return `$${formatted}`;
+  return `${formatted} FCFA`;
 }
 
 export function formatNumber(num: number): string {
   return new Intl.NumberFormat('fr-FR').format(num);
 }
 
-export function generateWhatsAppLink(phone: string, serviceTitle?: string): string {
+export function generatePropertyWhatsAppLink(phone: string, title: string, reference: string): string {
   const cleanPhone = phone.replace(/[^0-9]/g, '');
-  let message = `Bonjour Sama Artisan, je suis intéressé par votre service.`;
-  if (serviceTitle) {
-    message = `Bonjour, je suis intéressé par votre prestation "${serviceTitle}" vue sur Sama Artisan. Êtes-vous disponible ?`;
-  }
+  const message = `Bonjour, je suis intéressé(e) par le bien ${title} référencé ${reference}.`;
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+}
+
+export function generateProjectWhatsAppLink(phone: string, title: string, reference: string): string {
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  const message = `Bonjour, je souhaite obtenir des informations sur le projet BTP ${title} (Réf: ${reference}).`;
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 }
 
@@ -29,19 +36,14 @@ export function generatePhoneLink(phone: string): string {
   return `tel:${cleanPhone}`;
 }
 
-export function getPropertyTypeLabel(type: string): string {
-  const map: Record<string, string> = {
-    appartement: 'Appartement',
-    villa: 'Villa',
-    studio: 'Studio',
-    maison: 'Maison',
-    bureau: 'Bureau',
-    terrain: 'Terrain',
-    immeuble: 'Immeuble',
-  };
-  return map[type] || type;
-}
-
-export function getTransactionLabel(tx: string): string {
-  return tx === 'location' ? 'À Louer' : 'À Vendre';
+export function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-');
 }

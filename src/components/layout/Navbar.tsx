@@ -150,7 +150,7 @@ export default function Navbar() {
                   className="flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-sama-600 to-emerald-600 text-white shadow-md shadow-sama-600/20 hover:from-sama-500 hover:to-emerald-500 transition-all"
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>S'inscrire</span>
+                  <span className="hidden xs:inline">S'inscrire</span>
                 </Link>
               </div>
             )}

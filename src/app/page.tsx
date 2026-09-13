@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
 import { getProperties, getBTPProjects, getPublications } from '@/lib/supabase/services';
 import { Property, BTPProject, Publication } from '@/lib/types';
 import { formatPrice, generatePropertyWhatsAppLink } from '@/lib/utils';
@@ -56,8 +54,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
-      <Navbar />
-
       <main className="flex-grow">
         
         {/* HERO SECTION */}
@@ -517,8 +513,6 @@ export default function HomePage() {
         </section>
 
       </main>
-
-      <Footer />
     </div>
   );
 }

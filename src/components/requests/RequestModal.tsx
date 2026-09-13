@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Provider, UrgencyLevel } from '@/lib/types';
 import { NEIGHBORHOODS } from '@/lib/data';
+import { saveServiceRequest } from '@/lib/supabase/services';
 
 interface RequestModalProps {
   provider: Provider;
@@ -41,9 +42,8 @@ export default function RequestModal({ provider, isOpen, onClose }: RequestModal
       return;
     }
 
-    // Save request to localStorage
-    const newRequest = {
-      id: 'req-' + Date.now(),
+    // Save request to Supabase Cloud & Local Cache
+    saveServiceRequest({
       customerName: customerName || 'Client Sama Artisan',
       customerPhone,
       providerId: provider.id,
@@ -53,17 +53,9 @@ export default function RequestModal({ provider, isOpen, onClose }: RequestModal
       neighborhood,
       urgency,
       budgetIndicative: budget ? parseInt(budget) : undefined,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
-    };
-
-    try {
-      const existing = JSON.parse(localStorage.getItem('samaartisan_requests') || localStorage.getItem('samapro_requests') || '[]');
-      localStorage.setItem('samaartisan_requests', JSON.stringify([newRequest, ...existing]));
-      localStorage.setItem('samapro_requests', JSON.stringify([newRequest, ...existing]));
-    } catch (err) {
-      console.error(err);
-    }
+      channel: 'FORM',
+      status: 'PENDING'
+    });
 
     setIsSubmitted(true);
   };
@@ -74,15 +66,30 @@ export default function RequestModal({ provider, isOpen, onClose }: RequestModal
       urgency === 'TODAY' ? '⚡ AUJOURD\'HUI' :
       urgency === 'THIS_WEEK' ? '📅 CETTE SEMAINE' : '🤝 FLEXIBLE';
 
+    // Track request in Supabase Cloud
+    saveServiceRequest({
+      customerName: customerName || 'Client WhatsApp',
+      customerPhone: customerPhone || 'Non spécifié',
+      providerId: provider.id,
+      providerName: provider.name,
+      serviceCategory: selectedService,
+      description: description || 'Prise de contact directe WhatsApp',
+      neighborhood,
+      urgency,
+      budgetIndicative: budget ? parseInt(budget) : undefined,
+      channel: 'WHATSAPP',
+      status: 'CONTACTED'
+    });
+
     const message = encodeURIComponent(
       `Bonjour ${provider.name},\n` +
       `Je vous contacte via la plateforme *Sama Artisan* pour une prestation :\n\n` +
       `📌 *Service* : ${selectedService}\n` +
       `📍 *Localisation* : ${neighborhood}, Dakar\n` +
       `⏱️ *Urgence* : ${urgencyLabel}\n` +
-      `📝 *Description* : ${description}\n` +
+      `📝 *Description* : ${description || 'Demande de devis'}\n` +
       (budget ? `💰 *Budget indicatif* : ${budget} FCFA\n` : '') +
-      `👤 *Mon contact* : ${customerName || 'Client'} (${customerPhone})\n\n` +
+      `👤 *Mon contact* : ${customerName || 'Client'} (${customerPhone || 'Direct'})\n\n` +
       `Êtes-vous disponible ? Merci d'avance !`
     );
 

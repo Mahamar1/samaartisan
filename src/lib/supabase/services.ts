@@ -2162,4 +2162,138 @@ export async function getOrganizationBySlug(slug: string): Promise<Organization 
   return orgs.find(o => o.slug.toLowerCase() === cleanSlug || o.id === cleanSlug) || null;
 }
 
+// 6. SERVICE REQUESTS (Devis & Demandes d'Intervention en Cloud Supabase)
+export interface ServiceRequestData {
+  id?: string;
+  providerId?: string;
+  providerName?: string;
+  customerName: string;
+  customerPhone: string;
+  serviceCategory: string;
+  description: string;
+  neighborhood?: string;
+  urgency?: string;
+  budgetIndicative?: number;
+  channel?: 'WHATSAPP' | 'CALL' | 'FORM';
+  status?: 'PENDING' | 'CONTACTED' | 'COMPLETED' | 'CANCELLED';
+  createdAt?: string;
+}
+
+export async function saveServiceRequest(reqData: ServiceRequestData): Promise<{ success: boolean; data?: any }> {
+  const newReq = {
+    id: reqData.id || `req-${Date.now()}`,
+    customerName: reqData.customerName || 'Client Sama Artisan',
+    customerPhone: reqData.customerPhone,
+    providerId: reqData.providerId || '',
+    providerName: reqData.providerName || '',
+    serviceCategory: reqData.serviceCategory,
+    description: reqData.description,
+    neighborhood: reqData.neighborhood || 'Dakar',
+    urgency: reqData.urgency || 'TODAY',
+    budgetIndicative: reqData.budgetIndicative,
+    channel: reqData.channel || 'FORM',
+    status: reqData.status || 'PENDING',
+    createdAt: new Date().toISOString()
+  };
+
+  // 1. Insert into Supabase Cloud
+  if (isSupabaseConfigured()) {
+    try {
+      const payload: any = {
+        client_name: newReq.customerName,
+        client_phone: newReq.customerPhone,
+        service_type: newReq.serviceCategory,
+        details: JSON.stringify({
+          description: newReq.description,
+          neighborhood: newReq.neighborhood,
+          urgency: newReq.urgency,
+          budgetIndicative: newReq.budgetIndicative,
+          providerName: newReq.providerName
+        }),
+        channel: newReq.channel,
+        status: newReq.status
+      };
+
+      if (newReq.providerId && !newReq.providerId.startsWith('p-') && !newReq.providerId.startsWith('prov-') && !newReq.providerId.startsWith('artisan-')) {
+        payload.provider_id = newReq.providerId;
+      }
+
+      await supabase.from('service_requests').insert([payload]);
+    } catch (err) {
+      console.warn('Supabase service request insert error:', err);
+    }
+  }
+
+  // 2. Cache locally
+  if (typeof window !== 'undefined') {
+    try {
+      const existing = JSON.parse(localStorage.getItem('samapro_requests') || '[]');
+      localStorage.setItem('samapro_requests', JSON.stringify([newReq, ...existing]));
+      localStorage.setItem('samaartisan_requests', JSON.stringify([newReq, ...existing]));
+    } catch {}
+  }
+
+  return { success: true, data: newReq };
+}
+
+export async function getServiceRequests(providerId?: string): Promise<ServiceRequestData[]> {
+  let requests: ServiceRequestData[] = [];
+
+  if (isSupabaseConfigured()) {
+    try {
+      let query = supabase.from('service_requests').select('*').order('created_at', { ascending: false });
+      if (providerId) {
+        query = query.eq('provider_id', providerId);
+      }
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        requests = data.map((item: any) => {
+          let detailsObj: any = {};
+          try {
+            if (item.details && item.details.startsWith('{')) {
+              detailsObj = JSON.parse(item.details);
+            }
+          } catch {}
+
+          return {
+            id: item.id,
+            providerId: item.provider_id,
+            providerName: detailsObj.providerName || 'Artisan',
+            customerName: item.client_name,
+            customerPhone: item.client_phone,
+            serviceCategory: item.service_type,
+            description: detailsObj.description || item.details || '',
+            neighborhood: detailsObj.neighborhood || 'Dakar',
+            urgency: detailsObj.urgency || 'TODAY',
+            budgetIndicative: detailsObj.budgetIndicative,
+            channel: item.channel || 'FORM',
+            status: item.status || 'PENDING',
+            createdAt: item.created_at
+          };
+        });
+      }
+    } catch (err) {
+      console.warn('Supabase fetch service requests failed:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const localReqs = JSON.parse(localStorage.getItem('samapro_requests') || '[]');
+      if (Array.isArray(localReqs)) {
+        const combined = [...requests];
+        for (const lr of localReqs) {
+          if (!combined.some(r => r.id === lr.id)) {
+            combined.push(lr);
+          }
+        }
+        return combined;
+      }
+    } catch {}
+  }
+
+  return requests;
+}
+
+
 

@@ -27,13 +27,13 @@ import {
 } from 'lucide-react';
 import { formatFcfa } from '@/lib/data';
 import { Provider, ServiceRequest } from '@/lib/types';
-import { updateProvider } from '@/lib/supabase/services';
+import { updateProvider, getServiceRequests } from '@/lib/supabase/services';
 
 export default function ProviderDashboardPage() {
   const router = useRouter();
   const [currentProvider, setCurrentProvider] = useState<Provider | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'requests' | 'profile'>('requests');
   
   // Profile edit fields
@@ -54,6 +54,7 @@ export default function ProviderDashboardPage() {
   const [clientName, setClientName] = useState<string>('');
 
   useEffect(() => {
+    let proId = '';
     // 1. Charger le profil de l'artisan actuellement connecté
     try {
       const storedUser = localStorage.getItem('samapro_current_user');
@@ -115,6 +116,7 @@ export default function ProviderDashboardPage() {
           parsed.slug = (parsed.name || 'artisan').toLowerCase().replace(/[^a-z0-9]+/g, '-');
           localStorage.setItem('samapro_current_user', JSON.stringify(parsed));
         }
+        if (parsed.id) proId = parsed.id;
         setCurrentProvider(parsed);
         setName(parsed.name || '');
         setBusinessName(parsed.businessName || '');
@@ -130,18 +132,21 @@ export default function ProviderDashboardPage() {
       setIsLoading(false);
     }
 
-    // 2. Charger les demandes réelles enregistrées (en nettoyant tout reliquat de fausse demande)
-    try {
-      const storedReqs = JSON.parse(localStorage.getItem('samapro_requests') || '[]');
-      const realReqs = Array.isArray(storedReqs) 
-        ? storedReqs.filter((r: any) => r && r.id !== 'req-init-1' && r.customerName !== 'Aïssatou Sow')
-        : [];
-      setRequests(realReqs);
-      localStorage.setItem('samapro_requests', JSON.stringify(realReqs));
-    } catch (err) {
-      console.error('Error loading requests:', err);
-      setRequests([]);
-    }
+    // 2. Charger les demandes réelles enregistrées depuis Supabase Cloud & Local
+    getServiceRequests(proId).then((realReqs: any[]) => {
+      const filtered = (realReqs || []).filter((r: any) => r && r.id !== 'req-init-1' && r.customerName !== 'Aïssatou Sow');
+      setRequests(filtered);
+    }).catch(() => {
+      try {
+        const storedReqs = JSON.parse(localStorage.getItem('samapro_requests') || '[]');
+        const realReqs = Array.isArray(storedReqs) 
+          ? storedReqs.filter((r: any) => r && r.id !== 'req-init-1' && r.customerName !== 'Aïssatou Sow')
+          : [];
+        setRequests(realReqs);
+      } catch (err) {
+        setRequests([]);
+      }
+    });
   }, []);
 
   const handleUpdateStatus = (reqId: string, newStatus: any) => {

@@ -1,14 +1,38 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Send, CheckCircle2, MessageSquare } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, CheckCircle2, MessageSquare, RefreshCw } from 'lucide-react';
+import { saveContactMessage } from '@/lib/supabase/services';
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [subject, setSubject] = useState('Demande d\'information');
+  const [message, setMessage] = useState('');
+  const [userType, setUserType] = useState('Particulier');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setIsSubmitting(true);
+    try {
+      await saveContactMessage({
+        fullName,
+        phone,
+        email,
+        subject,
+        message,
+        userType
+      });
+      setSubmitted(true);
+    } catch (err) {
+      console.error('Contact form submission error:', err);
+      setSubmitted(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -85,41 +109,74 @@ export default function ContactPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nom complet</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nom complet *</label>
                       <input
                         type="text"
                         required
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
                         placeholder="Ex: Babacar Ndiaye"
                         className="w-full px-3 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sama-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Téléphone</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Téléphone *</label>
                       <input
                         type="tel"
                         required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
                         placeholder="+221 77 000 00 00"
                         className="w-full px-3 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sama-500"
                       />
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="votre.email@domaine.sn"
+                        className="w-full px-3 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sama-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Vous êtes</label>
+                      <select
+                        value={userType}
+                        onChange={(e) => setUserType(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sama-500 font-medium"
+                      >
+                        <option value="Particulier">Particulier / Client</option>
+                        <option value="Artisan Pro">Artisan Professionnel</option>
+                        <option value="Entreprise">Entreprise / Partenaire</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Sujet de votre message</label>
                     <input
-                      type="email"
-                      required
-                      placeholder="votre.email@domaine.sn"
+                      type="text"
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                      placeholder="Ex: Demande de renseignement ou devis"
                       className="w-full px-3 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sama-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Message</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Message *</label>
                     <textarea
                       rows={4}
                       required
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
                       placeholder="Comment pouvons-nous vous aider..."
                       className="w-full px-3 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sama-500"
                     />
@@ -127,10 +184,15 @@ export default function ContactPage() {
 
                   <button
                     type="submit"
-                    className="w-full py-3.5 rounded-xl bg-sama-600 hover:bg-sama-500 text-white font-extrabold text-xs shadow-md shadow-sama-600/20 transition-all flex items-center justify-center gap-2"
+                    disabled={isSubmitting}
+                    className="w-full py-3.5 rounded-xl bg-sama-600 hover:bg-sama-500 text-white font-extrabold text-xs shadow-md shadow-sama-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    <Send className="w-4 h-4" />
-                    <span>Envoyer le Message</span>
+                    {isSubmitting ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    <span>Envoyer le Message à l'Équipe</span>
                   </button>
                 </form>
               )}

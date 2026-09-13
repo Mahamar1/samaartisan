@@ -241,7 +241,7 @@ export async function getProviders(): Promise<Provider[]> {
     } catch {}
   }
 
-  // Merge database pros + local registered pros + reference verified pros (PROVIDERS)
+  // Merge database pros + local registered pros
   const combined: Provider[] = [...dbPros];
 
   for (const lp of localPros) {
@@ -250,9 +250,12 @@ export async function getProviders(): Promise<Provider[]> {
     }
   }
 
-  for (const bp of (PROVIDERS || [])) {
-    if (bp && !isBlacklistedOrDeleted(bp) && !combined.some(c => (bp.phone && c.phone === bp.phone) || (bp.id && c.id === bp.id))) {
-      combined.push(bp);
+  // Only append demo dataset if Supabase returned 0 items
+  if (dbPros.length === 0) {
+    for (const bp of (PROVIDERS || [])) {
+      if (bp && !isBlacklistedOrDeleted(bp) && !combined.some(c => (bp.phone && c.phone === bp.phone) || (bp.id && c.id === bp.id))) {
+        combined.push(bp);
+      }
     }
   }
 

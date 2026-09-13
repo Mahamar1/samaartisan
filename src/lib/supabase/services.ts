@@ -514,6 +514,36 @@ export async function registerArtisan(artisanData: {
           .select()
           .single();
 
+        // Also record in registered_accounts & pending_artisans for Admin Dashboard tracking
+        try {
+          await supabase.from('registered_accounts').insert([{
+            slug: newSlug,
+            name: artisanData.name,
+            phone: artisanData.phone,
+            email: cleanEmail,
+            role: 'pro',
+            neighborhood: artisanData.neighborhood,
+            city: 'Dakar',
+            category_name: artisanData.categoryName,
+            business_name: artisanData.businessName || artisanData.name,
+            status: 'ACTIVE'
+          }]);
+
+          await supabase.from('pending_artisans').insert([{
+            name: artisanData.name,
+            business_name: artisanData.businessName || artisanData.name,
+            trade: artisanData.categoryName,
+            neighborhood: artisanData.neighborhood,
+            region_name: artisanData.regionId || 'Dakar',
+            phone: artisanData.phone,
+            email: cleanEmail,
+            cni_number: artisanData.cniNumber || 'En cours de validation',
+            status: 'PENDING'
+          }]);
+        } catch (e) {
+          console.warn('Note on admin tracking tables insert:', e);
+        }
+
         if (error) {
           console.error('Supabase registration error:', error);
         } else if (data) {
@@ -983,6 +1013,38 @@ export async function registerUserAccount(userData: UserAccountData): Promise<{ 
           if (error) {
             console.warn('Supabase user register note:', error.message);
           }
+
+          // Record in registered_accounts and pending_artisans for admin panel visibility
+          try {
+            await supabase.from('registered_accounts').insert([{
+              slug,
+              name: cleanName,
+              phone: userData.phone.trim(),
+              email: cleanEmail,
+              role,
+              neighborhood: userData.neighborhood || 'Dakar',
+              city: 'Dakar',
+              category_name: isPro ? (userData.categoryName || 'Artisan Qualifié') : 'Client Particulier',
+              business_name: userData.businessName || cleanName,
+              status: 'ACTIVE'
+            }]);
+
+            if (isPro) {
+              await supabase.from('pending_artisans').insert([{
+                name: cleanName,
+                business_name: userData.businessName || cleanName,
+                trade: userData.categoryName || 'Artisan',
+                neighborhood: userData.neighborhood || 'Dakar',
+                region_name: 'Dakar',
+                phone: userData.phone.trim(),
+                email: cleanEmail,
+                cni_number: 'En cours de validation',
+                status: 'PENDING'
+              }]);
+            }
+          } catch (e) {
+            console.warn('Note on user account secondary inserts:', e);
+          }
         }
       } catch (err) {
         console.warn('Supabase register exception:', err);
@@ -1109,6 +1171,41 @@ export async function getRegisteredAccounts(): Promise<AppUserAccount[]> {
           });
         }
       }
+
+      // Also fetch from registered_accounts table in Supabase Cloud
+      const { data: regAccountsData } = await supabase
+        .from('registered_accounts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (regAccountsData && regAccountsData.length > 0) {
+        for (const item of regAccountsData) {
+          if (isBlacklistedOrDeleted({ id: item.id, slug: item.slug, phone: item.phone })) {
+            continue;
+          }
+          const itemPhone = (item.phone || '').replace(/[^0-9]/g, '');
+          if (!dbUsers.some(u => {
+            const uPhone = (u.phone || '').replace(/[^0-9]/g, '');
+            return (itemPhone.length >= 7 && uPhone.includes(itemPhone)) || u.id === String(item.id);
+          })) {
+            const isClient = item.role === 'client';
+            dbUsers.push({
+              id: String(item.id),
+              name: item.name || 'Utilisateur',
+              phone: item.phone || '',
+              email: item.email || (isClient ? 'client@samaartisan.sn' : 'pro@samaartisan.sn'),
+              role: isClient ? 'client' : 'pro',
+              neighborhood: item.neighborhood || 'Dakar',
+              city: item.city || 'Dakar',
+              categoryName: item.category_name || (isClient ? 'Particulier' : 'Artisan'),
+              businessName: item.business_name || item.name,
+              registeredAt: item.created_at ? (item.created_at.includes('T') ? new Date(item.created_at).toLocaleDateString('fr-FR') : item.created_at) : 'Récemment',
+              status: item.status === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE',
+              isOnlineSignup: true
+            });
+          }
+        }
+      }
     } catch (err) {
       console.warn('Supabase getRegisteredAccounts error:', err);
     }
@@ -1205,6 +1302,39 @@ export async function getPendingArtisans(): Promise<PendingArtisanData[]> {
             dateSubmitted: item.created_at ? (item.created_at.includes('T') ? new Date(item.created_at).toLocaleDateString('fr-FR') : item.created_at) : 'Récemment',
             status: 'PENDING'
           });
+        }
+      }
+
+      // Also fetch from pending_artisans table in Supabase Cloud
+      const { data: pendingTableData } = await supabase
+        .from('pending_artisans')
+        .select('*')
+        .order('date_submitted', { ascending: false });
+
+      if (pendingTableData && pendingTableData.length > 0) {
+        for (const item of pendingTableData) {
+          if (isBlacklistedOrDeleted({ id: item.id, phone: item.phone })) {
+            continue;
+          }
+          const itemPhone = (item.phone || '').replace(/[^0-9]/g, '');
+          if (!pending.some(p => {
+            const pPhone = (p.phone || '').replace(/[^0-9]/g, '');
+            return (itemPhone.length >= 7 && pPhone.includes(itemPhone)) || p.id === String(item.id);
+          })) {
+            pending.push({
+              id: String(item.id),
+              name: item.name,
+              businessName: item.business_name || item.name,
+              trade: item.trade || 'Artisan',
+              neighborhood: item.neighborhood || 'Dakar',
+              regionName: item.region_name || 'Dakar',
+              phone: item.phone,
+              email: item.email,
+              cniNumber: item.cni_number || 'En cours de validation',
+              dateSubmitted: item.date_submitted ? (item.date_submitted.includes('T') ? new Date(item.date_submitted).toLocaleDateString('fr-FR') : item.date_submitted) : 'Récemment',
+              status: (item.status as any) || 'PENDING'
+            });
+          }
         }
       }
     } catch (err) {

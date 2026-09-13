@@ -64,9 +64,9 @@ export function isBlacklistedOrDeleted(item: { id?: string; slug?: string; phone
       if (pEmail && dStr === pEmail) return true;
 
       const dDigits = dStr.replace(/[^0-9]/g, '');
-      if (dDigits.length >= 7) {
-        if (pPhone && (pPhone.includes(dDigits) || dDigits.includes(pPhone))) return true;
-        if (pWhatsApp && (pWhatsApp.includes(dDigits) || dDigits.includes(pWhatsApp))) return true;
+      if (dDigits.length >= 8) {
+        if (pPhone && (pPhone === dDigits || (pPhone.length >= 8 && pPhone.slice(-8) === dDigits.slice(-8)))) return true;
+        if (pWhatsApp && (pWhatsApp === dDigits || (pWhatsApp.length >= 8 && pWhatsApp.slice(-8) === dDigits.slice(-8)))) return true;
       }
     }
   } catch {}
